@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 /** Shared top bar so every workspace page offers the same navigation. */
 export function WorkspaceHeader({ current }: { current?: string }) {
   const items = [
-    { to: "/", label: "Overview" },
+    { to: "/overview", label: "Overview" },
     { to: "/projects", label: "Projects" },
     { to: "/workbench", label: "Workbench" },
     { to: "/models", label: "Model languages" },
@@ -22,10 +22,8 @@ export function WorkspaceHeader({ current }: { current?: string }) {
 
   return (
     <header className="flex h-14 shrink-0 flex-wrap items-center gap-1 border-b border-border bg-card px-3">
-      <Link to="/" className="mr-3 flex items-center gap-2">
-        <span className="grid size-8 place-items-center rounded-md bg-primary font-mono text-xs font-bold text-primary-foreground">
-          KI
-        </span>
+      <Link to="/overview" className="mr-3 flex items-center gap-2">
+        <img src="/favicon.png" alt="" className="size-8" />
         <span className="text-sm font-semibold">KIDE</span>
       </Link>
       {items.map((item) => (

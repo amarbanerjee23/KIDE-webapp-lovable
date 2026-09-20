@@ -1,326 +1,86 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
-import {
-  Activity,
-  BookOpen,
-  Box,
-  Check,
-  CircleAlert,
-  CreditCard,
-  FolderKanban,
-  GitBranch,
-  History,
-  Library,
-  ListTree,
-  LockKeyhole,
-  Play,
-  ShieldCheck,
-  Sparkles,
-  Upload,
-  Users,
-} from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { ArrowRight, Check, Code2, GitBranch, Network, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
-import { buildCatalogue } from "@/lib/kide/catalogue";
-import { synthesize } from "@/lib/kide/synthesis";
-import { buildAssurance } from "@/lib/kide/assurance";
-import { useApprovalState } from "@/lib/kide/approval-store";
+import { supabase } from "@/integrations/supabase/client";
 
-const title = "KIDE — System overview";
-const description =
-  "Live overview of the KIDE engineering baseline: model health, the seven-stage flow, synthesis readiness and release gates.";
+const title = "KIDE — Knowledge-integrated systems engineering";
+const description = "Design explainable control systems from requirements and device knowledge, with qualified synthesis, verification evidence and governed release.";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title },
-      { name: "description", content: description },
-      { property: "og:title", content: title },
-      { property: "og:description", content: description },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: OverviewPage,
+  head: () => ({ meta: [
+    { title }, { name: "description", content: description },
+    { property: "og:title", content: title }, { property: "og:description", content: description },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" },
+  ] }),
+  component: LandingPage,
 });
 
-function OverviewPage() {
-  const sources = useWorkspaceSources();
-  const workspace = useMemo(() => linkFrom(sources), [sources]);
-  const catalogue = useMemo(() => buildCatalogue(workspace), [workspace]);
-  const report = useMemo(() => synthesize(workspace), [workspace]);
-  const approval = useApprovalState();
-  const assurance = useMemo(
-    () => buildAssurance(workspace, report, approval.selectedId),
-    [workspace, report, approval.selectedId],
-  );
-
-  const errors = workspace.files.reduce(
-    (sum, file) => sum + file.diagnostics.filter((d) => d.severity === "error").length,
-    0,
-  );
-  const warnings = workspace.files.reduce(
-    (sum, file) => sum + file.diagnostics.filter((d) => d.severity === "warning").length,
-    0,
-  );
-  const gatesPassed = assurance.gates.filter((gate) => gate.status === "pass").length;
-
-  const stages = [
-    {
-      label: "Intent",
-      icon: BookOpen,
-      to: "/models",
-      detail: `${workspace.files.length} models linked`,
-      done: errors === 0,
-    },
-    {
-      label: "Knowledge",
-      icon: Library,
-      to: "/models",
-      detail: `${catalogue.devices.length} device interfaces`,
-      done: catalogue.devices.length > 0,
-    },
-    {
-      label: "Capabilities",
-      icon: Box,
-      to: "/catalogue",
-      detail: `${catalogue.eligibleCount} of ${catalogue.capabilities.length} usable`,
-      done: catalogue.eligibleCount > 0,
-    },
-    {
-      label: "Activities",
-      icon: Activity,
-      to: "/designer",
-      detail: report.diagram ? `Workflow ${report.diagram}` : "No workflow yet",
-      done: Boolean(report.diagram),
-    },
-    {
-      label: "Synthesis",
-      icon: GitBranch,
-      to: "/synthesis",
-      detail: report.ready ? `${report.candidates.length} candidate designs` : "Blocked by preflight",
-      done: report.ready,
-    },
-    {
-      label: "Verification",
-      icon: ShieldCheck,
-      to: "/trust",
-      detail: `${assurance.blockers} blockers · ${assurance.tracedPercent}% traced`,
-      done: assurance.blockers === 0,
-    },
-    {
-      label: "Release",
-      icon: Upload,
-      to: "/release",
-      detail: assurance.releasable ? "Ready to export" : `${gatesPassed}/${assurance.gates.length} gates passed`,
-      done: assurance.releasable,
-    },
-  ] as const;
+function LandingPage() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) void navigate({ to: "/projects", replace: true });
+    });
+  }, [navigate]);
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="flex h-14 flex-wrap items-center gap-1 border-b border-border bg-card px-3">
-        <Link to="/" className="mr-3 flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-md bg-primary font-mono text-xs font-bold text-primary-foreground">
-            KI
-          </span>
-          <div>
-            <div className="text-sm font-semibold">KIDE</div>
-            <div className="text-[10px] text-muted-foreground">SYSTEMS WORKBENCH</div>
-          </div>
+    <main className="min-h-screen overflow-hidden bg-background text-foreground">
+      <header className="mx-auto flex h-16 max-w-7xl items-center px-5 lg:px-8">
+        <Link to="/" className="flex items-center gap-3">
+          <img src="/favicon.png" alt="" className="size-9" />
+          <span className="text-lg font-semibold">KIDE</span>
         </Link>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/projects">Projects</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/models">Model languages</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/catalogue">Catalogue</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/trust">Trust centre</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/release">Release</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/billing">Billing</Link>
-        </Button>
-        <div className="ml-auto flex items-center gap-1">
-          <Button asChild size="sm">
-            <Link to="/auth">
-              <LockKeyhole />
-              Sign in
-            </Link>
-          </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button asChild variant="ghost"><Link to="/auth">Sign in</Link></Button>
+          <Button asChild><Link to="/auth">Start engineering <ArrowRight /></Link></Button>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-5 py-8">
-        <section className="flex flex-wrap items-end gap-4">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase text-muted-foreground">Active baseline</p>
-            <h1 className="mt-1 text-2xl font-semibold">Warehouse Fleet — Autonomous Routing</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Everything below is computed live from the five linked engineering models.
-            </p>
+      <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-12 px-5 pb-16 pt-10 lg:grid-cols-[1.02fr_0.98fr] lg:px-8">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase text-primary">Knowledge-integrated design environment</p>
+          <h1 className="mt-5 text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">Engineer control systems with evidence, not assumptions.</h1>
+          <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">Connect intent, device knowledge and executable activities. KIDE synthesizes deterministic control designs, explains every decision and blocks unsafe releases.</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild size="lg"><Link to="/auth">Open your workspace <ArrowRight /></Link></Button>
+            <Button asChild size="lg" variant="outline"><Link to="/auth">Create account</Link></Button>
           </div>
-          <div className="ml-auto flex gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/scenario">
-                <Play />
-                Run scenario
-              </Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link to="/workbench">
-                <Sparkles />
-                Open workbench
-              </Link>
-            </Button>
+          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+            <Proof icon={ShieldCheck} title="Qualified synthesis" text="Deterministic rules with independent validation." />
+            <Proof icon={GitBranch} title="Complete traceability" text="Every output links back to intent and knowledge." />
+            <Proof icon={Code2} title="Five linked DSLs" text="Semantic editing across the complete model set." />
           </div>
-        </section>
+        </div>
 
-        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Models" value={`${workspace.files.length}`} note="linked and cross-checked" />
-          <Metric
-            label="Problems"
-            value={`${errors} / ${warnings}`}
-            note="errors / warnings"
-            tone={errors > 0 ? "bad" : warnings > 0 ? "warn" : "good"}
-          />
-          <Metric
-            label="Candidate designs"
-            value={`${report.candidates.length}`}
-            note={report.ready ? "preflight passed" : "preflight blocked"}
-            tone={report.ready ? "good" : "bad"}
-          />
-          <Metric
-            label="Release gates"
-            value={`${gatesPassed}/${assurance.gates.length}`}
-            note={assurance.releasable ? "ready to export" : "export blocked"}
-            tone={assurance.releasable ? "good" : "warn"}
-          />
-        </section>
-
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold">Engineering flow</h2>
-          <p className="text-xs text-muted-foreground">Seven stages from intent to a signed release bundle.</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {stages.map((stage, index) => (
-              <Link
-                key={stage.label}
-                to={stage.to}
-                className="rounded-md border border-border bg-card p-4 transition-colors hover:border-primary/50"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="grid size-6 place-items-center rounded bg-secondary font-mono text-[10px]">
-                    {index + 1}
-                  </span>
-                  <stage.icon className="size-4 text-capability" />
-                  <span className="text-sm font-medium">{stage.label}</span>
-                  {stage.done ? (
-                    <Check className="ml-auto size-4 text-primary" />
-                  ) : (
-                    <CircleAlert className="ml-auto size-4 text-warning" />
-                  )}
-                </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">{stage.detail}</p>
-              </Link>
-            ))}
+        <div className="min-h-[460px] border border-border bg-card p-4 shadow-2xl shadow-background sm:p-6">
+          <div className="flex items-center justify-between border-b border-border pb-4">
+            <div className="flex items-center gap-3"><img src="/favicon.png" alt="" className="size-8" /><div><p className="text-sm font-semibold">Autonomous Routing</p><p className="text-[11px] text-muted-foreground">Release baseline 12</p></div></div>
+            <span className="border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">QUALIFIED</span>
           </div>
-        </section>
-
-        <section className="mt-8 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-md border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Assurance summary</h2>
-            <div className="mt-3 space-y-2 text-xs">
-              {assurance.gates.map((gate) => (
-                <div key={gate.id} className="flex items-start gap-2">
-                  {gate.status === "pass" ? (
-                    <Check className="mt-0.5 size-3.5 text-primary" />
-                  ) : (
-                    <CircleAlert className="mt-0.5 size-3.5 text-destructive" />
-                  )}
-                  <div>
-                    <p className="font-medium">{gate.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{gate.detail}</p>
-                  </div>
-                </div>
-              ))}
+          <div className="mt-5 grid grid-cols-[120px_1fr] gap-4 sm:grid-cols-[140px_1fr]">
+            <div className="space-y-2 border-r border-border pr-3 sm:pr-4">
+              {['Intent','Knowledge','Capabilities','Activities','Synthesis','Verification','Release'].map((step, index) => <div key={step} className={`flex items-center gap-2 px-2 py-2 text-[10px] sm:text-[11px] ${index === 3 ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`}><span className="grid size-5 shrink-0 place-items-center border border-border font-mono text-[9px]">{index + 1}</span>{step}</div>)}
             </div>
-            <Button asChild variant="link" size="sm" className="mt-2 h-auto p-0 text-xs">
-              <Link to="/trust">Open trust centre →</Link>
-            </Button>
-          </div>
-
-          <div className="rounded-md border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Workspace</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <Shortcut to="/projects" icon={FolderKanban} label="Projects" note="All organizations and projects" />
-              <Shortcut to="/team" icon={Users} label="Team" note="Members, roles and invitations" />
-              <Shortcut to="/checkpoints" icon={History} label="Checkpoints" note="Saved snapshots and imports" />
-              <Shortcut to="/reviews" icon={ListTree} label="Reviews" note="Approvals and comments" />
-              <Shortcut to="/billing" icon={CreditCard} label="Plan & billing" note="Subscription and invoices" />
-              <Shortcut to="/qualification" icon={ShieldCheck} label="Qualification" note="Algorithm evidence report" />
+            <div>
+              <p className="text-xs font-semibold">Mission Planning Activity</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Semantic graph · all references resolved</p>
+              <div className="mt-8 space-y-5">
+                {['Plan route','Move to waypoint','Recharge'].map((node, index) => <div key={node} className="relative border border-border bg-background p-3"><div className="flex items-center gap-2"><Network className="size-4 shrink-0 text-capability"/><span className="text-xs font-medium">{node}</span><Check className="ml-auto size-3.5 text-primary"/></div>{index < 2 && <span className="absolute left-6 top-full h-5 border-l border-dashed border-primary"/>}</div>)}
+              </div>
             </div>
           </div>
-        </section>
-      </div>
+          <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center"><Stat value="5" label="linked models"/><Stat value="0" label="errors"/><Stat value="6/6" label="gates passed"/></div>
+        </div>
+      </section>
     </main>
   );
 }
 
-function Metric({
-  label,
-  value,
-  note,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: "good" | "warn" | "bad" | "neutral";
-}) {
-  const toneClass =
-    tone === "good"
-      ? "text-primary"
-      : tone === "warn"
-        ? "text-warning"
-        : tone === "bad"
-          ? "text-destructive"
-          : "text-foreground";
-  return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>
-    </div>
-  );
+function Proof({ icon: Icon, title, text }: { icon: typeof ShieldCheck; title: string; text: string }) {
+  return <div className="border-l-2 border-primary pl-3"><Icon className="size-4 text-primary"/><p className="mt-2 text-sm font-medium">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></div>;
 }
 
-function Shortcut({
-  to,
-  icon: Icon,
-  label,
-  note,
-}: {
-  to: string;
-  icon: typeof Users;
-  label: string;
-  note: string;
-}) {
-  return (
-    <Link
-      to={to}
-      className="rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/50"
-    >
-      <div className="flex items-center gap-2 text-xs font-medium">
-        <Icon className="size-3.5 text-capability" />
-        {label}
-      </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>
-    </Link>
-  );
+function Stat({ value, label }: { value: string; label: string }) {
+  return <div><p className="text-lg font-semibold text-primary">{value}</p><p className="text-[10px] text-muted-foreground">{label}</p></div>;
 }

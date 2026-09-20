@@ -25,6 +25,7 @@ import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedCheckpointsRouteImport } from './routes/_authenticated/checkpoints'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
+import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticated/projects'
 import { Route as AuthenticatedReviewsRouteImport } from './routes/_authenticated/reviews'
@@ -113,6 +114,11 @@ const AuthenticatedNotificationsRoute =
     path: '/notifications',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/checkout': typeof AuthenticatedCheckoutRoute
   '/checkpoints': typeof AuthenticatedCheckpointsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
+  '/overview': typeof AuthenticatedOverviewRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/projects': typeof AuthenticatedProjectsRoute
   '/reviews': typeof AuthenticatedReviewsRoute
@@ -185,6 +192,7 @@ export interface FileRoutesByTo {
   '/checkout': typeof AuthenticatedCheckoutRoute
   '/checkpoints': typeof AuthenticatedCheckpointsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
+  '/overview': typeof AuthenticatedOverviewRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/projects': typeof AuthenticatedProjectsRoute
   '/reviews': typeof AuthenticatedReviewsRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/_authenticated/checkout': typeof AuthenticatedCheckoutRoute
   '/_authenticated/checkpoints': typeof AuthenticatedCheckpointsRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
+  '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/projects': typeof AuthenticatedProjectsRoute
   '/_authenticated/reviews': typeof AuthenticatedReviewsRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/checkpoints'
     | '/notifications'
+    | '/overview'
     | '/profile'
     | '/projects'
     | '/reviews'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/checkout'
     | '/checkpoints'
     | '/notifications'
+    | '/overview'
     | '/profile'
     | '/projects'
     | '/reviews'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/_authenticated/checkout'
     | '/_authenticated/checkpoints'
     | '/_authenticated/notifications'
+    | '/_authenticated/overview'
     | '/_authenticated/profile'
     | '/_authenticated/projects'
     | '/_authenticated/reviews'
@@ -420,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/overview': {
+      id: '/_authenticated/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof AuthenticatedOverviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
       path: '/profile'
@@ -470,6 +489,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCheckoutRoute: typeof AuthenticatedCheckoutRoute
   AuthenticatedCheckpointsRoute: typeof AuthenticatedCheckpointsRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
+  AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedProjectsRoute: typeof AuthenticatedProjectsRoute
   AuthenticatedReviewsRoute: typeof AuthenticatedReviewsRoute
@@ -482,6 +502,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCheckoutRoute: AuthenticatedCheckoutRoute,
   AuthenticatedCheckpointsRoute: AuthenticatedCheckpointsRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
+  AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedProjectsRoute: AuthenticatedProjectsRoute,
   AuthenticatedReviewsRoute: AuthenticatedReviewsRoute,

@@ -108,12 +108,12 @@ function KideWorkbench() {
     <main className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center border-b border-border bg-card px-3">
         <div className="flex w-56 items-center gap-2 border-r border-border pr-4">
-          <div className="grid size-8 place-items-center rounded-md bg-primary font-mono text-xs font-bold text-primary-foreground">KI</div>
+          <img src="/favicon.png" alt="" className="size-8" />
           <div><div className="text-sm font-semibold">KIDE</div><div className="text-[10px] text-muted-foreground">SYSTEMS WORKBENCH</div></div>
         </div>
         <Button variant="ghost" className="ml-3 h-9 justify-start gap-2 px-2 text-xs"><span className="grid size-6 place-items-center rounded bg-capability/15 font-semibold text-capability">AR</span>Autonomous Routing<ChevronDown className="size-3.5" /></Button>
         <div className="ml-auto flex items-center gap-1">
-          <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/">Overview</Link></Button><Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/projects">Projects</Link></Button>
+          <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/overview">Overview</Link></Button><Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/projects">Projects</Link></Button>
           <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/models"><ListTree className="size-3.5" />Model languages</Link></Button>
           <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/billing">Billing</Link></Button>
           <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/catalogue">Catalogue</Link></Button>
@@ -132,7 +132,7 @@ function KideWorkbench() {
             <Button variant="ghost" size="icon" className="size-7" aria-label={navOpen ? "Collapse navigation" : "Expand navigation"} aria-expanded={navOpen} onClick={() => setNavOpen((open) => !open)}><PanelLeftClose className={navOpen ? "" : "rotate-180"} /></Button>
           </div>
           <nav className="flex-1 p-2" aria-label="Engineering workflow">
-            <NavItem icon={LayoutDashboard} label="Overview" to="/" collapsed={!navOpen} />
+            <NavItem icon={LayoutDashboard} label="Overview" to="/overview" collapsed={!navOpen} />
             <p className="mb-1 mt-4 px-2 text-[10px] font-semibold text-muted-foreground uppercase">Engineering flow</p>
             {stages.map(([label, Icon, status], index) => (
               <NavItem key={label} icon={Icon} label={label} step={index + 1} active={status === "active"} done={status === "complete"} to={STAGE_LINKS[label] ?? "/"} collapsed={!navOpen} />

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FolderKanban, Plus, Users } from "lucide-react";
+import { FileCode2, FolderKanban, Plus, Users } from "lucide-react";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { listAllProjects, createProject } from "@/lib/projects.functions";
@@ -37,6 +37,14 @@ const STAGES = [
   "Verification",
   "Release",
 ];
+
+const PROJECT_FILES = [
+  { path: "Ecre.dml", label: "Data model" },
+  { path: "Ecre.op", label: "Operations" },
+  { path: "Ecre.mncspec", label: "MNC specification" },
+  { path: "Ecre.cap", label: "Capabilities" },
+  { path: "MissionPlanning.activity", label: "Activity workflow" },
+] as const;
 
 function stageLabel(stage: number) {
   return STAGES[Math.min(Math.max(stage, 1), 7) - 1];
@@ -180,27 +188,35 @@ function ProjectsHome() {
               ) : (
                 <ul className="divide-y divide-border">
                   {org.projects.map((project) => (
-                    <li key={project.id} className="flex items-center gap-4 px-4 py-3">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-secondary/60">
-                        <FolderKanban className="size-4 text-muted-foreground" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{project.name}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {project.description || `Stage ${project.current_stage} · ${stageLabel(project.current_stage)}`}
-                        </p>
+                    <li key={project.id} className="px-4 py-4">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-secondary/60">
+                          <FolderKanban className="size-4 text-muted-foreground" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{project.name}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {project.description || `Stage ${project.current_stage} · ${stageLabel(project.current_stage)}`}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusTone(project.status)}`}>
+                          {project.status.replace("_", " ")}
+                        </span>
+                        <span className="hidden shrink-0 text-[10px] text-muted-foreground sm:block">
+                          {new Date(project.updated_at).toLocaleDateString()}
+                        </span>
+                        <Button asChild size="sm" variant="outline" className="shrink-0">
+                          <Link to="/overview">Open overview</Link>
+                        </Button>
                       </div>
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusTone(project.status)}`}
-                      >
-                        {project.status.replace("_", " ")}
-                      </span>
-                      <span className="hidden shrink-0 text-[10px] text-muted-foreground sm:block">
-                        {new Date(project.updated_at).toLocaleDateString()}
-                      </span>
-                      <Button asChild size="sm" variant="outline" className="shrink-0">
-                        <Link to="/">Open</Link>
-                      </Button>
+                      <div className="mt-3 grid gap-1 border-t border-border pt-3 sm:ml-13 sm:grid-cols-2 lg:grid-cols-5">
+                        {PROJECT_FILES.map((file) => (
+                          <Link key={file.path} to="/models" hash={file.path} className="flex min-w-0 items-center gap-2 rounded border border-transparent px-2 py-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:bg-secondary/50 hover:text-foreground">
+                            <FileCode2 className="size-3.5 shrink-0 text-capability" />
+                            <span className="min-w-0"><span className="block truncate font-mono text-foreground">{file.path}</span><span className="block truncate text-[10px]">{file.label}</span></span>
+                          </Link>
+                        ))}
+                      </div>
                     </li>
                   ))}
                 </ul>

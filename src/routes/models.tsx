@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft, Check, CircleAlert, FileCode2, Play, RotateCcw, Sparkles, TriangleAlert,
@@ -27,8 +27,13 @@ export const Route = createFileRoute("/models")({
 });
 
 function ModelLanguages() {
+  const hash = useLocation({ select: (location) => location.hash });
   const sources = useWorkspaceSources();
-  const [activePath, setActivePath] = useState(SAMPLE_WORKSPACE[0]?.path ?? "");
+  const requestedPath = decodeURIComponent(hash.replace(/^#/, ""));
+  const initialPath = SAMPLE_WORKSPACE.some((file) => file.path === requestedPath)
+    ? requestedPath
+    : SAMPLE_WORKSPACE[0]?.path ?? "";
+  const [activePath, setActivePath] = useState(initialPath);
   const workspace = useMemo(() => linkFrom(sources), [sources]);
 
   const activeFile = workspace.files.find((file) => file.path === activePath);
@@ -43,7 +48,7 @@ function ModelLanguages() {
     <main className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/"><ArrowLeft />Workbench</Link>
+          <Link to="/projects"><ArrowLeft />Projects</Link>
         </Button>
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">Model languages</h1>
