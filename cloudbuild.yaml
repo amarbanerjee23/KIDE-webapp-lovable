@@ -26,16 +26,20 @@ steps:
       - --build-arg=VITE_SUPABASE_PUBLISHABLE_KEY=${_VITE_SUPABASE_PUBLISHABLE_KEY}
       - --build-arg=VITE_SUPABASE_PROJECT_ID=${_VITE_SUPABASE_PROJECT_ID}
       - -t
-      - ${_IMAGE}:${COMMIT_SHA}
+      - "${_IMAGE}:${COMMIT_SHA}"
       - -t
-      - ${_IMAGE}:latest
+      - "${_IMAGE}:latest"
       - .
 
   - name: gcr.io/cloud-builders/docker
-    args: [push, ${_IMAGE}:${COMMIT_SHA}]
+    args:
+      - push
+      - "${_IMAGE}:${COMMIT_SHA}"
 
   - name: gcr.io/cloud-builders/docker
-    args: [push, ${_IMAGE}:latest]
+    args:
+      - push
+      - "${_IMAGE}:latest"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -43,7 +47,7 @@ steps:
       - run
       - deploy
       - ${_SERVICE}
-      - --image=${_IMAGE}:${COMMIT_SHA}
+      - "--image=${_IMAGE}:${COMMIT_SHA}"
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
