@@ -6,10 +6,16 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// KIDE_NODE_BUILD=1 (set by the Dockerfile / Cloud Build) switches the server
+// output to a plain Node.js server bundle for Cloud Run. Inside the Lovable
+// sandbox this option is ignored and the Cloudflare target is kept.
+const nodeBuild = process.env["KIDE_NODE_BUILD"] === "1";
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  ...(nodeBuild ? { nitro: { preset: "node-server" } } : {}),
 });
