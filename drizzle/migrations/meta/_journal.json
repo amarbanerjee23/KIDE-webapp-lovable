@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789823697786,
+      "tag": "0000_kide_enterprise_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789823829289,
+      "tag": "0001_restrict_kide_security_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789889023613,
+      "tag": "0002_kide_teams_reviews_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789893630020,
+      "tag": "0003_kide_billing_subscriptions_payments",
+      "breakpoints": true
+    }
+  ]
+}

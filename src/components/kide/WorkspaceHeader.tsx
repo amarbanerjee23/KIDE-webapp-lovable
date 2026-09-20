@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 /** Shared top bar so every workspace page offers the same navigation. */
 export function WorkspaceHeader({ current }: { current?: string }) {
   const items = [
+    { to: "/", label: "Overview" },
     { to: "/projects", label: "Projects" },
-    { to: "/", label: "Workbench" },
+    { to: "/workbench", label: "Workbench" },
     { to: "/models", label: "Model languages" },
     { to: "/designer", label: "Activity designer" },
     { to: "/catalogue", label: "Catalogue" },

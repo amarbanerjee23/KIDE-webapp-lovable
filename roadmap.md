@@ -24,3 +24,5 @@ Current scope excludes changes to the Eclipse application.
 - [x] Open-source, platform-agnostic payments via self-hosted Hyperswitch: checkout page (/checkout), signed webhook at /api/public/hyperswitch-webhook, subscriptions + payments tables, live plan status and invoice list on /billing
 - [ ] Payment details: payment-method management portal (Hyperswitch customer session) — pending
 - [ ] Go live: user adds HYPERSWITCH_BASE_URL / API_KEY / PUBLISHABLE_KEY / WEBHOOK_SECRET secrets and points the Hyperswitch webhook at /api/public/hyperswitch-webhook
+- [x] GitHub repo KIDE-webapp-lovable created and source pushed (148 files)
+- [x] GitHub Actions CI on push/PR: install, typecheck, test (50), build — first run green

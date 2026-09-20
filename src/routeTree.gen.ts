@@ -20,6 +20,7 @@ import { Route as ReleaseRouteImport } from './routes/release'
 import { Route as ScenarioRouteImport } from './routes/scenario'
 import { Route as SynthesisRouteImport } from './routes/synthesis'
 import { Route as TrustRouteImport } from './routes/trust'
+import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
 import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedCheckpointsRouteImport } from './routes/_authenticated/checkpoints'
@@ -83,6 +84,11 @@ const SynthesisRoute = SynthesisRouteImport.update({
 const TrustRoute = TrustRouteImport.update({
   id: '/trust',
   path: '/trust',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkbenchRoute = WorkbenchRouteImport.update({
+  id: '/workbench',
+  path: '/workbench',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedBillingRoute = AuthenticatedBillingRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/scenario': typeof ScenarioRoute
   '/synthesis': typeof SynthesisRoute
   '/trust': typeof TrustRoute
+  '/workbench': typeof WorkbenchRoute
   '/billing': typeof AuthenticatedBillingRoute
   '/checkout': typeof AuthenticatedCheckoutRoute
   '/checkpoints': typeof AuthenticatedCheckpointsRoute
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/scenario': typeof ScenarioRoute
   '/synthesis': typeof SynthesisRoute
   '/trust': typeof TrustRoute
+  '/workbench': typeof WorkbenchRoute
   '/billing': typeof AuthenticatedBillingRoute
   '/checkout': typeof AuthenticatedCheckoutRoute
   '/checkpoints': typeof AuthenticatedCheckpointsRoute
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   '/scenario': typeof ScenarioRoute
   '/synthesis': typeof SynthesisRoute
   '/trust': typeof TrustRoute
+  '/workbench': typeof WorkbenchRoute
   '/_authenticated/billing': typeof AuthenticatedBillingRoute
   '/_authenticated/checkout': typeof AuthenticatedCheckoutRoute
   '/_authenticated/checkpoints': typeof AuthenticatedCheckpointsRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/scenario'
     | '/synthesis'
     | '/trust'
+    | '/workbench'
     | '/billing'
     | '/checkout'
     | '/checkpoints'
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/scenario'
     | '/synthesis'
     | '/trust'
+    | '/workbench'
     | '/billing'
     | '/checkout'
     | '/checkpoints'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/scenario'
     | '/synthesis'
     | '/trust'
+    | '/workbench'
     | '/_authenticated/billing'
     | '/_authenticated/checkout'
     | '/_authenticated/checkpoints'
@@ -290,6 +302,7 @@ export interface RootRouteChildren {
   ScenarioRoute: typeof ScenarioRoute
   SynthesisRoute: typeof SynthesisRoute
   TrustRoute: typeof TrustRoute
+  WorkbenchRoute: typeof WorkbenchRoute
   ApiPublicHyperswitchWebhookRoute: typeof ApiPublicHyperswitchWebhookRoute
 }
 
@@ -370,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/trust'
       fullPath: '/trust'
       preLoaderRoute: typeof TrustRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workbench': {
+      id: '/workbench'
+      path: '/workbench'
+      fullPath: '/workbench'
+      preLoaderRoute: typeof WorkbenchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/billing': {
@@ -484,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScenarioRoute: ScenarioRoute,
   SynthesisRoute: SynthesisRoute,
   TrustRoute: TrustRoute,
+  WorkbenchRoute: WorkbenchRoute,
   ApiPublicHyperswitchWebhookRoute: ApiPublicHyperswitchWebhookRoute,
 }
 export const routeTree = rootRouteImport
