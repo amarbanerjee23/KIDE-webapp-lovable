@@ -1,0 +1,17 @@
+.git
+.github
+node_modules
+dist
+.output
+.vscode
+.workspace
+.env
+.env.*
+*.log
+/tmp
+.lovable
+supabase
+README.md
+Dockerfile
+docker-compose*.yml
+cloudbuild.yaml
