@@ -2,10 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
-import {
-  consumePostAuthRedirect,
-  rememberPostAuthRedirect,
-} from "@/lib/auth/post-auth-redirect";
+import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const AUTH_PATH = "/auth";
 const ROOT_PATH = "/";
