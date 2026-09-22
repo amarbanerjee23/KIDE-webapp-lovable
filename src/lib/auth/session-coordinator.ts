@@ -3,6 +3,7 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { clearActiveProject } from "@/lib/active-project";
+import { resetWorkspace } from "@/lib/kide/workspace-store";
 import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import { isPublicSessionPath, type BrowserSessionStatus } from "@/lib/auth/session-policy";
 
@@ -29,6 +30,7 @@ export function useAuthSessionCoordinator(
 
       setStatus("anonymous");
       clearActiveProject();
+      resetWorkspace();
       queryClient.clear();
 
       if (isPublicSessionPath(window.location.pathname)) return;
