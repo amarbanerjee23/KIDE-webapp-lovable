@@ -46,7 +46,7 @@ describe("remote synthesis request builder", () => {
       source:
         file.kind === "mncspec"
           ? file.source.replace(
-              /\n  operatingStates \{[\s\S]*?\n  \}\n  IPaddress/,
+              /\n {2}operatingStates \{[\s\S]*?\n {2}\}\n {2}IPaddress/,
               "\n  IPaddress",
             )
           : file.source,
