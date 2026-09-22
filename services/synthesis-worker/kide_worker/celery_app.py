@@ -1,8 +1,22 @@
 import os
+from urllib.parse import quote
 
 from celery import Celery
 
-BROKER_URL = os.getenv("CELERY_BROKER_URL", "amqp://guest:guest@rabbitmq:5672//")
+
+def _broker_url() -> str:
+    configured = os.getenv("CELERY_BROKER_URL")
+    if configured:
+        return configured
+
+    username = quote(os.getenv("RABBITMQ_USERNAME", "kide"), safe="")
+    password = quote(os.environ["RABBITMQ_PASSWORD"], safe="")
+    host = os.getenv("RABBITMQ_HOST", "rabbitmq")
+    port = os.getenv("RABBITMQ_PORT", "5672")
+    return f"amqp://{username}:{password}@{host}:{port}//"
+
+
+BROKER_URL = _broker_url()
 RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "rpc://")
 
 celery_app = Celery(
