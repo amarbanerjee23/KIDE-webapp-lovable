@@ -13,7 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useAuthSessionCoordinator } from "@/lib/auth/session-coordinator";
-import { requiresActiveSession } from "@/lib/auth/session-policy";
+import { isPathSessionVerified } from "@/lib/auth/session-policy";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -136,8 +136,8 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   const location = useLocation();
-  const sessionStatus = useAuthSessionCoordinator(router, queryClient);
-  const gated = requiresActiveSession(location.pathname) && sessionStatus !== "authenticated";
+  const sessionState = useAuthSessionCoordinator(router, queryClient, location.pathname);
+  const gated = !isPathSessionVerified(location.pathname, sessionState);
 
   return (
     <QueryClientProvider client={queryClient}>

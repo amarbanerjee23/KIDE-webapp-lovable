@@ -24,5 +24,7 @@ Python, Celery, RabbitMQ, or Jena/Fuseki without an explicit architecture decisi
 `docs/architecture/client-compute-reference.md`.
 
 Session lifecycle is centralized at the application root. Only `/` and `/auth` are public UI
-routes. Any other client route without an active browser session must redirect to `/`. Do not add
+routes. Any other client route without an active browser session must redirect to `/`. Every protected
+pathname must be checked on navigation, and protected UI must not render until that exact pathname
+has been verified. Do not add
 competing page-level auth listeners or duplicate root redirect effects.

@@ -90,6 +90,9 @@ Session lifecycle is centralized at the application root.
   every protected client page to the public home route `/`.
 - `SIGNED_IN` and restored sessions may route `/auth` into the application, but never force the public home route `/` to navigate away.
 - A safe same-origin destination may be remembered in tab-scoped `sessionStorage`.
+- Every protected pathname is re-checked against the active browser session on navigation.
+- A protected page renders only after that exact pathname has been verified; verification from one
+  route never authorizes another route.
 - Protected route guards provide navigation defense-in-depth.
 - Server data functions independently enforce authentication/authorization; client guards are
   never treated as a data-security boundary.
@@ -105,7 +108,8 @@ session logic. The root session coordinator decides navigation:
 - valid session on `/auth` -> `/projects` or the remembered safe internal destination;
 - no session on `/` -> remain on the public landing page;
 - no session on `/auth` -> remain on the sign-in page;
-- no session on any other client route -> redirect to `/`;
+- no session on any other client route, including `/projects`, `/designer`, and engineering
+  tools -> redirect to `/`;
 - session becomes invalid at any time on a protected route -> redirect immediately to `/`.
 
 Protected content is withheld while the initial browser session is being resolved, preventing a
