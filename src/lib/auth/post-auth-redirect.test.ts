@@ -6,17 +6,12 @@ describe("post-auth redirect normalization", () => {
 
   it("preserves a same-origin application destination", () => {
     expect(
-      normalizePostAuthRedirect(
-        "https://kide.example.com/projects?tab=active#latest",
-        origin,
-      ),
+      normalizePostAuthRedirect("https://kide.example.com/projects?tab=active#latest", origin),
     ).toBe("/projects?tab=active#latest");
   });
 
   it("rejects external destinations", () => {
-    expect(normalizePostAuthRedirect("https://evil.example.com/steal", origin)).toBe(
-      "/projects",
-    );
+    expect(normalizePostAuthRedirect("https://evil.example.com/steal", origin)).toBe("/projects");
   });
 
   it("prevents auth and root redirect loops", () => {
