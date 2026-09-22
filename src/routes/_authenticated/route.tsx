@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
+import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -14,19 +15,13 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirectHome();
     }
 
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
+    const activeSession = await getActiveBrowserSession();
 
-    if (error || !session) {
-      if (error) {
-        console.warn("[Auth] Protected-route session check failed:", error.message);
-      }
+    if (!activeSession) {
       throw redirectHome();
     }
 
-    return { user: session.user };
+    return { user: activeSession.user };
   },
   component: AuthenticatedLayout,
 });

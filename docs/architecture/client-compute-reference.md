@@ -84,13 +84,16 @@ without moving KIDE computation out of the browser.
 
 Session lifecycle is centralized at the application root.
 
-- Supabase persists and refreshes the browser session.
+- Supabase persists and refreshes the standalone browser session in local storage.
+- KIDE does not broker authentication from the Lovable/editor preview frame.
 - The root session coordinator performs initial reconciliation.
 - `SIGNED_OUT` or any session-loss event immediately clears authenticated query cache and routes
   every protected client page to the public home route `/`.
 - `SIGNED_IN` and restored sessions may route `/auth` into the application, but never force the public home route `/` to navigate away.
 - A safe same-origin destination may be remembered in tab-scoped `sessionStorage`.
-- Every protected pathname is re-checked against the active browser session on navigation.
+- An active session means both a cached Supabase session and a successfully validated current user.
+  A cached/stale token by itself is never sufficient.
+- Every protected pathname is re-checked against the validated browser session on navigation.
 - A protected page renders only after that exact pathname has been verified; verification from one
   route never authorizes another route.
 - Protected route guards provide navigation defense-in-depth.

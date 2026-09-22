@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import {
   isPublicSessionPath,
@@ -81,18 +82,11 @@ export function useAuthSessionCoordinator(
         );
       }
 
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+      const activeSession = await getActiveBrowserSession();
 
       if (!active) return;
 
-      if (error) {
-        console.warn("[Auth] Session reconciliation failed:", error.message);
-      }
-
-      if (!session || error) {
+      if (!activeSession) {
         await goHome();
       } else {
         await markAuthenticated();
@@ -115,7 +109,7 @@ export function useAuthSessionCoordinator(
         event === "TOKEN_REFRESHED" ||
         event === "USER_UPDATED"
       ) {
-        void markAuthenticated();
+        void reconcile();
       }
     });
 
