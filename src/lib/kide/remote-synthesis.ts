@@ -70,8 +70,7 @@ function refName(value: string): string {
 
 function capabilityUri(name: string): string {
   const namespace =
-    import.meta.env["VITE_KIDE_CAPABILITY_NAMESPACE"]?.trim() ||
-    DEFAULT_CAPABILITY_NAMESPACE;
+    import.meta.env["VITE_KIDE_CAPABILITY_NAMESPACE"]?.trim() || DEFAULT_CAPABILITY_NAMESPACE;
   return `${namespace}${encodeURIComponent(name)}`;
 }
 
@@ -133,9 +132,7 @@ function machineForCapability(
     ...transitionsFromAction(capability.requiredInitProcess, states, "capability:init"),
   ];
 
-  const commands = new Set(
-    capability.providesControlCapabilities?.commands.map(refName) ?? [],
-  );
+  const commands = new Set(capability.providesControlCapabilities?.commands.map(refName) ?? []);
 
   for (const model of workspaceModels) {
     for (const node of model.controlNodes) {
@@ -143,9 +140,7 @@ function machineForCapability(
       for (const block of node.commandResponseBlocks) {
         const command = refName(block.command);
         if (!commands.has(command)) continue;
-        transitions.push(
-          ...transitionsFromAction(block.action, states, `command:${command}`),
-        );
+        transitions.push(...transitionsFromAction(block.action, states, `command:${command}`));
       }
     }
   }
@@ -209,9 +204,7 @@ function linearCapabilityOrder(diagram: ActivityDiagramNode): {
   order: string[];
   issue: string | null;
 } {
-  const byName = new Map(
-    diagram.activities.map((activity) => [activity.name, activity]),
-  );
+  const byName = new Map(diagram.activities.map((activity) => [activity.name, activity]));
   const backed = new Set(
     diagram.activities
       .filter((activity) => capabilityName(activity))
@@ -311,9 +304,7 @@ export function buildRemoteSynthesisRequest(workspace: Workspace): RemoteRequest
   const order = linearCapabilityOrder(diagram);
   if (order.issue) issues.push(order.issue);
 
-  const byActivity = new Map(
-    diagram.activities.map((activity) => [activity.name, activity]),
-  );
+  const byActivity = new Map(diagram.activities.map((activity) => [activity.name, activity]));
   const remoteActivities = [];
   const machines = new Map<string, RemoteCapabilityMachine>();
 
