@@ -41,3 +41,19 @@ synthesis:
     limits:
       cpu: "2"
       memory: 2Gi
+
+
+lsp:
+  image:
+    repository: ghcr.io/amarbanerjee23/kide-lsp-transport
+    tag: "0.1.0"
+  replicas: 2
+  allowedOrigins: ""
+  maxMessageBytes: 1048576
+  resources:
+    requests:
+      cpu: "150m"
+      memory: 192Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
