@@ -28,5 +28,6 @@ routes. Any other client route without an active browser session must redirect t
 requires a cached Supabase session plus successful current-user validation; do not trust
 `getSession()` alone and do not reintroduce preview/editor session brokerage. Every protected
 pathname must be checked on navigation, and protected UI must not render until that exact pathname
-has been verified. Do not add
+has been verified. Anonymous protected routes must use a browser-level replacement to `/`; do not
+rely solely on an in-app router transition for this auth boundary. Do not add
 competing page-level auth listeners or duplicate root redirect effects.
