@@ -3,10 +3,7 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
-import {
-  isPublicSessionPath,
-  type BrowserSessionStatus,
-} from "@/lib/auth/session-policy";
+import { isPublicSessionPath, type BrowserSessionStatus } from "@/lib/auth/session-policy";
 
 const ROOT_PATH = "/";
 const AUTH_PATH = "/auth";
