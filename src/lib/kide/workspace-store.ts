@@ -1,16 +1,15 @@
 import { useSyncExternalStore } from "react";
-import { linkWorkspace, SAMPLE_WORKSPACE, type Workspace } from "@/lib/dsl";
+import {
+  initialWorkspaceSources,
+  linkSources,
+  type WorkspaceSources,
+} from "@/lib/kide/workspace-sources";
 
 /**
- * The open set of model files, shared by the editors, the synthesis review
- * and the scenario runner so they always describe the same system.
+ * The open set of model files, shared by the editors, synthesis review,
+ * scenario runner, and server-side verification.
  */
-type Sources = Record<string, string>;
-
-const initial = (): Sources =>
-  Object.fromEntries(SAMPLE_WORKSPACE.map((file) => [file.path, file.source]));
-
-let sources: Sources = initial();
+let sources: WorkspaceSources = initialWorkspaceSources();
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -23,7 +22,7 @@ export function setSource(path: string, value: string) {
 }
 
 export function resetWorkspace() {
-  sources = initial();
+  sources = initialWorkspaceSources();
   emit();
 }
 
@@ -32,20 +31,12 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-function getSnapshot(): Sources {
+function getSnapshot(): WorkspaceSources {
   return sources;
 }
 
-export function useWorkspaceSources(): Sources {
+export function useWorkspaceSources(): WorkspaceSources {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-export function linkFrom(current: Sources): Workspace {
-  return linkWorkspace(
-    SAMPLE_WORKSPACE.map((file) => ({
-      path: file.path,
-      kind: file.kind,
-      source: current[file.path] ?? "",
-    })),
-  );
-}
+export const linkFrom = linkSources;
