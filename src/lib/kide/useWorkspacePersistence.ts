@@ -81,10 +81,10 @@ export function useWorkspacePersistence(enabled: boolean) {
           lastSavedSourcesRef.current = serialized;
         })
         .catch((error) => {
-        console.warn(
-          "[Workspace] Autosave failed:",
-          error instanceof Error ? error.message : error,
-        );
+          console.warn(
+            "[Workspace] Autosave failed:",
+            error instanceof Error ? error.message : error,
+          );
         });
     }, AUTOSAVE_DELAY_MS);
 
