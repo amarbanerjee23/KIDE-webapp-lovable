@@ -14,6 +14,7 @@ HTTP_TIMEOUT_SECONDS = float(os.getenv("HTTP_TIMEOUT_SECONDS", "5"))
 
 Binding = dict[str, Any]
 DeviceLookup = Callable[[str], list[Binding]]
+SessionTypeLookup = Callable[[str], str]
 ProgressCallback = Callable[[dict[str, Any]], None]
 _IRI_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>\"{}|^\x60\\]+$")
 
@@ -61,6 +62,38 @@ ORDER BY ?device
     return _select(query)
 
 
+def _capability_session_type(capability_uri: str) -> str:
+    capability_uri = _safe_iri(capability_uri, field="capabilityUri")
+    rows = _select(
+        f"""
+PREFIX kide: <http://iiit.serc.com/ontologies/capability.owl#>
+SELECT DISTINCT ?sessionType WHERE {{
+  <{capability_uri}> kide:sessionType ?sessionType .
+}}
+ORDER BY ?sessionType
+"""
+    )
+    session_types = sorted(
+        {
+            value
+            for row in rows
+            if isinstance(row, dict)
+            for value in [_value(row, "sessionType")]
+            if value is not None
+        }
+    )
+    if not session_types:
+        raise SessionTypeError(
+            f"capability {capability_uri} has no declared session type in Jena",
+        )
+    if len(session_types) > 1:
+        raise SessionTypeError(
+            f"capability {capability_uri} declares multiple session types: "
+            + ", ".join(session_types),
+        )
+    return session_types[0]
+
+
 def _value(binding: Binding, key: str) -> str | None:
     item = binding.get(key)
     if not isinstance(item, dict):
@@ -91,7 +124,11 @@ def _string_list(value: Any, field: str, *, non_empty: bool = True) -> list[str]
     return result
 
 
-def _machine_definitions(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _machine_definitions(
+    payload: dict[str, Any],
+    *,
+    session_type_lookup: SessionTypeLookup,
+) -> dict[str, dict[str, Any]]:
     raw_machines = payload.get("capabilityMachines")
     if not isinstance(raw_machines, list) or not raw_machines:
         raise ValueError("capabilityMachines must be a non-empty list")
@@ -108,10 +145,17 @@ def _machine_definitions(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
         if capability_uri in machines:
             raise ValueError(f"duplicate capability machine for {capability_uri}")
 
-        session_type = _safe_iri(
-            _required_string(raw.get("sessionType"), f"capabilityMachines[{index}].sessionType"),
-            field=f"capabilityMachines[{index}].sessionType",
-        )
+        raw_session_type = raw.get("sessionType")
+        if raw_session_type is None:
+            session_type = session_type_lookup(capability_uri)
+        else:
+            session_type = _safe_iri(
+                _required_string(
+                    raw_session_type,
+                    f"capabilityMachines[{index}].sessionType",
+                ),
+                field=f"capabilityMachines[{index}].sessionType",
+            )
         states = _string_list(raw.get("states"), f"capabilityMachines[{index}].states")
         start_states = _string_list(
             raw.get("startStates"),
@@ -289,12 +333,16 @@ def compose_machines(
     payload: dict[str, Any],
     *,
     device_lookup: DeviceLookup = _device_bindings,
+    capability_session_lookup: SessionTypeLookup = _capability_session_type,
     progress: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Compose capability machines into deterministic per-device controllers."""
     project_id = _required_string(payload.get("projectId"), "projectId")
     activities = _activities(payload)
-    machines = _machine_definitions(payload)
+    machines = _machine_definitions(
+        payload,
+        session_type_lookup=capability_session_lookup,
+    )
     activity_names = [activity["name"] for activity in activities]
     execution_plan = _execution_plan(payload, activity_names)
 
