@@ -47,9 +47,14 @@ function Index() {
         }
 
         if (!error && session) {
-          await navigate({ to: "/projects", replace: true });
+          const target = consumePostAuthRedirect();
+          if (target === "/projects") {
+            await navigate({ to: "/projects", replace: true });
+          } else {
+            window.location.assign(target);
+          }
         } else {
-          await navigate({ to: "/auth", search: {}, replace: true });
+          await navigate({ to: "/auth", replace: true });
         }
       } catch (error) {
         if (!active) return;
