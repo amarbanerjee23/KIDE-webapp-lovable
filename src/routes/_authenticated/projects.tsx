@@ -7,6 +7,7 @@ import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { listAllProjects, createProject } from "@/lib/projects.functions";
 import { createOrganization } from "@/lib/teams.functions";
+import { setActiveProject } from "@/lib/active-project";
 
 const title = "Your projects — KIDE";
 const description =
@@ -206,12 +207,33 @@ function ProjectsHome() {
                           {new Date(project.updated_at).toLocaleDateString()}
                         </span>
                         <Button asChild size="sm" variant="outline" className="shrink-0">
-                          <Link to="/overview">Open overview</Link>
+                          <Link
+                            to="/overview"
+                            onClick={() =>
+                              setActiveProject({
+                                projectId: project.id,
+                                organizationId: org.id,
+                              })
+                            }
+                          >
+                            Open overview
+                          </Link>
                         </Button>
                       </div>
                       <div className="mt-3 grid gap-1 border-t border-border pt-3 sm:ml-13 sm:grid-cols-2 lg:grid-cols-5">
                         {PROJECT_FILES.map((file) => (
-                          <Link key={file.path} to="/models" hash={file.path} className="flex min-w-0 items-center gap-2 rounded border border-transparent px-2 py-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:bg-secondary/50 hover:text-foreground">
+                          <Link
+                            key={file.path}
+                            to="/models"
+                            hash={file.path}
+                            onClick={() =>
+                              setActiveProject({
+                                projectId: project.id,
+                                organizationId: org.id,
+                              })
+                            }
+                            className="flex min-w-0 items-center gap-2 rounded border border-transparent px-2 py-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:bg-secondary/50 hover:text-foreground"
+                          >
                             <FileCode2 className="size-3.5 shrink-0 text-capability" />
                             <span className="min-w-0"><span className="block truncate font-mono text-foreground">{file.path}</span><span className="block truncate text-[10px]">{file.label}</span></span>
                           </Link>
