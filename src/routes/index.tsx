@@ -1,12 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Check,
-  Code2,
-  GitBranch,
-  Network,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Check, Code2, GitBranch, Network, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const title = "KIDE — Knowledge-integrated systems engineering";
@@ -118,9 +111,7 @@ function LandingPage() {
                 <div
                   key={step}
                   className={`flex items-center gap-2 px-2 py-2 text-[10px] sm:text-[11px] ${
-                    index === 3
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground"
+                    index === 3 ? "bg-secondary text-foreground" : "text-muted-foreground"
                   }`}
                 >
                   <span className="grid size-5 shrink-0 place-items-center border border-border font-mono text-[9px]">
@@ -138,10 +129,7 @@ function LandingPage() {
               </p>
               <div className="mt-8 space-y-5">
                 {["Plan route", "Move to waypoint", "Recharge"].map((node, index) => (
-                  <div
-                    key={node}
-                    className="relative border border-border bg-background p-3"
-                  >
+                  <div key={node} className="relative border border-border bg-background p-3">
                     <div className="flex items-center gap-2">
                       <Network className="size-4 shrink-0 text-capability" />
                       <span className="text-xs font-medium">{node}</span>
