@@ -1,6 +1,6 @@
 apiVersion: v2
 name: kide-platform
-description: Phase-1 enterprise runtime for KIDE semantic knowledge and synthesis services
+description: Enterprise runtime for KIDE semantic, synthesis, and language services
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0
+appVersion: "0.2.0"
