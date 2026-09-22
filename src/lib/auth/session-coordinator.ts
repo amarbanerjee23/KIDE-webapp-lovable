@@ -35,13 +35,17 @@ export function useAuthSessionCoordinator(
       await router.navigate({ to: ROOT_PATH, replace: true });
     };
 
-    const enterAuthenticatedApp = async () => {
+    const markAuthenticated = async () => {
       if (!active || typeof window === "undefined") return;
 
       setStatus("authenticated");
       void queryClient.invalidateQueries();
 
-      if (window.location.pathname !== ROOT_PATH && window.location.pathname !== AUTH_PATH) {
+      if (window.location.pathname === ROOT_PATH) {
+        return;
+      }
+
+      if (window.location.pathname !== AUTH_PATH) {
         router.invalidate();
         return;
       }
@@ -77,7 +81,7 @@ export function useAuthSessionCoordinator(
       if (!session || error) {
         await goHome();
       } else {
-        await enterAuthenticatedApp();
+        await markAuthenticated();
       }
     };
 
@@ -97,7 +101,7 @@ export function useAuthSessionCoordinator(
         event === "TOKEN_REFRESHED" ||
         event === "USER_UPDATED"
       ) {
-        void enterAuthenticatedApp();
+        void markAuthenticated();
       }
     });
 
