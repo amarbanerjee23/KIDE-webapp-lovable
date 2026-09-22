@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "Sign in — KIDE Systems Engineering";
 const description = "Secure access to your KIDE engineering organization and projects.";
@@ -38,16 +37,6 @@ function AuthPage() {
   );
   const [busy, setBusy] = useState(false);
 
-  const completeAuthentication = async () => {
-    const target = consumePostAuthRedirect();
-    if (target === "/projects") {
-      await navigate({ to: "/projects", replace: true });
-      return;
-    }
-
-    window.location.assign(target);
-  };
-
   async function submit(event: FormEvent) {
     event.preventDefault();
 
@@ -77,7 +66,7 @@ function AuthPage() {
         return;
       }
 
-      await completeAuthentication();
+      await navigate({ to: "/", replace: true });
     } finally {
       setBusy(false);
     }
@@ -108,7 +97,7 @@ function AuthPage() {
       }
 
       if (!result.redirected) {
-        await completeAuthentication();
+        await navigate({ to: "/", replace: true });
       }
     } finally {
       setBusy(false);
