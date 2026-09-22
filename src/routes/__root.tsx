@@ -138,8 +138,9 @@ function RootComponent() {
   const router = useRouter();
   const location = useLocation();
   const sessionStatus = useAuthSessionCoordinator(router, queryClient);
-  useWorkspacePersistence(sessionStatus === "authenticated");
-  const gated = requiresActiveSession(location.pathname) && sessionStatus !== "authenticated";
+  const protectedRoute = requiresActiveSession(location.pathname);
+  useWorkspacePersistence(sessionStatus === "authenticated" && protectedRoute);
+  const gated = protectedRoute && sessionStatus !== "authenticated";
 
   return (
     <QueryClientProvider client={queryClient}>
