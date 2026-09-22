@@ -88,7 +88,7 @@ Session lifecycle is centralized at the application root.
 - The root session coordinator performs initial reconciliation.
 - `SIGNED_OUT` or any session-loss event immediately clears authenticated query cache and routes
   every protected client page to the public home route `/`.
-- `SIGNED_IN` and restored initial sessions route `/` or `/auth` into the application.
+- `SIGNED_IN` and restored sessions may route `/auth` into the application, but never force the public home route `/` to navigate away.
 - A safe same-origin destination may be remembered in tab-scoped `sessionStorage`.
 - Protected route guards provide navigation defense-in-depth.
 - Server data functions independently enforce authentication/authorization; client guards are
@@ -101,7 +101,8 @@ Session lifecycle is centralized at the application root.
 `/` is the stable public landing page. It performs no domain computation and owns no competing
 session logic. The root session coordinator decides navigation:
 
-- valid session on `/` or `/auth` -> `/projects` or the remembered safe internal destination;
+- valid session on `/` -> remain on the public landing page;
+- valid session on `/auth` -> `/projects` or the remembered safe internal destination;
 - no session on `/` -> remain on the public landing page;
 - no session on `/auth` -> remain on the sign-in page;
 - no session on any other client route -> redirect to `/`;
