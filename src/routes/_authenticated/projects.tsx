@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { FileCode2, FolderKanban, Plus, Users } from "lucide-react";
@@ -76,13 +76,15 @@ function ProjectsHome() {
   const [orgName, setOrgName] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const refresh = async () => setOrgs((await load()).organizations);
+  const refresh = useCallback(async () => {
+    setOrgs((await load()).organizations);
+  }, [load]);
 
   useEffect(() => {
     refresh().catch((error) =>
       toast.error(error instanceof Error ? error.message : "Could not load your projects."),
     );
-  }, []);
+  }, [refresh]);
 
   const run = async (message: string, fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -197,10 +199,13 @@ function ProjectsHome() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">{project.name}</p>
                           <p className="truncate text-[11px] text-muted-foreground">
-                            {project.description || `Stage ${project.current_stage} · ${stageLabel(project.current_stage)}`}
+                            {project.description ||
+                              `Stage ${project.current_stage} · ${stageLabel(project.current_stage)}`}
                           </p>
                         </div>
-                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusTone(project.status)}`}>
+                        <span
+                          className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusTone(project.status)}`}
+                        >
                           {project.status.replace("_", " ")}
                         </span>
                         <span className="hidden shrink-0 text-[10px] text-muted-foreground sm:block">
@@ -235,7 +240,12 @@ function ProjectsHome() {
                             className="flex min-w-0 items-center gap-2 rounded border border-transparent px-2 py-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:bg-secondary/50 hover:text-foreground"
                           >
                             <FileCode2 className="size-3.5 shrink-0 text-capability" />
-                            <span className="min-w-0"><span className="block truncate font-mono text-foreground">{file.path}</span><span className="block truncate text-[10px]">{file.label}</span></span>
+                            <span className="min-w-0">
+                              <span className="block truncate font-mono text-foreground">
+                                {file.path}
+                              </span>
+                              <span className="block truncate text-[10px]">{file.label}</span>
+                            </span>
                           </Link>
                         ))}
                       </div>
