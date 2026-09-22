@@ -1,1 +1,0 @@
-"""KIDE enterprise synthesis service."""
