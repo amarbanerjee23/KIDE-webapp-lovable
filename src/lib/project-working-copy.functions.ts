@@ -8,15 +8,6 @@ import {
 
 const EDIT_ROLES = new Set(["owner", "administrator", "engineer"]);
 
-async function loadProjectAccess(
-  context: Parameters<
-    Parameters<typeof createServerFn>[0] extends never ? never : () => never
-  >[0],
-  _projectId: string,
-) {
-  return context;
-}
-
 export const loadProjectWorkingCopy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { projectId: string }) => input)
