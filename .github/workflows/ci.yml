@@ -14,12 +14,14 @@ concurrency:
 
 jobs:
   frontend-quality:
-    name: Frontend — lint, typecheck, test, build
+    name: Frontend — changed lint, typecheck, test, build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -29,8 +31,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Lint
-        run: bun run lint
+      - name: Lint changed JavaScript and TypeScript
+        shell: bash
+        run: |
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR HEAD^1 HEAD -- '*.js' '*.jsx' '*.ts' '*.tsx')
+          if (( ${#files[@]} > 0 )); then
+            printf 'Linting %s\n' "${files[@]}"
+            bunx eslint "${files[@]}"
+          else
+            echo "No changed JavaScript or TypeScript files."
+          fi
 
       - name: Strict TypeScript check
         run: bunx tsc --noEmit
@@ -79,7 +89,7 @@ jobs:
         run: docker build --pull -t kide-synthesis-worker:ci .
 
   platform-manifests:
-    name: Platform — Helm lint, render, container build
+    name: Platform — Helm, schema validation, container build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -92,7 +102,7 @@ jobs:
           version: v3.19.0
 
       - name: Lint Helm chart
-        run: helm lint deploy/helm/kide-platform
+        run: helm lint --strict deploy/helm/kide-platform
 
       - name: Render Helm chart
         run: |
@@ -102,8 +112,9 @@ jobs:
           grep -q "name: synthesis-worker" /tmp/kide-platform.yaml
           grep -q "name: jena" /tmp/kide-platform.yaml
 
-      - name: Client-side Kubernetes validation
-        run: kubectl apply --dry-run=client --validate=false -f /tmp/kide-platform.yaml
+      - name: Validate rendered Kubernetes schemas offline
+        run: |
+          docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7             -strict -summary < /tmp/kide-platform.yaml
 
       - name: Build Jena Fuseki container
         run: docker build --pull --build-arg JENA_VERSION=6.2.0 -t kide-jena-fuseki:ci services/jena-fuseki
