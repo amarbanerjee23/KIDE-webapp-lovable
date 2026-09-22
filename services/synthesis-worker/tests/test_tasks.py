@@ -29,11 +29,14 @@ def machine(
         "states": states or ["idle", "running", "done"],
         "startStates": start_states or ["idle"],
         "endStates": end_states or ["done"],
-        "transitions": transitions
-        or [
-            {"source": "idle", "target": "running", "event": "start"},
-            {"source": "running", "target": "done", "event": "finish"},
-        ],
+        "transitions": (
+            transitions
+            if transitions is not None
+            else [
+                {"source": "idle", "target": "running", "event": "start"},
+                {"source": "running", "target": "done", "event": "finish"},
+            ]
+        ),
     }
 
 
