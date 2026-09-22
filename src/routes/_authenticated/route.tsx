@@ -1,14 +1,14 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
-    const redirectToAuth = () =>
-      redirect({
-        to: "/auth",
-        search: { redirect: location.href },
-      });
+    const redirectToAuth = () => {
+      rememberPostAuthRedirect(location.href);
+      return redirect({ to: "/auth" });
+    };
 
     if (!isSupabaseConfigured) {
       throw redirectToAuth();
