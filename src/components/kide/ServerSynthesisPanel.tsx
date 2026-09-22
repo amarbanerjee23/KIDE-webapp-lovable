@@ -9,9 +9,7 @@ import {
   useServerVerificationState,
 } from "@/lib/kide/server-verification-store";
 import { verifySynthesisOnServer } from "@/lib/kide/standalone-synthesis.functions";
-import {
-  workspaceFilesFromSources,
-} from "@/lib/kide/workspace-sources";
+import { workspaceFilesFromSources } from "@/lib/kide/workspace-sources";
 import { useWorkspaceSources } from "@/lib/kide/workspace-store";
 
 export function ServerSynthesisPanel({ localReady }: { localReady: boolean }) {
@@ -45,10 +43,8 @@ export function ServerSynthesisPanel({ localReady }: { localReady: boolean }) {
   };
 
   const validationErrors =
-    state.report?.candidates.reduce(
-      (total, candidate) => total + candidate.validation.errors,
-      0,
-    ) ?? 0;
+    state.report?.candidates.reduce((total, candidate) => total + candidate.validation.errors, 0) ??
+    0;
 
   return (
     <section className="mt-5 rounded-lg border border-border bg-card p-4">
