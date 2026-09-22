@@ -112,7 +112,8 @@ session logic. The root session coordinator decides navigation:
 - no session on `/` -> remain on the public landing page;
 - no session on `/auth` -> remain on the sign-in page;
 - no session on any other client route, including `/projects`, `/designer`, and engineering
-  tools -> redirect to `/`;
+  tools -> perform a browser-level `window.location.replace("/")` so the protected pathname is
+  removed from the address bar and its client state is discarded;
 - session becomes invalid at any time on a protected route -> redirect immediately to `/`.
 
 Protected content is withheld while the initial browser session is being resolved, preventing a
