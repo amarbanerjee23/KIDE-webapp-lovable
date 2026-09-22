@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useAuthSessionCoordinator } from "@/lib/auth/session-coordinator";
+import { useWorkspacePersistence } from "@/lib/kide/useWorkspacePersistence";
 import { requiresActiveSession } from "@/lib/auth/session-policy";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -137,6 +138,7 @@ function RootComponent() {
   const router = useRouter();
   const location = useLocation();
   const sessionStatus = useAuthSessionCoordinator(router, queryClient);
+  useWorkspacePersistence(sessionStatus === "authenticated");
   const gated = requiresActiveSession(location.pathname) && sessionStatus !== "authenticated";
 
   return (
