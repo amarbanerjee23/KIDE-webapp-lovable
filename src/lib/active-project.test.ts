@@ -1,9 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+function browserWindow() {
+  const values = new Map<string, string>();
+  return {
+    localStorage: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        values.set(key, value);
+      },
+      removeItem: (key: string) => {
+        values.delete(key);
+      },
+      clear: () => {
+        values.clear();
+      },
+    },
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  };
+}
+
 describe("active project browser state", () => {
   beforeEach(() => {
     vi.resetModules();
-    window.localStorage.clear();
+    vi.stubGlobal("window", browserWindow());
   });
 
   it("persists the selected project in browser storage", async () => {
@@ -18,6 +38,12 @@ describe("active project browser state", () => {
       projectId: "project-1",
       organizationId: "org-1",
     });
+    expect(window.localStorage.getItem("kide:active-project")).toBe(
+      JSON.stringify({
+        projectId: "project-1",
+        organizationId: "org-1",
+      }),
+    );
   });
 
   it("clears project state completely", async () => {
