@@ -64,6 +64,12 @@ class SynthesisRequestModelTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             SynthesisRequest.model_validate(request)
 
+    def test_allows_server_resolved_session_type(self) -> None:
+        request = self.valid_request()
+        request["capabilityMachines"][0].pop("sessionType")
+        model = SynthesisRequest.model_validate(request)
+        self.assertIsNone(model.capabilityMachines[0].sessionType)
+
 
 if __name__ == "__main__":
     unittest.main()

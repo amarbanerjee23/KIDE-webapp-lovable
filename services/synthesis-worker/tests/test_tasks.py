@@ -4,7 +4,13 @@ from unittest.mock import Mock, patch
 
 os.environ.setdefault("CELERY_BROKER_URL", "memory://")
 
-from kide_worker.tasks import SessionTypeError, _device_bindings, _select, compose_machines
+from kide_worker.tasks import (
+    SessionTypeError,
+    _capability_session_type,
+    _device_bindings,
+    _select,
+    compose_machines,
+)
 
 
 def binding(device: str, session_type: str | None = None) -> dict:
@@ -182,6 +188,55 @@ class SessionCompatibilityTests(unittest.TestCase):
         )
         self.assertEqual(result["bindings"][0]["deviceUri"], "urn:device:b")
         self.assertEqual(result["evidence"]["sessionTypesValidated"], 1)
+
+
+class SemanticSessionResolutionTests(unittest.TestCase):
+    def test_resolves_missing_machine_session_type_from_semantic_contract(self) -> None:
+        request = payload(
+            activities=[{"name": "Move", "capabilityUri": "urn:capability:move"}],
+            machines=[
+                {
+                    **machine("urn:capability:move"),
+                    "sessionType": None,
+                }
+            ],
+        )
+        result = compose_machines(
+            request,
+            device_lookup=lambda _: [binding("urn:device:robot", "urn:session:sync")],
+            capability_session_lookup=lambda _: "urn:session:sync",
+        )
+        self.assertEqual(result["bindings"][0]["sessionType"], "urn:session:sync")
+
+    def test_missing_semantic_session_contract_fails_closed(self) -> None:
+        request = payload(
+            activities=[{"name": "Move", "capabilityUri": "urn:capability:move"}],
+            machines=[
+                {
+                    **machine("urn:capability:move"),
+                    "sessionType": None,
+                }
+            ],
+        )
+
+        def missing(_: str) -> str:
+            raise SessionTypeError("missing session type")
+
+        with self.assertRaisesRegex(SessionTypeError, "missing session type"):
+            compose_machines(
+                request,
+                device_lookup=lambda _: [binding("urn:device:robot", "urn:session:sync")],
+                capability_session_lookup=missing,
+            )
+
+    @patch("kide_worker.tasks._select")
+    def test_capability_session_type_requires_one_unambiguous_value(self, select: Mock) -> None:
+        select.return_value = [
+            {"sessionType": {"type": "uri", "value": "urn:session:b"}},
+            {"sessionType": {"type": "uri", "value": "urn:session:a"}},
+        ]
+        with self.assertRaisesRegex(SessionTypeError, "multiple session types"):
+            _capability_session_type("urn:capability:move")
 
 
 class CompositionTests(unittest.TestCase):

@@ -1,13 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, Check, CircleAlert, Copy, FileCode2, ShieldCheck, Sparkles, TriangleAlert,
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  Copy,
+  FileCode2,
+  ShieldCheck,
+  Sparkles,
+  TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RemoteSynthesisPanel } from "@/components/kide/RemoteSynthesisPanel";
 import { Button } from "@/components/ui/button";
-import { synthesize, type Candidate } from "@/lib/kide/synthesis";
-import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { approveCandidate, selectCandidate, useApprovalState } from "@/lib/kide/approval-store";
+import { useRemoteSynthesisState } from "@/lib/kide/remote-synthesis-store";
+import { synthesize, type Candidate } from "@/lib/kide/synthesis";
+import { remoteSynthesisConfigured } from "@/lib/kide/synthesis-client";
+import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
 const title = "Synthesis Review — KIDE";
 const description =
@@ -30,6 +40,9 @@ export const Route = createFileRoute("/synthesis")({
 function SynthesisReview() {
   const sources = useWorkspaceSources();
   const report = useMemo(() => synthesize(linkFrom(sources)), [sources]);
+  const remote = useRemoteSynthesisState();
+  const enterpriseVerificationRequired = remoteSynthesisConfigured();
+  const enterpriseVerified = !enterpriseVerificationRequired || remote.status === "completed";
   const { selectedId: storedId } = useApprovalState();
   const [localId, setLocalId] = useState<string | null>(null);
   const selectedId = localId ?? storedId;
@@ -46,7 +59,12 @@ function SynthesisReview() {
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-        <Button asChild variant="ghost" size="sm"><Link to="/"><ArrowLeft />Workbench</Link></Button>
+        <Button asChild variant="ghost" size="sm">
+          <Link to="/">
+            <ArrowLeft />
+            Workbench
+          </Link>
+        </Button>
         <div>
           <h1 className="text-sm font-semibold">Synthesis review</h1>
           <p className="text-[10px] text-muted-foreground">
@@ -54,11 +72,23 @@ function SynthesisReview() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button asChild variant="outline" size="sm"><Link to="/models"><FileCode2 />Edit models</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/trust"><ShieldCheck />Trust centre</Link></Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/models">
+              <FileCode2 />
+              Edit models
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/trust">
+              <ShieldCheck />
+              Trust centre
+            </Link>
+          </Button>
           <Button
             size="sm"
-            disabled={!report.ready || !selected || selected.validation.errors > 0}
+            disabled={
+              !report.ready || !selected || selected.validation.errors > 0 || !enterpriseVerified
+            }
             onClick={() => {
               if (!selected) return;
               approveCandidate({
@@ -72,20 +102,27 @@ function SynthesisReview() {
               });
             }}
           >
-            <ShieldCheck />Approve design
+            <ShieldCheck />
+            Approve design
           </Button>
         </div>
       </header>
 
       <div className="mx-auto w-full max-w-7xl p-5">
         <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="size-4 text-primary" />Preflight</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <Sparkles className="size-4 text-primary" />
+            Preflight
+          </h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Synthesis only runs when the models are complete and consistent. Nothing is guessed.
           </p>
           <ul className="mt-3 grid gap-2 md:grid-cols-2">
             {report.preflight.map((check) => (
-              <li key={check.id} className="flex items-start gap-2 rounded-md border border-border/70 bg-background p-2.5">
+              <li
+                key={check.id}
+                className="flex items-start gap-2 rounded-md border border-border/70 bg-background p-2.5"
+              >
                 {check.status === "pass" ? (
                   <Check className="mt-0.5 size-4 shrink-0 text-primary" />
                 ) : check.status === "warn" ? (
@@ -102,6 +139,8 @@ function SynthesisReview() {
           </ul>
         </section>
 
+        <RemoteSynthesisPanel localReady={report.ready} />
+
         {!report.ready ? (
           <p className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive">
             Synthesis is blocked. {report.blockedReason}
@@ -117,7 +156,9 @@ function SynthesisReview() {
                     type="button"
                     onClick={() => setSelectedId(candidate.id)}
                     className={`rounded-lg border p-4 text-left transition-colors ${
-                      active ? "border-primary bg-card" : "border-border bg-card/60 hover:border-primary/40"
+                      active
+                        ? "border-primary bg-card"
+                        : "border-border bg-card/60 hover:border-primary/40"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -127,7 +168,9 @@ function SynthesisReview() {
                       </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">{candidate.strategy}</p>
-                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{candidate.summary}</p>
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                      {candidate.summary}
+                    </p>
                     <dl className="mt-3 space-y-1.5">
                       <Bar label="Coverage" value={candidate.scores.coverage} />
                       <Bar label="Observability" value={candidate.scores.observability} />
@@ -136,9 +179,15 @@ function SynthesisReview() {
                     </dl>
                     <p className="mt-3 flex items-center gap-1.5 text-[11px]">
                       {candidate.validation.errors === 0 ? (
-                        <><Check className="size-3.5 text-primary" />Independently re-checked, no errors</>
+                        <>
+                          <Check className="size-3.5 text-primary" />
+                          Independently re-checked, no errors
+                        </>
                       ) : (
-                        <><CircleAlert className="size-3.5 text-destructive" />{candidate.validation.errors} validation errors</>
+                        <>
+                          <CircleAlert className="size-3.5 text-destructive" />
+                          {candidate.validation.errors} validation errors
+                        </>
                       )}
                     </p>
                   </button>
@@ -155,7 +204,10 @@ function SynthesisReview() {
                   </p>
                   <ul className="mt-3 space-y-2">
                     {selected.bindings.map((binding) => (
-                      <li key={binding.activity} className="rounded-md border border-border/70 bg-background p-3">
+                      <li
+                        key={binding.activity}
+                        className="rounded-md border border-border/70 bg-background p-3"
+                      >
                         <p className="text-xs font-medium">{binding.activity}</p>
                         {binding.description && (
                           <p className="text-[11px] text-muted-foreground">{binding.description}</p>
@@ -166,13 +218,28 @@ function SynthesisReview() {
                         </p>
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {binding.commands.map((command) => (
-                            <span key={command} className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px]">cmd {command}</span>
+                            <span
+                              key={command}
+                              className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px]"
+                            >
+                              cmd {command}
+                            </span>
                           ))}
                           {binding.observations.map((item) => (
-                            <span key={item} className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">obs {item}</span>
+                            <span
+                              key={item}
+                              className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary"
+                            >
+                              obs {item}
+                            </span>
                           ))}
                           {binding.alarms.map((item) => (
-                            <span key={item} className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] text-destructive">alarm {item}</span>
+                            <span
+                              key={item}
+                              className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] text-destructive"
+                            >
+                              alarm {item}
+                            </span>
                           ))}
                         </div>
                       </li>
@@ -182,10 +249,15 @@ function SynthesisReview() {
                   <h3 className="mt-5 text-sm font-semibold">Evidence ledger</h3>
                   <ul className="mt-2 space-y-2">
                     {selected.evidence.map((entry) => (
-                      <li key={entry.rule} className="rounded-md border border-border/70 bg-background p-3">
+                      <li
+                        key={entry.rule}
+                        className="rounded-md border border-border/70 bg-background p-3"
+                      >
                         <p className="font-mono text-[10px] text-muted-foreground">{entry.rule}</p>
                         <p className="text-[11px]">{entry.statement}</p>
-                        <p className="mt-1 font-mono text-[10px] text-muted-foreground">{entry.elements.join(" · ")}</p>
+                        <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                          {entry.elements.join(" · ")}
+                        </p>
                       </li>
                     ))}
                   </ul>
@@ -203,12 +275,13 @@ function SynthesisReview() {
                         toast.success("Control model copied");
                       }}
                     >
-                      <Copy />Copy
+                      <Copy />
+                      Copy
                     </Button>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {selected.controlNodes.length} control nodes · re-parsed by the language validator,
-                    independently of the generator.
+                    {selected.controlNodes.length} control nodes · re-parsed by the language
+                    validator, independently of the generator.
                   </p>
                   <pre className="mt-3 max-h-[520px] overflow-auto rounded-md border border-border/70 bg-[#0E1117] p-3 font-mono text-[11px] leading-relaxed">
                     {selected.generatedMnc}

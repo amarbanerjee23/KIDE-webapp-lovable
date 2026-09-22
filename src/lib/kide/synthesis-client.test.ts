@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getRemoteSynthesis, startRemoteSynthesis } from "./synthesis-client";
+import {
+  getRemoteSynthesis,
+  startRemoteSynthesis,
+  synthesisEventsEndpoint,
+  watchRemoteSynthesis,
+} from "./synthesis-client";
 
 function response(
   body: unknown,
@@ -39,6 +44,34 @@ afterEach(() => {
 });
 
 describe("remote synthesis client", () => {
+  it("builds an encoded progress-stream endpoint", () => {
+    expect(synthesisEventsEndpoint("job/with space")).toBe(
+      "/api/v1/synthesis/job%2Fwith%20space/events",
+    );
+  });
+
+  it("falls back to polling when EventSource is unavailable", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      response({
+        jobId: "job-3",
+        status: "completed",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("EventSource", undefined);
+    const onUpdate = vi.fn();
+
+    const close = watchRemoteSynthesis("job-3", { onUpdate });
+    await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+    close();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/synthesis/job-3", {});
+    expect(onUpdate).toHaveBeenCalledWith({
+      jobId: "job-3",
+      status: "completed",
+    });
+  });
+
   it("posts the complete COMPOSEMACHINES contract", async () => {
     const fetchMock = vi
       .fn()
