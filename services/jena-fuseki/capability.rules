@@ -1,0 +1,12 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix kide: <http://iiit.serc.com/ontologies/capability.owl#>.
+
+[hasCapability:
+  (?d rdf:type kide:Device)
+  (?ci rdf:type kide:CapabilityInvocation)
+  (?c rdf:type kide:Capability)
+  (?d kide:invokesCapability ?ci)
+  (?ci kide:offersCapability ?c)
+  ->
+  (?d kide:hasCapability ?c)
+]
