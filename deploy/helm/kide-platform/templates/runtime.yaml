@@ -1,3 +1,18 @@
+{{- $secretName := "kide-rabbitmq-auth" -}}
+{{- $existingSecret := lookup "v1" "Secret" .Release.Namespace $secretName -}}
+{{- $password := randAlphaNum 40 -}}
+{{- if $existingSecret -}}
+{{- $password = (index $existingSecret.data "password" | b64dec) -}}
+{{- end }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secretName }}
+type: Opaque
+stringData:
+  username: kide
+  password: {{ $password | quote }}
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -96,6 +111,17 @@ spec:
       containers:
         - name: rabbitmq
           image: {{ .Values.rabbitmq.image | quote }}
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: username
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: password
           ports:
             - containerPort: 5672
           readinessProbe:
@@ -152,8 +178,18 @@ spec:
           image: "{{ .Values.synthesis.image.repository }}:{{ .Values.synthesis.image.tag }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           env:
-            - name: CELERY_BROKER_URL
-              value: amqp://guest:guest@rabbitmq:5672//
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: password
+            - name: RABBITMQ_HOST
+              value: rabbitmq
             - name: JENA_QUERY_URL
               value: http://jena:3030/kide/query
           ports:
@@ -196,8 +232,18 @@ spec:
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           command: ["celery", "-A", "kide_worker.celery_app:celery_app", "worker", "--loglevel=INFO"]
           env:
-            - name: CELERY_BROKER_URL
-              value: amqp://guest:guest@rabbitmq:5672//
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: password
+            - name: RABBITMQ_HOST
+              value: rabbitmq
             - name: JENA_QUERY_URL
               value: http://jena:3030/kide/query
           securityContext:
