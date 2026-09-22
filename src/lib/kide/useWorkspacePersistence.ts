@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { loadProjectWorkingCopy, saveProjectWorkingCopy } from "@/lib/projects.functions";
+import { loadProjectWorkingCopy, saveProjectWorkingCopy } from "@/lib/project-working-copy.functions";
 import { useActiveProject } from "@/lib/active-project";
 import {
   replaceWorkspaceSources,
@@ -18,12 +18,14 @@ export function useWorkspacePersistence(enabled: boolean) {
   const loadedProjectRef = useRef<string | null>(null);
   const canEditRef = useRef(false);
   const generationRef = useRef(0);
+  const lastSavedSourcesRef = useRef<string | null>(null);
 
   useEffect(() => {
     generationRef.current += 1;
     const generation = generationRef.current;
     loadedProjectRef.current = null;
     canEditRef.current = false;
+    lastSavedSourcesRef.current = null;
 
     if (!enabled) return;
 
@@ -40,6 +42,7 @@ export function useWorkspacePersistence(enabled: boolean) {
         canEditRef.current = workingCopy.canEdit;
 
         if (workingCopy.sources) {
+          lastSavedSourcesRef.current = JSON.stringify(workingCopy.sources);
           replaceWorkspaceSources(workingCopy.sources);
         } else {
           resetWorkspace();
@@ -64,18 +67,25 @@ export function useWorkspacePersistence(enabled: boolean) {
       return;
     }
 
+    const serialized = JSON.stringify(sources);
+    if (serialized === lastSavedSourcesRef.current) return;
+
     const timer = window.setTimeout(() => {
       void save({
         data: {
           projectId: activeProject.projectId,
           sources,
         },
-      }).catch((error) => {
+      })
+        .then(() => {
+          lastSavedSourcesRef.current = serialized;
+        })
+        .catch((error) => {
         console.warn(
           "[Workspace] Autosave failed:",
           error instanceof Error ? error.message : error,
         );
-      });
+        });
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
