@@ -37,67 +37,11 @@ jobs:
           test ! -e services/synthesis-worker
           test ! -e services/jena-fuseki
           test ! -e deploy/helm/kide-platform
-          if git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)
 
-      - name: Lint changed JavaScript and TypeScript
-        shell: bash
-        run: |
-          mapfile -t files < <(git diff --name-only --diff-filter=ACMR HEAD^1 HEAD -- '*.js' '*.jsx' '*.ts' '*.tsx')
-          if (( ${#files[@]} > 0 )); then
-            printf 'Linting %s\n' "${files[@]}"
-            bunx eslint "${files[@]}"
-          else
-            echo "No changed JavaScript or TypeScript files."
-          fi
-
-      - name: Strict TypeScript check
-        run: bunx tsc --noEmit
-
-      - name: Run full test suite
-        run: bunx vitest run
-
-      - name: Build production application
-        run: bun run build
-        env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
-          VITE_SUPABASE_PROJECT_ID: placeholder
-
-      - name: Build standalone production container
-        run: |
-          docker build --pull             --build-arg VITE_SUPABASE_URL=https://placeholder.supabase.co             --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=placeholder             --build-arg VITE_SUPABASE_PROJECT_ID=placeholder             -t kide-standalone:ci .
- >/dev/null; then
+          forbidden="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' || true)"
+          if [[ -n "$forbidden" ]]; then
             echo "Tracked non-Node application runtime files are not allowed in the standalone webapp."
-            git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)
-
-      - name: Lint changed JavaScript and TypeScript
-        shell: bash
-        run: |
-          mapfile -t files < <(git diff --name-only --diff-filter=ACMR HEAD^1 HEAD -- '*.js' '*.jsx' '*.ts' '*.tsx')
-          if (( ${#files[@]} > 0 )); then
-            printf 'Linting %s\n' "${files[@]}"
-            bunx eslint "${files[@]}"
-          else
-            echo "No changed JavaScript or TypeScript files."
-          fi
-
-      - name: Strict TypeScript check
-        run: bunx tsc --noEmit
-
-      - name: Run full test suite
-        run: bunx vitest run
-
-      - name: Build production application
-        run: bun run build
-        env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
-          VITE_SUPABASE_PROJECT_ID: placeholder
-
-      - name: Build standalone production container
-        run: |
-          docker build --pull             --build-arg VITE_SUPABASE_URL=https://placeholder.supabase.co             --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=placeholder             --build-arg VITE_SUPABASE_PROJECT_ID=placeholder             -t kide-standalone:ci .
-
+            printf '%s\n' "$forbidden"
             exit 1
           fi
 
@@ -127,4 +71,8 @@ jobs:
 
       - name: Build standalone production container
         run: |
-          docker build --pull             --build-arg VITE_SUPABASE_URL=https://placeholder.supabase.co             --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=placeholder             --build-arg VITE_SUPABASE_PROJECT_ID=placeholder             -t kide-standalone:ci .
+          docker build --pull \
+            --build-arg VITE_SUPABASE_URL=https://placeholder.supabase.co \
+            --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=placeholder \
+            --build-arg VITE_SUPABASE_PROJECT_ID=placeholder \
+            -t kide-standalone:ci .
