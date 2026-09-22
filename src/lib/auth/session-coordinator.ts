@@ -3,9 +3,13 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { clearActiveProject } from "@/lib/active-project";
-import { resetWorkspace } from "@/lib/kide/workspace-store";
 import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
-import { isPublicSessionPath, type BrowserSessionStatus } from "@/lib/auth/session-policy";
+import { resetWorkspace } from "@/lib/kide/workspace-store";
+import {
+  isPublicSessionPath,
+  requiresActiveSession,
+  type BrowserSessionState,
+} from "@/lib/auth/session-policy";
 
 const ROOT_PATH = "/";
 const AUTH_PATH = "/auth";
@@ -19,8 +23,12 @@ function currentBrowserTarget(): string {
 export function useAuthSessionCoordinator(
   router: AnyRouter,
   queryClient: QueryClient,
-): BrowserSessionStatus {
-  const [status, setStatus] = useState<BrowserSessionStatus>("checking");
+  pathname: string,
+): BrowserSessionState {
+  const [state, setState] = useState<BrowserSessionState>({
+    status: "checking",
+    verifiedPath: null,
+  });
 
   useEffect(() => {
     let active = true;
@@ -28,12 +36,12 @@ export function useAuthSessionCoordinator(
     const goHome = async () => {
       if (!active || typeof window === "undefined") return;
 
-      setStatus("anonymous");
+      setState({ status: "anonymous", verifiedPath: null });
       clearActiveProject();
       resetWorkspace();
       queryClient.clear();
 
-      if (isPublicSessionPath(window.location.pathname)) return;
+      if (isPublicSessionPath(pathname)) return;
 
       rememberPostAuthRedirect(currentBrowserTarget());
       await router.navigate({ to: ROOT_PATH, replace: true });
@@ -42,14 +50,14 @@ export function useAuthSessionCoordinator(
     const markAuthenticated = async () => {
       if (!active || typeof window === "undefined") return;
 
-      setStatus("authenticated");
+      setState({ status: "authenticated", verifiedPath: pathname });
       void queryClient.invalidateQueries();
 
-      if (window.location.pathname === ROOT_PATH) {
+      if (pathname === ROOT_PATH) {
         return;
       }
 
-      if (window.location.pathname !== AUTH_PATH) {
+      if (pathname !== AUTH_PATH) {
         router.invalidate();
         return;
       }
@@ -69,6 +77,12 @@ export function useAuthSessionCoordinator(
       if (!isSupabaseConfigured) {
         await goHome();
         return;
+      }
+
+      if (requiresActiveSession(pathname)) {
+        setState((current) =>
+          current.verifiedPath === pathname ? current : { status: "checking", verifiedPath: null },
+        );
       }
 
       const {
@@ -113,7 +127,7 @@ export function useAuthSessionCoordinator(
       active = false;
       data.subscription.unsubscribe();
     };
-  }, [queryClient, router]);
+  }, [pathname, queryClient, router]);
 
-  return status;
+  return state;
 }
