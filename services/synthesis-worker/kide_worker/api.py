@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from celery.result import AsyncResult
 from fastapi import FastAPI, HTTPException
@@ -7,14 +7,43 @@ from pydantic import BaseModel, ConfigDict, Field
 from .celery_app import celery_app
 from .tasks import synthesize
 
-app = FastAPI(title="KIDE Synthesis API", version="0.1.0")
+app = FastAPI(title="KIDE Synthesis API", version="0.2.0")
 
 
-class SynthesisRequest(BaseModel):
+class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+
+class ActivitySpec(StrictModel):
+    name: str = Field(min_length=1)
+    capabilityUri: str = Field(min_length=1)
+
+
+class TransitionSpec(StrictModel):
+    source: str = Field(min_length=1)
+    target: str = Field(min_length=1)
+    event: str | None = None
+
+
+class CapabilityMachineSpec(StrictModel):
+    capabilityUri: str = Field(min_length=1)
+    sessionType: str = Field(min_length=1)
+    states: list[str] = Field(min_length=1)
+    startStates: list[str] = Field(min_length=1)
+    endStates: list[str] = Field(min_length=1)
+    transitions: list[TransitionSpec] = Field(default_factory=list)
+
+
+class ExecutionGroupSpec(StrictModel):
+    kind: Literal["sequential", "parallel"]
+    activities: list[str] = Field(min_length=2)
+
+
+class SynthesisRequest(StrictModel):
     projectId: str = Field(min_length=1)
-    activities: list[dict[str, Any]] = Field(min_length=1)
+    activities: list[ActivitySpec] = Field(min_length=1)
+    capabilityMachines: list[CapabilityMachineSpec] = Field(min_length=1)
+    executionPlan: list[ExecutionGroupSpec] = Field(default_factory=list)
 
 
 @app.get("/healthz")

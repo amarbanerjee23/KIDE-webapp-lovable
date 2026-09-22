@@ -1,4 +1,4 @@
-celery[rabbitmq]>=5.4,<6
+celery>=5.4,<6
 fastapi>=0.116,<1
 pydantic>=2.11,<3
 requests>=2.32,<3

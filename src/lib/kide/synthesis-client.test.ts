@@ -17,21 +17,35 @@ function response(
   } as Response;
 }
 
+function request() {
+  return {
+    projectId: "project-1",
+    activities: [{ name: "Move", capabilityUri: "urn:kide:Move" }],
+    capabilityMachines: [
+      {
+        capabilityUri: "urn:kide:Move",
+        sessionType: "urn:kide:sync",
+        states: ["idle", "done"],
+        startStates: ["idle"],
+        endStates: ["done"],
+        transitions: [{ source: "idle", target: "done", event: "finish" }],
+      },
+    ],
+  };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("remote synthesis client", () => {
-  it("posts a synthesis request without an undefined AbortSignal", async () => {
+  it("posts the complete COMPOSEMACHINES contract", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(response({ jobId: "job-1", status: "queued" }, { status: 202 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await startRemoteSynthesis({
-      projectId: "project-1",
-      activities: [{ name: "Move", capabilityUri: "urn:kide:Move" }],
-    });
+    const result = await startRemoteSynthesis(request());
 
     expect(result).toEqual({ jobId: "job-1", status: "queued" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -39,10 +53,7 @@ describe("remote synthesis client", () => {
     expect(url).toBe("/api/v1/synthesis");
     expect(init.method).toBe("POST");
     expect(init).not.toHaveProperty("signal");
-    expect(JSON.parse(String(init.body))).toEqual({
-      projectId: "project-1",
-      activities: [{ name: "Move", capabilityUri: "urn:kide:Move" }],
-    });
+    expect(JSON.parse(String(init.body))).toEqual(request());
   });
 
   it("passes an AbortSignal only when supplied", async () => {
@@ -52,13 +63,7 @@ describe("remote synthesis client", () => {
     vi.stubGlobal("fetch", fetchMock);
     const controller = new AbortController();
 
-    await startRemoteSynthesis(
-      {
-        projectId: "project-2",
-        activities: [{ name: "Stop", capabilityUri: "urn:kide:Stop" }],
-      },
-      controller.signal,
-    );
+    await startRemoteSynthesis(request(), controller.signal);
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(init.signal).toBe(controller.signal);
