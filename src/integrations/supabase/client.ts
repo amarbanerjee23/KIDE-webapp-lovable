@@ -49,9 +49,7 @@ function readEnvironment() {
 
 const environment = readEnvironment();
 
-export const isSupabaseConfigured = Boolean(
-  environment.supabaseUrl && environment.supabaseKey,
-);
+export const isSupabaseConfigured = Boolean(environment.supabaseUrl && environment.supabaseKey);
 
 if (!isSupabaseConfigured) {
   console.warn(
