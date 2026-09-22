@@ -145,9 +145,7 @@ function parseEvent(data: string): RemoteSynthesisJob {
   return parsed as RemoteSynthesisJob;
 }
 
-export function watchRemoteSynthesis(
-  jobId: string, handlers: RemoteSynthesisHandlers
-): () => void {
+export function watchRemoteSynthesis(jobId: string, handlers: RemoteSynthesisHandlers): () => void {
   let closed = false;
   let source: EventSource | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
