@@ -1,9 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  isSupabaseConfigured,
-  supabase,
-} from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
 const title = "KIDE — Knowledge-integrated systems engineering";
 const description =
