@@ -65,10 +65,7 @@ describe("remote synthesis client", () => {
     await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
     close();
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/synthesis/job-3",
-      {},
-    );
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/synthesis/job-3", {});
     expect(onUpdate).toHaveBeenCalledWith({
       jobId: "job-3",
       status: "completed",
