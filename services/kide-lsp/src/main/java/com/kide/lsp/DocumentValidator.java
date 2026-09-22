@@ -16,7 +16,7 @@ public final class DocumentValidator {
 
     public ArrayNode validate(String uri, String text) {
         ArrayNode diagnostics = JSON.createArrayNode();
-        if (text == null) text = "";
+        final String normalizedText = text == null ? "" : text;
 
         Optional<LanguageCatalog.LanguageSpec> language = LanguageCatalog.fromUri(uri);
         if (language.isEmpty()) {
@@ -32,20 +32,20 @@ public final class DocumentValidator {
         }
 
         boolean sawTopLevelKeyword = language.get().requiredTopLevelKeywords().stream()
-                .anyMatch(keyword -> containsWord(text, keyword));
+                .anyMatch(keyword -> containsWord(normalizedText, keyword));
         if (!sawTopLevelKeyword) {
             diagnostics.add(diagnostic(
                     0,
                     0,
                     0,
-                    Math.min(Math.max(text.length(), 1), 32),
+                    Math.min(Math.max(normalizedText.length(), 1), 32),
                     1,
                     "kide.missing-top-level",
                     "Expected one of the top-level declarations: "
                             + String.join(", ", language.get().requiredTopLevelKeywords())));
         }
 
-        validateBrackets(text, diagnostics);
+        validateBrackets(normalizedText, diagnostics);
         return diagnostics;
     }
 
