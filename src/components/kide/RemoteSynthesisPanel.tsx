@@ -43,10 +43,7 @@ export function RemoteSynthesisPanel({ localReady }: { localReady: boolean }) {
   if (!remoteSynthesisConfigured()) return null;
 
   const running = ["queued", "pending", "started", "progress"].includes(state.status);
-  const percent = Math.max(
-    0,
-    Math.min(100, state.progress?.percent ?? (running ? 5 : 0)),
-  );
+  const percent = Math.max(0, Math.min(100, state.progress?.percent ?? (running ? 5 : 0)));
 
   const run = async () => {
     if (!build.request || !localReady || running) return;
