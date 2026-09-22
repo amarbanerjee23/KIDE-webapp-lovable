@@ -77,9 +77,7 @@ export function useAuthSessionCoordinator(
 
       if (requiresActiveSession(pathname)) {
         setState((current) =>
-          current.verifiedPath === pathname
-            ? current
-            : { status: "checking", verifiedPath: null },
+          current.verifiedPath === pathname ? current : { status: "checking", verifiedPath: null },
         );
       }
 
