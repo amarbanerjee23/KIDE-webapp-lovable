@@ -1,9 +1,4 @@
-import {
-  linkWorkspace,
-  SAMPLE_WORKSPACE,
-  type Workspace,
-  type WorkspaceFile,
-} from "@/lib/dsl";
+import { linkWorkspace, SAMPLE_WORKSPACE, type Workspace, type WorkspaceFile } from "@/lib/dsl";
 
 export type WorkspaceSources = Record<string, string>;
 
