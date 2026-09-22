@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "KIDE — Knowledge-integrated systems engineering";
 const description =
@@ -30,7 +31,7 @@ function Index() {
     const checkSession = async () => {
       try {
         if (!isSupabaseConfigured) {
-          await navigate({ to: "/auth", search: {}, replace: true });
+          await navigate({ to: "/auth", replace: true });
           return;
         }
 
