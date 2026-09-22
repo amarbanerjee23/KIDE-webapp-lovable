@@ -3,9 +3,31 @@ export interface RemoteActivity {
   capabilityUri: string;
 }
 
+export interface RemoteMachineTransition {
+  source: string;
+  target: string;
+  event?: string | null;
+}
+
+export interface RemoteCapabilityMachine {
+  capabilityUri: string;
+  sessionType: string;
+  states: string[];
+  startStates: string[];
+  endStates: string[];
+  transitions: RemoteMachineTransition[];
+}
+
+export interface RemoteExecutionGroup {
+  kind: "sequential" | "parallel";
+  activities: string[];
+}
+
 export interface RemoteSynthesisRequest {
   projectId: string;
   activities: RemoteActivity[];
+  capabilityMachines: RemoteCapabilityMachine[];
+  executionPlan?: RemoteExecutionGroup[];
 }
 
 export interface RemoteSynthesisJob {
