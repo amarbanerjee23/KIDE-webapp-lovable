@@ -11,10 +11,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ServerSynthesisPanel } from "@/components/kide/ServerSynthesisPanel";
 import { Button } from "@/components/ui/button";
 import { approveCandidate, selectCandidate, useApprovalState } from "@/lib/kide/approval-store";
-import { useServerVerificationState } from "@/lib/kide/server-verification-store";
 import { synthesize, type Candidate } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
@@ -39,7 +37,6 @@ export const Route = createFileRoute("/synthesis")({
 function SynthesisReview() {
   const sources = useWorkspaceSources();
   const report = useMemo(() => synthesize(linkFrom(sources)), [sources]);
-  const serverVerification = useServerVerificationState();
   const { selectedId: storedId } = useApprovalState();
   const [localId, setLocalId] = useState<string | null>(null);
   const selectedId = localId ?? storedId;
@@ -52,15 +49,6 @@ function SynthesisReview() {
     report.candidates.find((candidate) => candidate.id === selectedId) ??
     report.candidates[0] ??
     null;
-
-  const serverCandidate = selected
-    ? serverVerification.report?.candidates.find((candidate) => candidate.id === selected.id)
-    : null;
-  const serverVerified =
-    serverVerification.status === "completed" &&
-    serverVerification.report?.ready === true &&
-    serverCandidate?.generatedMnc === selected?.generatedMnc &&
-    serverCandidate?.validation.errors === 0;
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
@@ -92,9 +80,7 @@ function SynthesisReview() {
           </Button>
           <Button
             size="sm"
-            disabled={
-              !report.ready || !selected || selected.validation.errors > 0 || !serverVerified
-            }
+            disabled={!report.ready || !selected || selected.validation.errors > 0}
             onClick={() => {
               if (!selected) return;
               approveCandidate({
@@ -144,8 +130,6 @@ function SynthesisReview() {
             ))}
           </ul>
         </section>
-
-        <ServerSynthesisPanel localReady={report.ready} />
 
         {!report.ready ? (
           <p className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive">
