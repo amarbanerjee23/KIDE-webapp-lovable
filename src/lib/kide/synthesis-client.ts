@@ -89,17 +89,13 @@ export function synthesisEndpoint(path: string): string {
 }
 
 export function synthesisEventsEndpoint(jobId: string): string {
-  return synthesisEndpoint(
-    `/api/v1/synthesis/${encodeURIComponent(jobId)}/events`,
-  );
+  return synthesisEndpoint(`/api/v1/synthesis/${encodeURIComponent(jobId)}/events`);
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(
-      `KIDE API ${response.status}: ${message || response.statusText}`,
-    );
+    throw new Error(`KIDE API ${response.status}: ${message || response.statusText}`);
   }
   return (await response.json()) as T;
 }
@@ -150,8 +146,7 @@ function parseEvent(data: string): RemoteSynthesisJob {
 }
 
 export function watchRemoteSynthesis(
-  jobId: string,
-  handlers: RemoteSynthesisHandlers,
+  jobId: string, handlers: RemoteSynthesisHandlers
 ): () => void {
   let closed = false;
   let source: EventSource | null = null;
