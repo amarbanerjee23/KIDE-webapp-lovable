@@ -25,9 +25,7 @@ describe("remote synthesis client", () => {
   it("posts a synthesis request without an undefined AbortSignal", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
-        response({ jobId: "job-1", status: "queued" }, { status: 202 }),
-      );
+      .mockResolvedValue(response({ jobId: "job-1", status: "queued" }, { status: 202 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await startRemoteSynthesis({
@@ -50,9 +48,7 @@ describe("remote synthesis client", () => {
   it("passes an AbortSignal only when supplied", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
-        response({ jobId: "job-2", status: "queued" }, { status: 202 }),
-      );
+      .mockResolvedValue(response({ jobId: "job-2", status: "queued" }, { status: 202 }));
     vi.stubGlobal("fetch", fetchMock);
     const controller = new AbortController();
 
@@ -71,9 +67,7 @@ describe("remote synthesis client", () => {
   it("URL-encodes job identifiers and surfaces API failures", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(
-        response({ jobId: "job/with space", status: "running" }),
-      )
+      .mockResolvedValueOnce(response({ jobId: "job/with space", status: "running" }))
       .mockResolvedValueOnce(
         response("backend unavailable", {
           ok: false,
@@ -84,12 +78,8 @@ describe("remote synthesis client", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await getRemoteSynthesis("job/with space");
-    expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "/api/v1/synthesis/job%2Fwith%20space",
-    );
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/synthesis/job%2Fwith%20space");
 
-    await expect(getRemoteSynthesis("failed")).rejects.toThrow(
-      "KIDE API 503: backend unavailable",
-    );
+    await expect(getRemoteSynthesis("failed")).rejects.toThrow("KIDE API 503: backend unavailable");
   });
 });
