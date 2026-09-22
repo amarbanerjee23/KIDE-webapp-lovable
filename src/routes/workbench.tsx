@@ -121,7 +121,7 @@ function KideWorkbench() {
           <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs"><Link to="/release">Release</Link></Button>
           <Button variant="ghost" size="icon" title="Search capabilities" aria-label="Search capabilities" onClick={() => { setMode("visual"); requestAnimationFrame(() => document.getElementById("capability-search")?.focus()); }}><Search /></Button>
           <Button asChild variant="ghost" size="icon" title="Notifications" aria-label="Notifications"><Link to="/notifications"><Bell /></Link></Button>
-          <Button asChild size="sm"><Link to="/auth"><LockKeyhole />Sign in</Link></Button>
+          <Button asChild size="sm"><Link to="/auth" search={{}}><LockKeyhole />Sign in</Link></Button>
         </div>
       </header>
 
