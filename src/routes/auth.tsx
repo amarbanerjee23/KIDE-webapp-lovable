@@ -4,15 +4,11 @@ import { ArrowLeft, KeyRound, Network, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  isSupabaseConfigured,
-  supabase,
-} from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 
 const title = "Sign in — KIDE Systems Engineering";
-const description =
-  "Secure access to your KIDE engineering organization and projects.";
+const description = "Secure access to your KIDE engineering organization and projects.";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -200,9 +196,8 @@ function AuthPage() {
               role="alert"
               className="mt-5 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
             >
-              Supabase is not configured. Set VITE_SUPABASE_URL and
-              VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY), then restart the
-              application.
+              Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+              (or VITE_SUPABASE_ANON_KEY), then restart the application.
             </div>
           )}
 
@@ -239,7 +234,9 @@ function AuthPage() {
             <div>
               <div className="flex justify-between">
                 <Label htmlFor="password">Password</Label>
-                {mode === "signin" && <span className="text-xs text-primary">Forgot password?</span>}
+                {mode === "signin" && (
+                  <span className="text-xs text-primary">Forgot password?</span>
+                )}
               </div>
               <Input
                 id="password"
@@ -253,15 +250,14 @@ function AuthPage() {
               />
             </div>
             {message && (
-              <p role="status" className="rounded-md border border-border bg-secondary/40 p-3 text-xs">
+              <p
+                role="status"
+                className="rounded-md border border-border bg-secondary/40 p-3 text-xs"
+              >
                 {message}
               </p>
             )}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={busy || !isSupabaseConfigured}
-            >
+            <Button type="submit" className="w-full" disabled={busy || !isSupabaseConfigured}>
               {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
