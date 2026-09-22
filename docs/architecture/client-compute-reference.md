@@ -87,25 +87,29 @@ Session lifecycle is centralized at the application root.
 - Supabase persists and refreshes the browser session.
 - The root session coordinator performs initial reconciliation.
 - `SIGNED_OUT` or any session-loss event immediately clears authenticated query cache and routes
-  to `/auth`.
+  every protected client page to the public home route `/`.
 - `SIGNED_IN` and restored initial sessions route `/` or `/auth` into the application.
 - A safe same-origin destination may be remembered in tab-scoped `sessionStorage`.
 - Protected route guards provide navigation defense-in-depth.
 - Server data functions independently enforce authentication/authorization; client guards are
   never treated as a data-security boundary.
-- Missing Supabase configuration routes to the stable auth/configuration screen without making
-  placeholder network calls.
+- Missing Supabase configuration leaves the user on the stable public home page; `/auth` remains
+  available to display configuration guidance without making placeholder network calls.
 
 ## 5. Landing/root behavior
 
-`/` is a stable session entry screen. It performs no domain computation and owns no competing
+`/` is the stable public landing page. It performs no domain computation and owns no competing
 session logic. The root session coordinator decides navigation:
 
-- valid session -> `/projects` or the remembered safe internal destination;
-- no session -> `/auth`;
-- session becomes invalid at any time -> `/auth`.
+- valid session on `/` or `/auth` -> `/projects` or the remembered safe internal destination;
+- no session on `/` -> remain on the public landing page;
+- no session on `/auth` -> remain on the sign-in page;
+- no session on any other client route -> redirect to `/`;
+- session becomes invalid at any time on a protected route -> redirect immediately to `/`.
 
-This avoids duplicated redirect effects and redirect races.
+Protected content is withheld while the initial browser session is being resolved, preventing a
+brief flash of authenticated UI before redirect. This avoids duplicated redirect effects and
+redirect races.
 
 ## 6. Maintainability rules
 

@@ -5,13 +5,13 @@ import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
-    const redirectToAuth = () => {
+    const redirectHome = () => {
       rememberPostAuthRedirect(location.href);
-      return redirect({ to: "/auth" });
+      return redirect({ to: "/" });
     };
 
     if (!isSupabaseConfigured) {
-      throw redirectToAuth();
+      throw redirectHome();
     }
 
     const {
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated")({
       if (error) {
         console.warn("[Auth] Protected-route session check failed:", error.message);
       }
-      throw redirectToAuth();
+      throw redirectHome();
     }
 
     return { user: session.user };
