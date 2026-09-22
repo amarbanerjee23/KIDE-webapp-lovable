@@ -147,7 +147,7 @@ function OverviewPage() {
         </Button>
         <div className="ml-auto flex items-center gap-1">
           <Button asChild size="sm">
-            <Link to="/auth" search={{}}>
+            <Link to="/auth">
               <LockKeyhole />
               Sign in
             </Link>
