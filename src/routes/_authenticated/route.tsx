@@ -14,16 +14,19 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirectToAuth();
     }
 
-    const { data, error } = await supabase.auth.getUser();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
 
-    if (error || !data.user) {
+    if (error || !session) {
       if (error) {
-        console.warn("[Auth] Protected-route validation failed:", error.message);
+        console.warn("[Auth] Protected-route session check failed:", error.message);
       }
       throw redirectToAuth();
     }
 
-    return { user: data.user };
+    return { user: session.user };
   },
   component: AuthenticatedLayout,
 });

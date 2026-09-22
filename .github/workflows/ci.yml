@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  standalone-webapp:
-    name: Standalone Node/TypeScript webapp
+  client-compute-webapp:
+    name: Client-compute Node/TypeScript webapp
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -31,17 +31,36 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Enforce standalone runtime architecture
+      - name: Enforce client-compute architecture
         shell: bash
         run: |
+          test -f docs/architecture/client-compute-reference.md
           test ! -e services/synthesis-worker
           test ! -e services/jena-fuseki
           test ! -e deploy/helm/kide-platform
+          test ! -e src/lib/kide/standalone-synthesis.functions.ts
+          test ! -e src/lib/kide/standalone-synthesis.server.ts
 
-          forbidden="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' || true)"
-          if [[ -n "$forbidden" ]]; then
-            echo "Tracked non-Node application runtime files are not allowed in the standalone webapp."
-            printf '%s\n' "$forbidden"
+          forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' || true)"
+          if [[ -n "$forbidden_runtime" ]]; then
+            echo "Tracked non-TypeScript application runtimes are not allowed."
+            printf '%s\n' "$forbidden_runtime"
+            exit 1
+          fi
+
+          kide_server_compute="$(git grep -n 'createServerFn' -- src/lib/kide || true)"
+          if [[ -n "$kide_server_compute" ]]; then
+            echo "KIDE domain computation must stay in the browser; createServerFn is forbidden under src/lib/kide."
+            printf '%s\n' "$kide_server_compute"
+            exit 1
+          fi
+
+          server_domain_imports="$(
+            git grep -nE 'from "@/lib/(dsl|kide/)' -- 'src/lib/*.functions.ts' 'src/lib/*.server.ts' || true
+          )"
+          if [[ -n "$server_domain_imports" ]]; then
+            echo "Backend I/O functions must not import KIDE computational modules."
+            printf '%s\n' "$server_domain_imports"
             exit 1
           fi
 
@@ -69,10 +88,10 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
           VITE_SUPABASE_PROJECT_ID: placeholder
 
-      - name: Build standalone production container
+      - name: Build production container
         run: |
           docker build --pull \
             --build-arg VITE_SUPABASE_URL=https://placeholder.supabase.co \
             --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=placeholder \
             --build-arg VITE_SUPABASE_PROJECT_ID=placeholder \
-            -t kide-standalone:ci .
+            -t kide-webapp:ci .

@@ -6,8 +6,8 @@ import {
 } from "@/lib/kide/workspace-sources";
 
 /**
- * The open set of model files, shared by the editors, synthesis review,
- * scenario runner, and server-side verification.
+ * The open set of model files, shared by the browser editors, synthesis
+ * review, scenario runner, and other client-side engineering computation.
  */
 let sources: WorkspaceSources = initialWorkspaceSources();
 const listeners = new Set<() => void>();

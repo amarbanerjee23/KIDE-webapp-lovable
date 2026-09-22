@@ -11,7 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthSessionCoordinator } from "@/lib/auth/session-coordinator";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -81,10 +81,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "KIDE Systems Engineering" },
-      { name: "description", content: "Knowledge-driven systems engineering, synthesis, verification, and release evidence." },
+      {
+        name: "description",
+        content:
+          "Knowledge-driven systems engineering, synthesis, verification, and release evidence.",
+      },
       { name: "author", content: "KIDE" },
       { property: "og:title", content: "KIDE Systems Engineering" },
-      { property: "og:description", content: "Build explainable control systems from intent to verified design." },
+      {
+        property: "og:description",
+        content: "Build explainable control systems from intent to verified design.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -102,7 +109,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
-
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -128,14 +134,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
 
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (session) queryClient.invalidateQueries();
-    });
-    return () => data.subscription.unsubscribe();
-  }, [queryClient, router]);
+  useAuthSessionCoordinator(router, queryClient);
 
   return (
     <QueryClientProvider client={queryClient}>
