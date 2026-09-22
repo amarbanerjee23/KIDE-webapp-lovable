@@ -16,8 +16,7 @@ import type {
   RemoteSynthesisRequest,
 } from "@/lib/kide/synthesis-client";
 
-const DEFAULT_CAPABILITY_NAMESPACE =
-  "http://iiit.serc.com/ontologies/capability.owl#";
+const DEFAULT_CAPABILITY_NAMESPACE = "http://iiit.serc.com/ontologies/capability.owl#";
 
 export interface RemoteRequestBuild {
   request: RemoteSynthesisRequest | null;
@@ -57,9 +56,7 @@ function interfaceMap(workspace: Workspace): Map<string, InterfaceDescriptionNod
 
 function models(workspace: Workspace): MncModelNode[] {
   return workspace.files.flatMap((file) =>
-    file.result.ast?.node === "Model"
-      ? [file.result.ast as MncModelNode]
-      : [],
+    file.result.ast?.node === "Model" ? [file.result.ast as MncModelNode] : [],
   );
 }
 
@@ -127,21 +124,13 @@ function machineForCapability(
 
   const states = operating.operatingStates.map((state) => state.name);
   const known = new Set(states);
-  const startStates = operating.startStates
-    .map(refName)
-    .filter((state) => known.has(state));
-  const endStates = operating.endStates
-    .map(refName)
-    .filter((state) => known.has(state));
+  const startStates = operating.startStates.map(refName).filter((state) => known.has(state));
+  const endStates = operating.endStates.map(refName).filter((state) => known.has(state));
 
   if (startStates.length === 0 || endStates.length === 0) return null;
 
   const transitions: RemoteMachineTransition[] = [
-    ...transitionsFromAction(
-      capability.requiredInitProcess,
-      states,
-      "capability:init",
-    ),
+    ...transitionsFromAction(capability.requiredInitProcess, states, "capability:init"),
   ];
 
   const commands = new Set(
@@ -155,11 +144,7 @@ function machineForCapability(
         const command = refName(block.command);
         if (!commands.has(command)) continue;
         transitions.push(
-          ...transitionsFromAction(
-            block.action,
-            states,
-            `command:${command}`,
-          ),
+          ...transitionsFromAction(block.action, states, `command:${command}`),
         );
       }
     }
@@ -220,9 +205,10 @@ function nextCapabilities(
   return found;
 }
 
-function linearCapabilityOrder(
-  diagram: ActivityDiagramNode,
-): { order: string[]; issue: string | null } {
+function linearCapabilityOrder(diagram: ActivityDiagramNode): {
+  order: string[];
+  issue: string | null;
+} {
   const byName = new Map(
     diagram.activities.map((activity) => [activity.name, activity]),
   );
@@ -305,9 +291,7 @@ function linearCapabilityOrder(
   return { order, issue: null };
 }
 
-export function buildRemoteSynthesisRequest(
-  workspace: Workspace,
-): RemoteRequestBuild {
+export function buildRemoteSynthesisRequest(workspace: Workspace): RemoteRequestBuild {
   const issues: string[] = [];
   if (workspace.errorCount > 0) {
     issues.push("Workspace errors must be resolved before remote synthesis.");
