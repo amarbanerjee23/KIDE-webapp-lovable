@@ -6,15 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "Sign in — KIDE Systems Engineering";
 const description = "Secure access to your KIDE engineering organization and projects.";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
-  }),
   head: () => ({
     meta: [
       { title },
@@ -28,24 +26,9 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-function safeRedirectTarget(value: string | undefined): string {
-  if (!value) return "/projects";
-
-  try {
-    const target = new URL(value, window.location.origin);
-    if (target.origin !== window.location.origin || target.pathname === "/auth") {
-      return "/projects";
-    }
-    return `${target.pathname}${target.search}${target.hash}`;
-  } catch {
-    return "/projects";
-  }
-}
-
 function AuthPage() {
   const navigate = useNavigate();
-  const search = Route.useSearch();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState(
@@ -56,7 +39,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   const completeAuthentication = async () => {
-    const target = safeRedirectTarget(search.redirect);
+    const target = consumePostAuthRedirect();
     if (target === "/projects") {
       await navigate({ to: "/projects", replace: true });
       return;
@@ -111,10 +94,7 @@ function AuthPage() {
     setBusy(true);
     setMessage("");
 
-    const returnPath = search.redirect
-      ? `/auth?redirect=${encodeURIComponent(search.redirect)}`
-      : "/";
-    const redirectUri = new URL(returnPath, window.location.origin).toString();
+    const redirectUri = window.location.origin;
 
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
