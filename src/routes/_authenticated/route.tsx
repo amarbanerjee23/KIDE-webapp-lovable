@@ -6,9 +6,15 @@ import {
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
+    const redirectToAuth = () =>
+      redirect({
+        to: "/auth",
+        search: { redirect: location.href },
+      });
+
     if (!isSupabaseConfigured) {
-      throw redirect({ to: "/auth" });
+      throw redirectToAuth();
     }
 
     const { data, error } = await supabase.auth.getUser();
@@ -17,7 +23,7 @@ export const Route = createFileRoute("/_authenticated")({
       if (error) {
         console.warn("[Auth] Protected-route validation failed:", error.message);
       }
-      throw redirect({ to: "/auth" });
+      throw redirectToAuth();
     }
 
     return { user: data.user };
