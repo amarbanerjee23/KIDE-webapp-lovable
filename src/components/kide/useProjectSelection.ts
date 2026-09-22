@@ -36,7 +36,7 @@ export function useProjectSelection() {
       const preferred =
         active?.organizationId === id && list.some((project) => project.id === active.projectId)
           ? active.projectId
-          : list[0]?.id ?? null;
+          : (list[0]?.id ?? null);
 
       setProjectIdState(preferred);
       if (preferred) {
@@ -63,7 +63,7 @@ export function useProjectSelection() {
         const preferredOrg =
           active && organizations.some((org) => org.id === active.organizationId)
             ? active.organizationId
-            : organizations[0]?.id ?? null;
+            : (organizations[0]?.id ?? null);
         setOrgIdState(preferredOrg);
       } finally {
         setLoading(false);
