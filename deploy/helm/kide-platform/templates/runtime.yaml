@@ -1,0 +1,242 @@
+{{- $secretName := required "rabbitmq.auth.existingSecret is required" .Values.rabbitmq.auth.existingSecret -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: jena
+spec:
+  selector:
+    app.kubernetes.io/name: jena
+  ports:
+    - name: http
+      port: 3030
+      targetPort: 3030
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jena
+spec:
+  serviceName: jena
+  replicas: {{ .Values.jena.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jena
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jena
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: fuseki
+          image: "{{ .Values.jena.image.repository }}:{{ .Values.jena.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 3030
+          readinessProbe:
+            httpGet:
+              path: /$/ping
+              port: 3030
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 10001
+          resources:
+{{ toYaml .Values.jena.resources | indent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /fuseki/databases
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.jena.storage.storageClassName }}
+        storageClassName: {{ .Values.jena.storage.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.jena.storage.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+spec:
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rabbitmq
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rabbitmq
+          image: {{ .Values.rabbitmq.image | quote }}
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ .Values.rabbitmq.auth.usernameKey }}
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ .Values.rabbitmq.auth.passwordKey }}
+          ports:
+            - containerPort: 5672
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/rabbitmq
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.rabbitmq.storage.storageClassName }}
+        storageClassName: {{ .Values.rabbitmq.storage.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.rabbitmq.storage.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: synthesis-api
+spec:
+  selector:
+    app.kubernetes.io/name: synthesis-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synthesis-api
+spec:
+  replicas: {{ .Values.synthesis.apiReplicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synthesis-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: synthesis-api
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: "{{ .Values.synthesis.image.repository }}:{{ .Values.synthesis.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ .Values.rabbitmq.auth.usernameKey }}
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ .Values.rabbitmq.auth.passwordKey }}
+            - name: RABBITMQ_HOST
+              value: rabbitmq
+            - name: JENA_QUERY_URL
+              value: http://jena:3030/kide/query
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 10001
+          resources:
+{{ toYaml .Values.synthesis.resources | indent 12 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synthesis-worker
+spec:
+  replicas: {{ .Values.synthesis.workerReplicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synthesis-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: synthesis-worker
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: "{{ .Values.synthesis.image.repository }}:{{ .Values.synthesis.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["celery", "-A", "kide_worker.celery_app:celery_app", "worker", "--loglevel=INFO"]
+          env:
+            - name: RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ .Values.rabbitmq.auth.usernameKey }}
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ .Values.rabbitmq.auth.passwordKey }}
+            - name: RABBITMQ_HOST
+              value: rabbitmq
+            - name: JENA_QUERY_URL
+              value: http://jena:3030/kide/query
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 10001
+          resources:
+{{ toYaml .Values.synthesis.resources | indent 12 }}

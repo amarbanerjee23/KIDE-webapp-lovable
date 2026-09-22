@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kide-platform
+description: Phase-1 enterprise runtime for KIDE semantic knowledge and synthesis services
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

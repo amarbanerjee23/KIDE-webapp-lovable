@@ -1,0 +1,43 @@
+global:
+  imagePullPolicy: IfNotPresent
+
+jena:
+  image:
+    repository: ghcr.io/amarbanerjee23/kide-jena-fuseki
+    tag: "6.2.0"
+  replicas: 1
+  storage:
+    size: 50Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: "500m"
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+rabbitmq:
+  image: rabbitmq:4.3.6-alpine
+  auth:
+    # Provision this secret with External Secrets / GCP Secret Manager in production.
+    existingSecret: kide-rabbitmq-auth
+    usernameKey: username
+    passwordKey: password
+  storage:
+    size: 10Gi
+    storageClassName: ""
+
+synthesis:
+  image:
+    repository: ghcr.io/amarbanerjee23/kide-synthesis-worker
+    tag: "0.1.0"
+  apiReplicas: 2
+  workerReplicas: 2
+  resources:
+    requests:
+      cpu: "250m"
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
