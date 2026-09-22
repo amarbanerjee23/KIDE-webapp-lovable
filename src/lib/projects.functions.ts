@@ -151,6 +151,145 @@ export const createProject = createServerFn({ method: "POST" })
     return row!;
   });
 
+/* -------------------------- project working copy -------------------------- */
+
+const WORKING_COPY_LABEL = "__kide_working_copy__";
+const EDIT_ROLES = new Set(["owner", "administrator", "engineer"]);
+const MAX_WORKING_COPY_FILES = 100;
+const MAX_WORKING_COPY_PATH_LENGTH = 512;
+const MAX_WORKING_COPY_FILE_CHARACTERS = 1_000_000;
+const MAX_WORKING_COPY_TOTAL_CHARACTERS = 5_000_000;
+
+function validateWorkingCopySources(value: unknown): Record<string, string> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("Workspace sources must be an object.");
+  }
+
+  const entries = Object.entries(value);
+  if (entries.length === 0 || entries.length > MAX_WORKING_COPY_FILES) {
+    throw new Error(`Workspace must contain between 1 and ${MAX_WORKING_COPY_FILES} files.`);
+  }
+
+  const sources: Record<string, string> = {};
+  let totalCharacters = 0;
+
+  for (const [path, source] of entries) {
+    if (
+      path.length === 0 ||
+      path.length > MAX_WORKING_COPY_PATH_LENGTH ||
+      path.includes("\0") ||
+      typeof source !== "string"
+    ) {
+      throw new Error("Workspace contains an invalid file.");
+    }
+    if (source.length > MAX_WORKING_COPY_FILE_CHARACTERS) {
+      throw new Error(`Workspace file '${path}' exceeds the storage limit.`);
+    }
+
+    totalCharacters += source.length;
+    if (totalCharacters > MAX_WORKING_COPY_TOTAL_CHARACTERS) {
+      throw new Error("Workspace exceeds the total storage limit.");
+    }
+
+    sources[path] = source;
+  }
+
+  return sources;
+}
+
+function coerceStoredSources(value: unknown): Record<string, string> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const entries = Object.entries(value);
+  if (entries.length === 0) return null;
+
+  const sources: Record<string, string> = {};
+  for (const [path, source] of entries) {
+    if (typeof source !== "string") return null;
+    sources[path] = source;
+  }
+  return sources;
+}
+
+export const loadProjectWorkingCopy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { projectId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { role } = await projectContext(context, data.projectId);
+    const { data: row, error } = await context.supabase
+      .from("model_checkpoints")
+      .select("id, sources, created_at")
+      .eq("project_id", data.projectId)
+      .eq("label", WORKING_COPY_LABEL)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+
+    return {
+      sources: coerceStoredSources(row?.sources) ?? null,
+      savedAt: (row?.created_at as string | undefined) ?? null,
+      canEdit: EDIT_ROLES.has(role),
+    };
+  });
+
+export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { projectId: string; sources: Record<string, string> }) => input)
+  .handler(async ({ data, context }) => {
+    const { project, role } = await projectContext(context, data.projectId);
+    if (!EDIT_ROLES.has(role)) {
+      throw new Error("Your project role is read-only.");
+    }
+
+    const sources = validateWorkingCopySources(data.sources);
+    const now = new Date().toISOString();
+
+    const { data: existing, error: lookupError } = await context.supabase
+      .from("model_checkpoints")
+      .select("id")
+      .eq("project_id", data.projectId)
+      .eq("label", WORKING_COPY_LABEL)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lookupError) throw new Error(lookupError.message);
+
+    if (existing?.id) {
+      const { error } = await context.supabase
+        .from("model_checkpoints")
+        .update({
+          sources,
+          created_at: now,
+          created_by: context.userId,
+          error_count: 0,
+          warning_count: 0,
+        })
+        .eq("id", existing.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await context.supabase.from("model_checkpoints").insert({
+        project_id: data.projectId,
+        label: WORKING_COPY_LABEL,
+        sources,
+        error_count: 0,
+        warning_count: 0,
+        created_by: context.userId,
+        created_at: now,
+      });
+      if (error) throw new Error(error.message);
+    }
+
+    const { error: projectError } = await context.supabase
+      .from("projects")
+      .update({ updated_at: now })
+      .eq("id", project.id);
+    if (projectError) throw new Error(projectError.message);
+
+    return { ok: true, savedAt: now };
+  });
+
 /* -------------------------- saved checkpoints -------------------------- */
 
 export const saveCheckpoint = createServerFn({ method: "POST" })
@@ -166,7 +305,9 @@ export const saveCheckpoint = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { project } = await projectContext(context, data.projectId);
-    const label = data.label.trim().slice(0, 120) || "Checkpoint";
+    const requestedLabel = data.label.trim().slice(0, 120);
+    const label =
+      !requestedLabel || requestedLabel === WORKING_COPY_LABEL ? "Checkpoint" : requestedLabel;
     const { data: row, error } = await context.supabase
       .from("model_checkpoints")
       .insert({
@@ -195,6 +336,7 @@ export const listCheckpoints = createServerFn({ method: "POST" })
       .from("model_checkpoints")
       .select("id, label, sources, error_count, warning_count, created_at, created_by")
       .eq("project_id", data.projectId)
+      .neq("label", WORKING_COPY_LABEL)
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error(error.message);
