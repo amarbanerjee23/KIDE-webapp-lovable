@@ -137,8 +137,7 @@ function RootComponent() {
   const router = useRouter();
   const location = useLocation();
   const sessionStatus = useAuthSessionCoordinator(router, queryClient);
-  const gated =
-    requiresActiveSession(location.pathname) && sessionStatus !== "authenticated";
+  const gated = requiresActiveSession(location.pathname) && sessionStatus !== "authenticated";
 
   return (
     <QueryClientProvider client={queryClient}>
