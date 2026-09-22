@@ -66,7 +66,7 @@ function AuthPage() {
         return;
       }
 
-      await navigate({ to: "/", replace: true });
+      await navigate({ to: "/auth", replace: true });
     } finally {
       setBusy(false);
     }
@@ -83,7 +83,7 @@ function AuthPage() {
     setBusy(true);
     setMessage("");
 
-    const redirectUri = window.location.origin;
+    const redirectUri = new URL("/auth", window.location.origin).toString();
 
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
@@ -97,7 +97,7 @@ function AuthPage() {
       }
 
       if (!result.redirected) {
-        await navigate({ to: "/", replace: true });
+        await navigate({ to: "/auth", replace: true });
       }
     } finally {
       setBusy(false);
