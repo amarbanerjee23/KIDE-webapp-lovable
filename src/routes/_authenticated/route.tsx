@@ -1,8 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import {
-  isSupabaseConfigured,
-  supabase,
-} from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
