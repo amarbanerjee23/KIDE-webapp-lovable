@@ -10,9 +10,9 @@ describe("standalone synthesis contract", () => {
 
   it("rejects duplicate paths", () => {
     const file = SAMPLE_WORKSPACE[0];
-    expect(() =>
-      validateStandaloneSynthesisInput({ files: [file, file] }),
-    ).toThrow("duplicate workspace path");
+    expect(() => validateStandaloneSynthesisInput({ files: [file, file] })).toThrow(
+      "duplicate workspace path",
+    );
   });
 
   it("rejects unknown DSL kinds", () => {
