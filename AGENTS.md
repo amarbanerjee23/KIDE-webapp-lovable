@@ -23,5 +23,6 @@ Do not add server-side KIDE computation, duplicate parsers, background compute w
 Python, Celery, RabbitMQ, or Jena/Fuseki without an explicit architecture decision that supersedes
 `docs/architecture/client-compute-reference.md`.
 
-Session lifecycle is centralized at the application root. Do not add competing page-level auth
-listeners or duplicate root redirect effects.
+Session lifecycle is centralized at the application root. Only `/` and `/auth` are public UI
+routes. Any other client route without an active browser session must redirect to `/`. Do not add
+competing page-level auth listeners or duplicate root redirect effects.
