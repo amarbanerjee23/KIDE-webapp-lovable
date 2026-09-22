@@ -5,6 +5,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { RemoteSynthesisPanel } from "@/components/kide/RemoteSynthesisPanel";
+import { remoteSynthesisConfigured } from "@/lib/kide/synthesis-client";
+import { useRemoteSynthesisState } from "@/lib/kide/remote-synthesis-store";
 import { synthesize, type Candidate } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { approveCandidate, selectCandidate, useApprovalState } from "@/lib/kide/approval-store";
@@ -30,6 +33,10 @@ export const Route = createFileRoute("/synthesis")({
 function SynthesisReview() {
   const sources = useWorkspaceSources();
   const report = useMemo(() => synthesize(linkFrom(sources)), [sources]);
+  const remote = useRemoteSynthesisState();
+  const enterpriseVerificationRequired = remoteSynthesisConfigured();
+  const enterpriseVerified =
+    !enterpriseVerificationRequired || remote.status === "completed";
   const { selectedId: storedId } = useApprovalState();
   const [localId, setLocalId] = useState<string | null>(null);
   const selectedId = localId ?? storedId;
@@ -58,7 +65,12 @@ function SynthesisReview() {
           <Button asChild variant="outline" size="sm"><Link to="/trust"><ShieldCheck />Trust centre</Link></Button>
           <Button
             size="sm"
-            disabled={!report.ready || !selected || selected.validation.errors > 0}
+            disabled={
+              !report.ready ||
+              !selected ||
+              selected.validation.errors > 0 ||
+              !enterpriseVerified
+            }
             onClick={() => {
               if (!selected) return;
               approveCandidate({
@@ -101,6 +113,8 @@ function SynthesisReview() {
             ))}
           </ul>
         </section>
+
+        <RemoteSynthesisPanel localReady={report.ready} />
 
         {!report.ready ? (
           <p className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive">
