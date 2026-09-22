@@ -54,9 +54,9 @@ describe("remote synthesis request builder", () => {
     const built = buildRemoteSynthesisRequest(linkWorkspace(files));
 
     expect(built.request).toBeNull();
-    expect(
-      built.issues.some((issue) => issue.includes("must declare operating states")),
-    ).toBe(true);
+    expect(built.issues.some((issue) => issue.includes("must declare operating states"))).toBe(
+      true,
+    );
   });
 
   it("does not flatten a branching capability workflow into a false sequence", () => {
