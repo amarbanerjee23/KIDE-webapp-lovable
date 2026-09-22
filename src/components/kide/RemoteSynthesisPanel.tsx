@@ -3,27 +3,21 @@ import { Check, CircleAlert, CloudCog, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildRemoteSynthesisRequest } from "@/lib/kide/remote-synthesis";
 import {
-  remoteSynthesisConfigured,
-  startRemoteSynthesis,
-  watchRemoteSynthesis,
-} from "@/lib/kide/synthesis-client";
-import {
   resetRemoteSynthesisState,
   setRemoteSynthesisJob,
   useRemoteSynthesisState,
 } from "@/lib/kide/remote-synthesis-store";
 import {
-  linkFrom,
-  useWorkspaceSources,
-} from "@/lib/kide/workspace-store";
+  remoteSynthesisConfigured,
+  startRemoteSynthesis,
+  watchRemoteSynthesis,
+} from "@/lib/kide/synthesis-client";
+import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
 export function RemoteSynthesisPanel({ localReady }: { localReady: boolean }) {
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
-  const build = useMemo(
-    () => buildRemoteSynthesisRequest(workspace),
-    [workspace],
-  );
+  const build = useMemo(() => buildRemoteSynthesisRequest(workspace), [workspace]);
   const state = useRemoteSynthesisState();
   const [launchError, setLaunchError] = useState<string | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
@@ -48,9 +42,7 @@ export function RemoteSynthesisPanel({ localReady }: { localReady: boolean }) {
 
   if (!remoteSynthesisConfigured()) return null;
 
-  const running = ["queued", "pending", "started", "progress"].includes(
-    state.status,
-  );
+  const running = ["queued", "pending", "started", "progress"].includes(state.status);
   const percent = Math.max(
     0,
     Math.min(100, state.progress?.percent ?? (running ? 5 : 0)),
@@ -75,9 +67,7 @@ export function RemoteSynthesisPanel({ localReady }: { localReady: boolean }) {
     } catch (error) {
       if (controller.signal.aborted) return;
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to start enterprise synthesis.";
+        error instanceof Error ? error.message : "Unable to start enterprise synthesis.";
       setLaunchError(message);
       setRemoteSynthesisJob({
         jobId: "launch-failed",
@@ -96,9 +86,8 @@ export function RemoteSynthesisPanel({ localReady }: { localReady: boolean }) {
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold">Enterprise synthesis verification</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            COMPOSEMACHINES runs in the synthesis service. Device and session
-            contracts are resolved against the semantic store; progress is
-            streamed back to this review.
+            COMPOSEMACHINES runs in the synthesis service. Device and session contracts are resolved
+            against the semantic store; progress is streamed back to this review.
           </p>
         </div>
         <Button
@@ -149,10 +138,7 @@ export function RemoteSynthesisPanel({ localReady }: { localReady: boolean }) {
       {state.status === "completed" && state.result && (
         <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-4">
           <Metric label="Controllers" value={state.result.controllers.length} />
-          <Metric
-            label="Validated sessions"
-            value={state.result.evidence.sessionTypesValidated}
-          />
+          <Metric label="Validated sessions" value={state.result.evidence.sessionTypesValidated} />
           <Metric
             label="Synthetic transitions"
             value={state.result.evidence.syntheticTransitions}
@@ -165,9 +151,7 @@ export function RemoteSynthesisPanel({ localReady }: { localReady: boolean }) {
       )}
 
       {(state.error || launchError) && (
-        <p className="mt-3 text-[11px] text-destructive">
-          {state.error ?? launchError}
-        </p>
+        <p className="mt-3 text-[11px] text-destructive">{state.error ?? launchError}</p>
       )}
     </section>
   );
