@@ -30,7 +30,7 @@ function Index() {
     const checkSession = async () => {
       try {
         if (!isSupabaseConfigured) {
-          await navigate({ to: "/auth", replace: true });
+          await navigate({ to: "/auth", search: {}, replace: true });
           return;
         }
 
@@ -45,10 +45,11 @@ function Index() {
           console.warn("[Auth] Session check failed:", error.message);
         }
 
-        await navigate({
-          to: !error && session ? "/projects" : "/auth",
-          replace: true,
-        });
+        if (!error && session) {
+          await navigate({ to: "/projects", replace: true });
+        } else {
+          await navigate({ to: "/auth", search: {}, replace: true });
+        }
       } catch (error) {
         if (!active) return;
         console.error("[Auth] Unexpected session check failure:", error);
