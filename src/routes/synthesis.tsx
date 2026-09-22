@@ -13,11 +13,7 @@ import {
 import { toast } from "sonner";
 import { RemoteSynthesisPanel } from "@/components/kide/RemoteSynthesisPanel";
 import { Button } from "@/components/ui/button";
-import {
-  approveCandidate,
-  selectCandidate,
-  useApprovalState,
-} from "@/lib/kide/approval-store";
+import { approveCandidate, selectCandidate, useApprovalState } from "@/lib/kide/approval-store";
 import { useRemoteSynthesisState } from "@/lib/kide/remote-synthesis-store";
 import { synthesize, type Candidate } from "@/lib/kide/synthesis";
 import { remoteSynthesisConfigured } from "@/lib/kide/synthesis-client";
@@ -46,8 +42,7 @@ function SynthesisReview() {
   const report = useMemo(() => synthesize(linkFrom(sources)), [sources]);
   const remote = useRemoteSynthesisState();
   const enterpriseVerificationRequired = remoteSynthesisConfigured();
-  const enterpriseVerified =
-    !enterpriseVerificationRequired || remote.status === "completed";
+  const enterpriseVerified = !enterpriseVerificationRequired || remote.status === "completed";
   const { selectedId: storedId } = useApprovalState();
   const [localId, setLocalId] = useState<string | null>(null);
   const selectedId = localId ?? storedId;
@@ -73,8 +68,7 @@ function SynthesisReview() {
         <div>
           <h1 className="text-sm font-semibold">Synthesis review</h1>
           <p className="text-[10px] text-muted-foreground">
-            {report.diagram ? `Workflow ${report.diagram}` : "No workflow"} ·{" "}
-            {report.generator}
+            {report.diagram ? `Workflow ${report.diagram}` : "No workflow"} · {report.generator}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -104,8 +98,7 @@ function SynthesisReview() {
                 approvedAt: new Date().toISOString(),
               });
               toast.success(`${selected.name} design approved`, {
-                description:
-                  "Recorded with its evidence ledger and generator version.",
+                description: "Recorded with its evidence ledger and generator version.",
               });
             }}
           >
@@ -122,8 +115,7 @@ function SynthesisReview() {
             Preflight
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Synthesis only runs when the models are complete and consistent.
-            Nothing is guessed.
+            Synthesis only runs when the models are complete and consistent. Nothing is guessed.
           </p>
           <ul className="mt-3 grid gap-2 md:grid-cols-2">
             {report.preflight.map((check) => (
@@ -140,9 +132,7 @@ function SynthesisReview() {
                 )}
                 <div>
                   <p className="text-xs font-medium">{check.label}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {check.detail}
-                  </p>
+                  <p className="text-[11px] text-muted-foreground">{check.detail}</p>
                 </div>
               </li>
             ))}
@@ -177,26 +167,15 @@ function SynthesisReview() {
                         {candidate.scores.total}
                       </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {candidate.strategy}
-                    </p>
+                    <p className="text-[10px] text-muted-foreground">{candidate.strategy}</p>
                     <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
                       {candidate.summary}
                     </p>
                     <dl className="mt-3 space-y-1.5">
                       <Bar label="Coverage" value={candidate.scores.coverage} />
-                      <Bar
-                        label="Observability"
-                        value={candidate.scores.observability}
-                      />
-                      <Bar
-                        label="Resilience"
-                        value={candidate.scores.resilience}
-                      />
-                      <Bar
-                        label="Simplicity"
-                        value={candidate.scores.simplicity}
-                      />
+                      <Bar label="Observability" value={candidate.scores.observability} />
+                      <Bar label="Resilience" value={candidate.scores.resilience} />
+                      <Bar label="Simplicity" value={candidate.scores.simplicity} />
                     </dl>
                     <p className="mt-3 flex items-center gap-1.5 text-[11px]">
                       {candidate.validation.errors === 0 ? (
@@ -221,8 +200,7 @@ function SynthesisReview() {
                 <div className="rounded-lg border border-border bg-card p-4">
                   <h3 className="text-sm font-semibold">Why this design?</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Each step, the performer chosen for it, and where the
-                    commands come from.
+                    Each step, the performer chosen for it, and where the commands come from.
                   </p>
                   <ul className="mt-3 space-y-2">
                     {selected.bindings.map((binding) => (
@@ -232,17 +210,11 @@ function SynthesisReview() {
                       >
                         <p className="text-xs font-medium">{binding.activity}</p>
                         {binding.description && (
-                          <p className="text-[11px] text-muted-foreground">
-                            {binding.description}
-                          </p>
+                          <p className="text-[11px] text-muted-foreground">{binding.description}</p>
                         )}
                         <p className="mt-1.5 font-mono text-[11px] text-capability">
-                          {binding.capability ??
-                            binding.operation ??
-                            "unassigned"}
-                          {binding.componentInterface
-                            ? ` → ${binding.componentInterface}`
-                            : ""}
+                          {binding.capability ?? binding.operation ?? "unassigned"}
+                          {binding.componentInterface ? ` → ${binding.componentInterface}` : ""}
                         </p>
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {binding.commands.map((command) => (
@@ -274,18 +246,14 @@ function SynthesisReview() {
                     ))}
                   </ul>
 
-                  <h3 className="mt-5 text-sm font-semibold">
-                    Evidence ledger
-                  </h3>
+                  <h3 className="mt-5 text-sm font-semibold">Evidence ledger</h3>
                   <ul className="mt-2 space-y-2">
                     {selected.evidence.map((entry) => (
                       <li
                         key={entry.rule}
                         className="rounded-md border border-border/70 bg-background p-3"
                       >
-                        <p className="font-mono text-[10px] text-muted-foreground">
-                          {entry.rule}
-                        </p>
+                        <p className="font-mono text-[10px] text-muted-foreground">{entry.rule}</p>
                         <p className="text-[11px]">{entry.statement}</p>
                         <p className="mt-1 font-mono text-[10px] text-muted-foreground">
                           {entry.elements.join(" · ")}
@@ -297,17 +265,13 @@ function SynthesisReview() {
 
                 <div className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">
-                      Generated control model
-                    </h3>
+                    <h3 className="text-sm font-semibold">Generated control model</h3>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="ml-auto"
                       onClick={() => {
-                        void navigator.clipboard.writeText(
-                          selected.generatedMnc,
-                        );
+                        void navigator.clipboard.writeText(selected.generatedMnc);
                         toast.success("Control model copied");
                       }}
                     >
@@ -316,8 +280,8 @@ function SynthesisReview() {
                     </Button>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {selected.controlNodes.length} control nodes · re-parsed by
-                    the language validator, independently of the generator.
+                    {selected.controlNodes.length} control nodes · re-parsed by the language
+                    validator, independently of the generator.
                   </p>
                   <pre className="mt-3 max-h-[520px] overflow-auto rounded-md border border-border/70 bg-[#0E1117] p-3 font-mono text-[11px] leading-relaxed">
                     {selected.generatedMnc}
@@ -342,20 +306,13 @@ function SynthesisReview() {
 function Bar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-2">
-      <dt className="w-24 shrink-0 text-[10px] text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="w-24 shrink-0 text-[10px] text-muted-foreground">{label}</dt>
       <dd className="flex-1">
         <div className="h-1.5 w-full rounded-full bg-secondary">
-          <div
-            className="h-1.5 rounded-full bg-primary"
-            style={{ width: `${value}%` }}
-          />
+          <div className="h-1.5 rounded-full bg-primary" style={{ width: `${value}%` }} />
         </div>
       </dd>
-      <span className="w-8 text-right font-mono text-[10px] text-muted-foreground">
-        {value}
-      </span>
+      <span className="w-8 text-right font-mono text-[10px] text-muted-foreground">{value}</span>
     </div>
   );
 }
