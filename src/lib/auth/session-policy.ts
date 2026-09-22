@@ -15,10 +15,7 @@ export function requiresActiveSession(pathname: string): boolean {
   return !isPublicSessionPath(pathname);
 }
 
-export function isPathSessionVerified(
-  pathname: string,
-  state: BrowserSessionState,
-): boolean {
+export function isPathSessionVerified(pathname: string, state: BrowserSessionState): boolean {
   if (!requiresActiveSession(pathname)) return true;
   return state.status === "authenticated" && state.verifiedPath === pathname;
 }
