@@ -12,13 +12,11 @@ describe("remote synthesis request builder", () => {
     expect(built.request?.activities).toEqual([
       {
         name: "MoveToWaypoint",
-        capabilityUri:
-          "http://iiit.serc.com/ontologies/capability.owl#Navigate",
+        capabilityUri: "http://iiit.serc.com/ontologies/capability.owl#Navigate",
       },
       {
         name: "RechargeStep",
-        capabilityUri:
-          "http://iiit.serc.com/ontologies/capability.owl#Recharge",
+        capabilityUri: "http://iiit.serc.com/ontologies/capability.owl#Recharge",
       },
     ]);
     expect(built.request?.executionPlan).toEqual([
@@ -57,9 +55,7 @@ describe("remote synthesis request builder", () => {
 
     expect(built.request).toBeNull();
     expect(
-      built.issues.some((issue) =>
-        issue.includes("must declare operating states"),
-      ),
+      built.issues.some((issue) => issue.includes("must declare operating states")),
     ).toBe(true);
   });
 
@@ -77,8 +73,6 @@ describe("remote synthesis request builder", () => {
     const built = buildRemoteSynthesisRequest(linkWorkspace(files));
 
     expect(built.request).toBeNull();
-    expect(
-      built.issues.some((issue) => issue.includes("multiple capability")),
-    ).toBe(true);
+    expect(built.issues.some((issue) => issue.includes("multiple capability"))).toBe(true);
   });
 });
