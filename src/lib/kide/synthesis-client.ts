@@ -16,10 +16,13 @@ export interface RemoteSynthesisJob {
   error?: string;
 }
 
-const API_BASE = (import.meta.env.VITE_KIDE_API_BASE_URL ?? "").replace(/\/$/, "");
+function apiBase(): string {
+  return (import.meta.env["VITE_KIDE_API_BASE_URL"] ?? "").replace(/\/$/, "");
+}
 
-function endpoint(path: string) {
-  return API_BASE ? `${API_BASE}${path}` : path;
+export function synthesisEndpoint(path: string): string {
+  const base = apiBase();
+  return base ? `${base}${path}` : path;
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -34,12 +37,13 @@ export async function startRemoteSynthesis(
   request: RemoteSynthesisRequest,
   signal?: AbortSignal,
 ): Promise<RemoteSynthesisJob> {
-  const response = await fetch(endpoint("/api/v1/synthesis"), {
+  const init: RequestInit = {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(request),
-    signal,
-  });
+    ...(signal ? { signal } : {}),
+  };
+  const response = await fetch(synthesisEndpoint("/api/v1/synthesis"), init);
   return parseJson<RemoteSynthesisJob>(response);
 }
 
@@ -47,12 +51,14 @@ export async function getRemoteSynthesis(
   jobId: string,
   signal?: AbortSignal,
 ): Promise<RemoteSynthesisJob> {
-  const response = await fetch(endpoint(`/api/v1/synthesis/${encodeURIComponent(jobId)}`), {
-    signal,
-  });
+  const init: RequestInit = signal ? { signal } : {};
+  const response = await fetch(
+    synthesisEndpoint(`/api/v1/synthesis/${encodeURIComponent(jobId)}`),
+    init,
+  );
   return parseJson<RemoteSynthesisJob>(response);
 }
 
 export function remoteSynthesisConfigured(): boolean {
-  return Boolean(API_BASE);
+  return Boolean(apiBase());
 }

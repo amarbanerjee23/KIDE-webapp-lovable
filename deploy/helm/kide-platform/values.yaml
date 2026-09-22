@@ -19,6 +19,11 @@ jena:
 
 rabbitmq:
   image: rabbitmq:4.3.6-alpine
+  auth:
+    # Provision this secret with External Secrets / GCP Secret Manager in production.
+    existingSecret: kide-rabbitmq-auth
+    usernameKey: username
+    passwordKey: password
   storage:
     size: 10Gi
     storageClassName: ""

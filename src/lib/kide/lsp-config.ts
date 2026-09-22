@@ -2,23 +2,20 @@ import type { DslKind } from "@/lib/dsl";
 
 const LSP_PATH = "/lsp/kide";
 
+const LSP_LANGUAGE_ID: Record<DslKind, string> = {
+  dml: "dml",
+  op: "operation",
+  mncspec: "mcml",
+  cap: "capability",
+  activity: "activity",
+};
+
 export function lspLanguageId(kind: DslKind): string {
-  switch (kind) {
-    case "mnc":
-      return "mcml";
-    case "capability":
-      return "capability";
-    case "activity":
-      return "activity";
-    case "krl":
-      return "krl";
-    default:
-      return kind;
-  }
+  return LSP_LANGUAGE_ID[kind];
 }
 
 export function resolveLspWebSocketUrl(): string | null {
-  const configured = import.meta.env.VITE_KIDE_LSP_URL?.trim();
+  const configured = import.meta.env["VITE_KIDE_LSP_URL"]?.trim();
   if (configured) return configured;
 
   if (typeof window === "undefined") return null;

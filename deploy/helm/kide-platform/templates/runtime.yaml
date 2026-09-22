@@ -1,18 +1,4 @@
-{{- $secretName := "kide-rabbitmq-auth" -}}
-{{- $existingSecret := lookup "v1" "Secret" .Release.Namespace $secretName -}}
-{{- $password := randAlphaNum 40 -}}
-{{- if $existingSecret -}}
-{{- $password = (index $existingSecret.data "password" | b64dec) -}}
-{{- end }}
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ $secretName }}
-type: Opaque
-stringData:
-  username: kide
-  password: {{ $password | quote }}
----
+{{- $secretName := required "rabbitmq.auth.existingSecret is required" .Values.rabbitmq.auth.existingSecret -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -116,12 +102,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: username
+                  key: {{ .Values.rabbitmq.auth.usernameKey }}
             - name: RABBITMQ_DEFAULT_PASS
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: password
+                  key: {{ .Values.rabbitmq.auth.passwordKey }}
           ports:
             - containerPort: 5672
           readinessProbe:
@@ -182,12 +168,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: username
+                  key: {{ .Values.rabbitmq.auth.usernameKey }}
             - name: RABBITMQ_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: password
+                  key: {{ .Values.rabbitmq.auth.passwordKey }}
             - name: RABBITMQ_HOST
               value: rabbitmq
             - name: JENA_QUERY_URL
@@ -236,12 +222,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: username
+                  key: {{ .Values.rabbitmq.auth.usernameKey }}
             - name: RABBITMQ_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: password
+                  key: {{ .Values.rabbitmq.auth.passwordKey }}
             - name: RABBITMQ_HOST
               value: rabbitmq
             - name: JENA_QUERY_URL
