@@ -3,6 +3,7 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  useLocation,
   useRouter,
   HeadContent,
   Scripts,
@@ -12,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useAuthSessionCoordinator } from "@/lib/auth/session-coordinator";
+import { requiresActiveSession } from "@/lib/auth/session-policy";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -133,14 +135,24 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
-
-  useAuthSessionCoordinator(router, queryClient);
+  const location = useLocation();
+  const sessionStatus = useAuthSessionCoordinator(router, queryClient);
+  const gated =
+    requiresActiveSession(location.pathname) && sessionStatus !== "authenticated";
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
+        {gated ? (
+          <main className="grid min-h-screen place-items-center bg-background text-foreground">
+            <div className="text-center">
+              <img src="/favicon.png" alt="" className="mx-auto size-10" />
+              <p className="mt-4 text-sm font-medium">Returning to KIDE home…</p>
+            </div>
+          </main>
+        ) : (
+          <Outlet />
+        )}
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
