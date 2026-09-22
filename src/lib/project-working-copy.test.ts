@@ -24,9 +24,9 @@ describe("project working-copy storage contract", () => {
 
   it("rejects invalid source maps", () => {
     expect(() => validateWorkingCopySources({})).toThrow("between 1 and");
-    expect(() =>
-      validateWorkingCopySources({ "bad\0path.dml": "DataModel Demo {}" }),
-    ).toThrow("invalid file");
+    expect(() => validateWorkingCopySources({ "bad\0path.dml": "DataModel Demo {}" })).toThrow(
+      "invalid file",
+    );
   });
 
   it("coerces only string-valued stored sources", () => {
