@@ -6,13 +6,7 @@ import type {
 } from "./synthesis-client";
 
 export type RemoteSynthesisStatus =
-  | "idle"
-  | "queued"
-  | "pending"
-  | "started"
-  | "progress"
-  | "completed"
-  | "failed";
+  "idle" | "queued" | "pending" | "started" | "progress" | "completed" | "failed";
 
 export interface RemoteSynthesisState {
   status: RemoteSynthesisStatus;
