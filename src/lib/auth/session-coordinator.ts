@@ -41,7 +41,7 @@ export function useAuthSessionCoordinator(
       if (isPublicSessionPath(pathname)) return;
 
       rememberPostAuthRedirect(currentBrowserTarget());
-      await router.navigate({ to: ROOT_PATH, replace: true });
+      window.location.replace(ROOT_PATH);
     };
 
     const markAuthenticated = async () => {
