@@ -251,8 +251,8 @@ function CheckpointsPage() {
                     <p className="text-sm font-medium">{checkpoint.label}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(checkpoint.created_at).toLocaleString()} ·{" "}
-                      {Object.keys(checkpoint.sources ?? {}).length} models · {checkpoint.error_count}{" "}
-                      errors · {checkpoint.warning_count} warnings
+                      {Object.keys(checkpoint.sources ?? {}).length} models ·{" "}
+                      {checkpoint.error_count} errors · {checkpoint.warning_count} warnings
                     </p>
                   </div>
                   <Button size="sm" variant="secondary" onClick={() => restore(checkpoint)}>
