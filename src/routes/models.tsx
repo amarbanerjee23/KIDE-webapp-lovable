@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, Check, CircleAlert, FileCode2, Play, RotateCcw, Sparkles, TriangleAlert,
 } from "lucide-react";
 import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
 import { Button } from "@/components/ui/button";
-import { DSL_LANGUAGES, SAMPLE_WORKSPACE, type Diagnostic } from "@/lib/dsl";
+import { DSL_LANGUAGES, type Diagnostic, type WorkspaceFile } from "@/lib/dsl";
+import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
 import { linkFrom, resetWorkspace, setSource, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
 const title = "KIDE Model Languages — Data, Operations, MNC, Capabilities, Activities";
@@ -30,15 +31,33 @@ function ModelLanguages() {
   const hash = useLocation({ select: (location) => location.hash });
   const sources = useWorkspaceSources();
   const requestedPath = decodeURIComponent(hash.replace(/^#/, ""));
-  const initialPath = SAMPLE_WORKSPACE.some((file) => file.path === requestedPath)
-    ? requestedPath
-    : SAMPLE_WORKSPACE[0]?.path ?? "";
-  const [activePath, setActivePath] = useState(initialPath);
   const workspace = useMemo(() => linkFrom(sources), [sources]);
+  const languageIndex = useMemo(() => buildWorkspaceLanguageIndex(workspace), [workspace]);
+  const editorFiles = useMemo<WorkspaceFile[]>(
+    () =>
+      workspace.files.map((file) => ({
+        path: file.path,
+        kind: file.kind,
+        source: file.source,
+      })),
+    [workspace.files],
+  );
+  const initialPath = workspace.files.some((file) => file.path === requestedPath)
+    ? requestedPath
+    : workspace.files[0]?.path ?? "";
+  const [activePath, setActivePath] = useState(initialPath);
+
+  useEffect(() => {
+    if (workspace.files.some((file) => file.path === activePath)) return;
+
+    const nextPath = workspace.files.some((file) => file.path === requestedPath)
+      ? requestedPath
+      : workspace.files[0]?.path ?? "";
+    setActivePath(nextPath);
+  }, [activePath, requestedPath, workspace.files]);
 
   const activeFile = workspace.files.find((file) => file.path === activePath);
-  const activeMeta = SAMPLE_WORKSPACE.find((file) => file.path === activePath);
-  const language = DSL_LANGUAGES.find((entry) => entry.kind === activeMeta?.kind);
+  const language = DSL_LANGUAGES.find((entry) => entry.kind === activeFile?.kind);
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
@@ -103,9 +122,9 @@ function ModelLanguages() {
             );
           })}
           <p className="mt-5 px-1 text-[10px] leading-relaxed text-muted-foreground">
-            Press Ctrl+Space for suggestions drawn from this workspace, hover any
-            word for an explanation, and F1 for the command palette. Names that do
-            not exist anywhere in the workspace are reported below.
+            Press Ctrl+Space for workspace suggestions, F12 or Ctrl+Click for
+            definition, Shift+F12 for references, and hover for documentation.
+            Names that do not exist anywhere in the workspace are reported below.
           </p>
         </aside>
 
@@ -116,13 +135,16 @@ function ModelLanguages() {
           </div>
 
           <div className="min-h-0 flex-1">
-            {activeFile && activeMeta && (
+            {activeFile && (
               <MonacoDslEditor
                 path={activeFile.path}
-                kind={activeMeta.kind}
+                kind={activeFile.kind}
                 value={sources[activeFile.path] ?? ""}
                 diagnostics={activeFile.diagnostics}
-                getSymbols={() => linkFrom(sources).symbols}
+                getSymbols={() => workspace.symbols}
+                getLanguageIndex={() => languageIndex}
+                workspaceFiles={editorFiles}
+                onOpenPath={setActivePath}
                 onChange={(next) => setSource(activeFile.path, next)}
               />
             )}
