@@ -13,8 +13,8 @@ export function validateWorkingCopySources(value: unknown): Record<string, strin
   }
 
   const entries = Object.entries(value);
-  if (entries.length === 0 || entries.length > MAX_WORKING_COPY_FILES) {
-    throw new Error(`Workspace must contain between 1 and ${MAX_WORKING_COPY_FILES} files.`);
+  if (entries.length > MAX_WORKING_COPY_FILES) {
+    throw new Error(`Workspace may contain at most ${MAX_WORKING_COPY_FILES} files.`);
   }
 
   const sources: Record<string, string> = {};
@@ -49,12 +49,20 @@ export function coerceStoredSources(value: unknown): Record<string, string> | nu
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
 
   const entries = Object.entries(value);
-  if (entries.length === 0) return null;
-
   const sources: Record<string, string> = {};
   for (const [path, source] of entries) {
     if (typeof source !== "string") return null;
     sources[path] = source;
   }
   return sources;
+}
+
+
+export function assertWorkingCopyVersion(
+  expectedSavedAt: string | null,
+  actualSavedAt: string | null,
+): void {
+  if (expectedSavedAt !== actualSavedAt) {
+    throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
+  }
 }
