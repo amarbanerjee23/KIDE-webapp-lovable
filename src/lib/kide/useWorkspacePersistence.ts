@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import {
   loadProjectWorkingCopy,
   saveProjectWorkingCopy,
 } from "@/lib/project-working-copy.functions";
 import { useActiveProject } from "@/lib/active-project";
+import { WORKING_COPY_CONFLICT_MESSAGE } from "@/lib/project-working-copy";
 import {
   clearWorkspace,
   replaceWorkspaceSources,
@@ -22,6 +24,8 @@ export function useWorkspacePersistence(enabled: boolean) {
   const canEditRef = useRef(false);
   const generationRef = useRef(0);
   const lastSavedSourcesRef = useRef<string | null>(null);
+  const savedAtRef = useRef<string | null>(null);
+  const conflictedRef = useRef(false);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -29,6 +33,8 @@ export function useWorkspacePersistence(enabled: boolean) {
     loadedProjectRef.current = null;
     canEditRef.current = false;
     lastSavedSourcesRef.current = null;
+    savedAtRef.current = null;
+    conflictedRef.current = false;
 
     if (!enabled) return;
 
@@ -43,11 +49,13 @@ export function useWorkspacePersistence(enabled: boolean) {
 
         loadedProjectRef.current = activeProject.projectId;
         canEditRef.current = workingCopy.canEdit;
+        savedAtRef.current = workingCopy.savedAt;
 
         if (workingCopy.sources) {
           lastSavedSourcesRef.current = JSON.stringify(workingCopy.sources);
           replaceWorkspaceSources(workingCopy.sources);
         } else {
+          lastSavedSourcesRef.current = JSON.stringify({});
           clearWorkspace();
         }
       })
@@ -65,7 +73,8 @@ export function useWorkspacePersistence(enabled: boolean) {
       !enabled ||
       !activeProject ||
       loadedProjectRef.current !== activeProject.projectId ||
-      !canEditRef.current
+      !canEditRef.current ||
+      conflictedRef.current
     ) {
       return;
     }
@@ -78,16 +87,26 @@ export function useWorkspacePersistence(enabled: boolean) {
         data: {
           projectId: activeProject.projectId,
           sources,
+          expectedSavedAt: savedAtRef.current,
         },
       })
-        .then(() => {
+        .then((result) => {
+          savedAtRef.current = result.savedAt;
           lastSavedSourcesRef.current = serialized;
         })
         .catch((error) => {
-          console.warn(
-            "[Workspace] Autosave failed:",
-            error instanceof Error ? error.message : error,
-          );
+          const message = error instanceof Error ? error.message : String(error);
+
+          if (message.includes(WORKING_COPY_CONFLICT_MESSAGE)) {
+            conflictedRef.current = true;
+            toast.error("Project changed in another browser session", {
+              description:
+                "Your local edits are preserved. Reload this project before saving again.",
+            });
+            return;
+          }
+
+          console.warn("[Workspace] Autosave failed:", message);
         });
     }, AUTOSAVE_DELAY_MS);
 
