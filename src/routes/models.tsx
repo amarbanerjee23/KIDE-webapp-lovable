@@ -1,13 +1,25 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Check, CircleAlert, FileCode2, Play, RotateCcw, Sparkles, TriangleAlert,
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  FileCode2,
+  Play,
+  RotateCcw,
+  Sparkles,
+  TriangleAlert,
 } from "lucide-react";
 import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
 import { Button } from "@/components/ui/button";
 import { DSL_LANGUAGES, type Diagnostic, type WorkspaceFile } from "@/lib/dsl";
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
-import { linkFrom, resetWorkspace, setSource, useWorkspaceSources } from "@/lib/kide/workspace-store";
+import {
+  linkFrom,
+  resetWorkspace,
+  setSource,
+  useWorkspaceSources,
+} from "@/lib/kide/workspace-store";
 
 const title = "KIDE Model Languages — Data, Operations, MNC, Capabilities, Activities";
 const description =
@@ -44,7 +56,7 @@ function ModelLanguages() {
   );
   const initialPath = workspace.files.some((file) => file.path === requestedPath)
     ? requestedPath
-    : workspace.files[0]?.path ?? "";
+    : (workspace.files[0]?.path ?? "");
   const [activePath, setActivePath] = useState(initialPath);
 
   useEffect(() => {
@@ -52,7 +64,7 @@ function ModelLanguages() {
 
     const nextPath = workspace.files.some((file) => file.path === requestedPath)
       ? requestedPath
-      : workspace.files[0]?.path ?? "";
+      : (workspace.files[0]?.path ?? "");
     setActivePath(nextPath);
   }, [activePath, requestedPath, workspace.files]);
 
@@ -67,7 +79,10 @@ function ModelLanguages() {
     <main className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/projects"><ArrowLeft />Projects</Link>
+          <Link to="/projects">
+            <ArrowLeft />
+            Projects
+          </Link>
         </Button>
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">Model languages</h1>
@@ -81,20 +96,39 @@ function ModelLanguages() {
                 : "border-primary/30 bg-primary/10 text-primary"
             }`}
           >
-            {workspace.errorCount > 0 ? <CircleAlert className="size-3.5" /> : <Check className="size-3.5" />}
-            {workspace.errorCount > 0 ? `${workspace.errorCount} errors` : "All models consistent"}
+            {workspace.errorCount > 0 ? (
+              <CircleAlert className="size-3.5" />
+            ) : (
+              <Check className="size-3.5" />
+            )}
+            {workspace.errorCount > 0
+              ? `${workspace.errorCount} errors`
+              : "All models consistent"}
           </span>
           <Button variant="outline" size="sm" onClick={resetWorkspace}>
-            <RotateCcw />Reset example
+            <RotateCcw />
+            Reset example
           </Button>
-          <Button asChild variant="outline" size="sm"><Link to="/scenario"><Play />Run scenario</Link></Button>
-          <Button asChild size="sm"><Link to="/synthesis"><Sparkles />Synthesize</Link></Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/scenario">
+              <Play />
+              Run scenario
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/synthesis">
+              <Sparkles />
+              Synthesize
+            </Link>
+          </Button>
         </div>
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="overflow-auto border-r border-border bg-sidebar p-3">
-          <p className="mb-2 px-1 text-[10px] font-semibold text-muted-foreground uppercase">Models</p>
+          <p className="mb-2 px-1 text-[10px] font-semibold text-muted-foreground uppercase">
+            Models
+          </p>
           {workspace.files.map((file) => {
             const meta = DSL_LANGUAGES.find((entry) => entry.kind === file.kind);
             const fileErrors = file.diagnostics.filter((d) => d.severity === "error").length;
@@ -111,26 +145,33 @@ function ModelLanguages() {
                 }`}
               >
                 <span className="flex items-center gap-2 font-mono text-[11px]">
-                  <FileCode2 className="size-3.5 text-capability" />{file.path}
+                  <FileCode2 className="size-3.5 text-capability" />
+                  {file.path}
                 </span>
                 <span className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                   {meta?.label}
-                  {fileErrors > 0 && <span className="text-destructive">{fileErrors} errors</span>}
-                  {fileErrors === 0 && fileWarnings > 0 && <span className="text-warning">{fileWarnings} warnings</span>}
+                  {fileErrors > 0 && (
+                    <span className="text-destructive">{fileErrors} errors</span>
+                  )}
+                  {fileErrors === 0 && fileWarnings > 0 && (
+                    <span className="text-warning">{fileWarnings} warnings</span>
+                  )}
                 </span>
               </button>
             );
           })}
           <p className="mt-5 px-1 text-[10px] leading-relaxed text-muted-foreground">
-            Press Ctrl+Space for workspace suggestions, F12 or Ctrl+Click for
-            definition, Shift+F12 for references, and hover for documentation.
-            Names that do not exist anywhere in the workspace are reported below.
+            Press Ctrl+Space for workspace suggestions, F12 or Ctrl+Click for definition, Shift+F12
+            for references, and hover for documentation. Names that do not exist anywhere in the
+            workspace are reported below.
           </p>
         </aside>
 
         <section className="flex min-h-0 flex-col">
           <div className="border-b border-border bg-card/80 px-4 py-2">
-            <p className="text-xs font-semibold">{language?.label} · <span className="font-mono">{activePath}</span></p>
+            <p className="text-xs font-semibold">
+              {language?.label} · <span className="font-mono">{activePath}</span>
+            </p>
             <p className="text-[11px] text-muted-foreground">{language?.description}</p>
           </div>
 
@@ -153,19 +194,31 @@ function ModelLanguages() {
           <div className="h-48 shrink-0 overflow-auto border-t border-border bg-card px-4 py-3">
             <div className="flex items-center gap-3 text-[11px]">
               <span className="font-semibold">Problems</span>
-              <span className={workspace.errorCount ? "text-destructive" : "text-muted-foreground"}>{workspace.errorCount} errors</span>
-              <span className={workspace.warningCount ? "text-warning" : "text-muted-foreground"}>{workspace.warningCount} warnings</span>
-              <span className="ml-auto text-muted-foreground">Grammar check + cross-model resolution</span>
+              <span className={workspace.errorCount ? "text-destructive" : "text-muted-foreground"}>
+                {workspace.errorCount} errors
+              </span>
+              <span className={workspace.warningCount ? "text-warning" : "text-muted-foreground"}>
+                {workspace.warningCount} warnings
+              </span>
+              <span className="ml-auto text-muted-foreground">
+                Grammar check + cross-model resolution
+              </span>
             </div>
 
             {allProblems.length === 0 ? (
               <p className="mt-2 flex items-center gap-2 text-xs text-primary">
-                <Check className="size-3.5" />Every model parses and every reference resolves.
+                <Check className="size-3.5" />
+                Every model parses and every reference resolves.
               </p>
             ) : (
               <ul className="mt-2 space-y-1.5">
                 {allProblems.map(({ path, diagnostic }, index) => (
-                  <ProblemRow key={`${path}-${index}`} path={path} diagnostic={diagnostic} onSelect={() => setActivePath(path)} />
+                  <ProblemRow
+                    key={`${path}-${index}`}
+                    path={path}
+                    diagnostic={diagnostic}
+                    onSelect={() => setActivePath(path)}
+                  />
                 ))}
               </ul>
             )}
@@ -176,7 +229,15 @@ function ModelLanguages() {
   );
 }
 
-function ProblemRow({ path, diagnostic, onSelect }: { path: string; diagnostic: Diagnostic; onSelect: () => void }) {
+function ProblemRow({
+  path,
+  diagnostic,
+  onSelect,
+}: {
+  path: string;
+  diagnostic: Diagnostic;
+  onSelect: () => void;
+}) {
   return (
     <li>
       <button
@@ -189,7 +250,9 @@ function ProblemRow({ path, diagnostic, onSelect }: { path: string; diagnostic: 
         ) : (
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-warning" />
         )}
-        <span className="font-mono text-[10px] text-muted-foreground">{path}:{diagnostic.line}:{diagnostic.column}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {path}:{diagnostic.line}:{diagnostic.column}
+        </span>
         <span className="min-w-0 flex-1">{diagnostic.message}</span>
         <span className="font-mono text-[10px] text-muted-foreground">{diagnostic.code}</span>
       </button>
