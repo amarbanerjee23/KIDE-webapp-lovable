@@ -43,3 +43,9 @@ Project workspace invariant: authenticated engineering pages must never fabricat
 content. Persisted source-map filenames are authoritative and DSL kinds are derived from their file
 extensions. Demo/reference sources may enter a project only through an explicit user action. Do not
 hard-code sample filenames such as `MissionPlanning.activity` into project editors or designers.
+
+
+Working-copy concurrency invariant: project autosave must be optimistic and fail closed. A browser
+may update the hidden working copy only against the exact persisted version it loaded. On version
+mismatch, preserve local edits, stop further autosaves for that project, and surface a conflict;
+never silently apply last-write-wins. Empty project source maps are valid.
