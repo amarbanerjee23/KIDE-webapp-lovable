@@ -55,7 +55,7 @@ function Designer() {
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const activityFile = workspace.files.find((file) => file.kind === "activity") ?? null;
   const activityPath = activityFile?.path ?? null;
-  const source = activityPath ? sources[activityPath] ?? "" : "";
+  const source = activityPath ? (sources[activityPath] ?? "") : "";
   const parsed = useMemo(() => parseActivity(source), [source]);
   const diagram = parsed.ast?.diagrams[0] ?? null;
   const catalogue = useMemo(() => buildCatalogue(workspace), [workspace]);
@@ -93,7 +93,9 @@ function Designer() {
       if (!parsed.ast || !diagram) return;
       const next: ActivityFileNode = {
         ...parsed.ast,
-        diagrams: parsed.ast.diagrams.map((item, index) => (index === 0 ? producer(diagram) : item)),
+        diagrams: parsed.ast.diagrams.map((item, index) =>
+          index === 0 ? producer(diagram) : item,
+        ),
       };
       commit(next);
     },
@@ -220,7 +222,8 @@ function Designer() {
         <div>
           <h1 className="text-sm font-semibold">Activity designer</h1>
           <p className="text-[10px] text-muted-foreground">
-            {diagram?.name ?? "No diagram"} · {graph.nodes.length} steps · {graph.edges.length} branches
+            {diagram?.name ?? "No diagram"} · {graph.nodes.length} steps · {graph.edges.length}{" "}
+            branches
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1">
@@ -240,11 +243,21 @@ function Designer() {
             <LayoutGrid />
             Auto-layout
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+          >
             <ZoomOut />
           </Button>
-          <span className="w-10 text-center text-[11px] tabular-nums">{Math.round(zoom * 100)}%</span>
-          <Button variant="ghost" size="icon" onClick={() => setZoom((z) => Math.min(1.6, z + 0.1))}>
+          <span className="w-10 text-center text-[11px] tabular-nums">
+            {Math.round(zoom * 100)}%
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setZoom((z) => Math.min(1.6, z + 0.1))}
+          >
             <ZoomIn />
           </Button>
         </div>
@@ -382,7 +395,9 @@ function Designer() {
                 <div className="flex items-start justify-between gap-1">
                   <span className="text-xs font-semibold">{node.id}</span>
                   {node.duration ? (
-                    <span className="font-mono text-[10px] text-muted-foreground">{node.duration}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {node.duration}
+                    </span>
                   ) : null}
                 </div>
                 <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
@@ -469,8 +484,8 @@ function Designer() {
             </>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              Drag steps to arrange them, use the arrow handle to draw a branch, and add a capability
-              from the left to create a new step. Dashed red branches are failure paths.
+              Drag steps to arrange them, use the arrow handle to draw a branch, and add a
+              capability from the left to create a new step. Dashed red branches are failure paths.
             </p>
           )}
 
