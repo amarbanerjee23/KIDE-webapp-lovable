@@ -31,7 +31,9 @@ function LandingPage() {
         </Link>
         <div className="ml-auto flex items-center gap-2">
           <Button asChild variant="ghost">
-            <Link to="/auth" onClick={clearPostAuthRedirect}>Sign in</Link>
+            <Link to="/auth" onClick={clearPostAuthRedirect}>
+              Sign in
+            </Link>
           </Button>
           <Button asChild>
             <Link to="/auth" onClick={clearPostAuthRedirect}>
@@ -62,7 +64,9 @@ function LandingPage() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link to="/auth" onClick={clearPostAuthRedirect}>Create account</Link>
+              <Link to="/auth" onClick={clearPostAuthRedirect}>
+                Create account
+              </Link>
             </Button>
           </div>
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
