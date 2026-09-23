@@ -49,3 +49,9 @@ Working-copy concurrency invariant: project autosave must be optimistic and fail
 may update the hidden working copy only against the exact persisted version it loaded. On version
 mismatch, preserve local edits, stop further autosaves for that project, and surface a conflict;
 never silently apply last-write-wins. Empty project source maps are valid.
+
+
+Model file lifecycle invariant: create, rename, and delete operations for KIDE DSL files belong in
+the browser workspace store. Validate path shape, DSL extension, and duplicate names before mutating
+the source map. Do not add a separate file-management backend; persistence must continue through the
+existing authenticated working-copy source-map save path.
