@@ -16,7 +16,11 @@ function titleFromPath(path: string): string {
 }
 
 export function normalizeWorkspaceFilePath(input: string, kind: DslKind): string {
-  let path = input.trim().replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/{2,}/g, "/");
+  let path = input
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/\/{2,}/g, "/");
 
   if (!path) throw new Error("Enter a model file name.");
   if (path.length > MAX_PATH_LENGTH) throw new Error("Model path is too long.");
@@ -55,8 +59,7 @@ export function assertWorkspacePathAvailable(
 ): void {
   const normalized = path.toLowerCase();
   const conflict = Object.keys(sources).find(
-    (candidate) =>
-      candidate !== ignorePath && candidate.toLowerCase() === normalized,
+    (candidate) => candidate !== ignorePath && candidate.toLowerCase() === normalized,
   );
 
   if (conflict) {
