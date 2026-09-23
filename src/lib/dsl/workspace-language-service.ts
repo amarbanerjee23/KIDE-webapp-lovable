@@ -28,9 +28,7 @@ export interface WorkspaceDefinitionLocation extends WorkspaceSymbolLocation {
   declaration: true;
 }
 
-export type WorkspaceLanguageLocation =
-  | WorkspaceDefinitionLocation
-  | WorkspaceReferenceLocation;
+export type WorkspaceLanguageLocation = WorkspaceDefinitionLocation | WorkspaceReferenceLocation;
 
 export interface WorkspaceLanguageIndex {
   definitions: WorkspaceDefinitionLocation[];
@@ -71,11 +69,7 @@ function addDefinition(
   }
 }
 
-function addParameters(
-  out: WorkspaceDefinitionLocation[],
-  path: string,
-  parameters: Named[],
-) {
+function addParameters(out: WorkspaceDefinitionLocation[], path: string, parameters: Named[]) {
   for (const parameter of parameters) {
     addDefinition(out, path, ["parameter"], parameter);
   }
@@ -117,21 +111,11 @@ function collectDefinitions(workspace: Workspace): WorkspaceDefinitionLocation[]
           addParameters(definitions, file.path, command.parameters);
         }
         for (const event of iface.events) {
-          addDefinition(
-            definitions,
-            file.path,
-            ["event", "interfaceItem", "outcomeItem"],
-            event,
-          );
+          addDefinition(definitions, file.path, ["event", "interfaceItem", "outcomeItem"], event);
           addParameters(definitions, file.path, event.parameters);
         }
         for (const alarm of iface.alarms) {
-          addDefinition(
-            definitions,
-            file.path,
-            ["alarm", "interfaceItem", "outcomeItem"],
-            alarm,
-          );
+          addDefinition(definitions, file.path, ["alarm", "interfaceItem", "outcomeItem"], alarm);
           addParameters(definitions, file.path, alarm.parameters);
         }
         for (const dataPoint of iface.dataPoints) {
@@ -215,12 +199,10 @@ function uniqueLocations<T extends WorkspaceLanguageLocation>(locations: T[]): T
   });
 }
 
-function sameSymbol(
-  candidate: WorkspaceLanguageLocation,
-  kind: RefKind,
-  name: string,
-): boolean {
-  return compatibleKinds(kind).has(candidate.kind) && simpleName(candidate.name) === simpleName(name);
+function sameSymbol(candidate: WorkspaceLanguageLocation, kind: RefKind, name: string): boolean {
+  return (
+    compatibleKinds(kind).has(candidate.kind) && simpleName(candidate.name) === simpleName(name)
+  );
 }
 
 export function symbolAt(
@@ -249,9 +231,7 @@ export function findDefinitions(
   if (!symbol) return [];
 
   return uniqueLocations(
-    index.definitions.filter((candidate) =>
-      sameSymbol(candidate, symbol.kind, symbol.name),
-    ),
+    index.definitions.filter((candidate) => sameSymbol(candidate, symbol.kind, symbol.name)),
   );
 }
 
@@ -271,9 +251,7 @@ export function findReferences(
   if (!includeDeclaration) return uniqueLocations(references);
 
   return uniqueLocations([
-    ...index.definitions.filter((candidate) =>
-      sameSymbol(candidate, symbol.kind, symbol.name),
-    ),
+    ...index.definitions.filter((candidate) => sameSymbol(candidate, symbol.kind, symbol.name)),
     ...references,
   ]);
 }
