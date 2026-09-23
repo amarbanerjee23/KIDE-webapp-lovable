@@ -98,6 +98,10 @@ export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
     assertWorkingCopyVersion(data.expectedSavedAt, existing?.created_at ?? null);
 
     if (existing?.id) {
+      if (!data.expectedSavedAt) {
+        throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
+      }
+
       const { data: updated, error } = await context.supabase
         .from("model_checkpoints")
         .update({
