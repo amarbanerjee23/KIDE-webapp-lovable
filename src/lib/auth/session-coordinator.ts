@@ -10,6 +10,7 @@ import {
   requiresActiveSession,
   type BrowserSessionState,
 } from "@/lib/auth/session-policy";
+import { clearWorkspaceAccess } from "@/lib/kide/workspace-access";
 import { clearWorkspace } from "@/lib/kide/workspace-store";
 
 const ROOT_PATH = "/";
@@ -38,6 +39,7 @@ export function useAuthSessionCoordinator(
 
       setState({ status: "anonymous", verifiedPath: null });
       clearActiveProject();
+      clearWorkspaceAccess();
       clearWorkspace();
       queryClient.clear();
 
