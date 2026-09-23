@@ -23,6 +23,11 @@ export function rememberPostAuthRedirect(value: string): void {
   window.sessionStorage.setItem(POST_AUTH_REDIRECT_KEY, value);
 }
 
+export function clearPostAuthRedirect(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(POST_AUTH_REDIRECT_KEY);
+}
+
 export function consumePostAuthRedirect(): string {
   if (typeof window === "undefined") return DEFAULT_AUTHENTICATED_PATH;
 
