@@ -99,12 +99,7 @@ export function WorkspaceFileActions({
   return (
     <>
       <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!enabled}
-          onClick={() => setCreateOpen(true)}
-        >
+        <Button variant="outline" size="sm" disabled={!enabled} onClick={() => setCreateOpen(true)}>
           <FilePlus2 />
           New model
         </Button>
