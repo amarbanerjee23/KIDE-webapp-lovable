@@ -24,25 +24,28 @@ function referenceOffset(path: string, name: string): number {
 
 describe("workspace language service", () => {
   it("indexes declarations across all five DSLs", () => {
-    expect(index.definitions.some((entry) => entry.kind === "dataModel" && entry.name === "Telemetry"))
-      .toBe(true);
-    expect(index.definitions.some((entry) => entry.kind === "operation" && entry.name === "EstimateArrival"))
-      .toBe(true);
-    expect(index.definitions.some((entry) => entry.kind === "interface" && entry.name === "Vehicle"))
-      .toBe(true);
-    expect(index.definitions.some((entry) => entry.kind === "capability" && entry.name === "Navigate"))
-      .toBe(true);
-    expect(index.definitions.some((entry) => entry.kind === "activity" && entry.name === "PlanRoute"))
-      .toBe(true);
+    expect(
+      index.definitions.some((entry) => entry.kind === "dataModel" && entry.name === "Telemetry"),
+    ).toBe(true);
+    expect(
+      index.definitions.some(
+        (entry) => entry.kind === "operation" && entry.name === "EstimateArrival",
+      ),
+    ).toBe(true);
+    expect(
+      index.definitions.some((entry) => entry.kind === "interface" && entry.name === "Vehicle"),
+    ).toBe(true);
+    expect(
+      index.definitions.some((entry) => entry.kind === "capability" && entry.name === "Navigate"),
+    ).toBe(true);
+    expect(
+      index.definitions.some((entry) => entry.kind === "activity" && entry.name === "PlanRoute"),
+    ).toBe(true);
   });
 
   it("resolves a capability reference to its declaration", () => {
     const offset = referenceOffset("MissionPlanning.activity", "Navigate");
-    const definitions = findDefinitions(
-      index,
-      "MissionPlanning.activity",
-      offset,
-    );
+    const definitions = findDefinitions(index, "MissionPlanning.activity", offset);
 
     expect(definitions).toEqual(
       expect.arrayContaining([
@@ -75,12 +78,7 @@ describe("workspace language service", () => {
 
   it("finds cross-file references for an operation", () => {
     const offset = referenceOffset("MissionPlanning.activity", "EstimateArrival");
-    const references = findReferences(
-      index,
-      "MissionPlanning.activity",
-      offset,
-      true,
-    );
+    const references = findReferences(index, "MissionPlanning.activity", offset, true);
 
     expect(references).toEqual(
       expect.arrayContaining([
