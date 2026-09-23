@@ -36,3 +36,19 @@ the active-project identifier and the in-memory workspace before returning to th
 
 This design deliberately reuses the existing `projects` and `model_checkpoints` tables. It does
 not introduce another persistence service, worker, database, or server-side KIDE computation.
+
+
+## Project-native workspace lifecycle
+
+An authenticated project workspace is never populated from demo data implicitly.
+
+- no active project -> browser workspace is empty;
+- active project with no working copy -> browser workspace is empty;
+- persisted source-map keys are the authoritative project filenames;
+- DSL kind is derived from each persisted filename extension rather than a fixed sample manifest;
+- unsupported file extensions may remain in storage but are not treated as KIDE DSL inputs;
+- the reference/sample workspace is loaded only after an explicit user action;
+- session loss clears the in-memory project workspace.
+
+The visual designer binds to the active project's actual `.activity` file. It must not assume the
+reference filename `MissionPlanning.activity`.
