@@ -31,3 +31,9 @@ pathname must be checked on navigation, and protected UI must not render until t
 has been verified. Anonymous protected routes must use a browser-level replacement to `/`; do not
 rely solely on an in-app router transition for this auth boundary. Do not add
 competing page-level auth listeners or duplicate root redirect effects.
+
+
+Authentication entry invariant: visiting `/auth` must never auto-enter a protected route. Home-page
+Sign In / Start Engineering actions must clear stale post-auth redirect state and stay on `/auth`
+until authentication succeeds and the resulting session is validated. OAuth may leave `/auth`
+only when KIDE itself initiated the OAuth flow.
