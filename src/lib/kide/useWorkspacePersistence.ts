@@ -6,8 +6,8 @@ import {
 } from "@/lib/project-working-copy.functions";
 import { useActiveProject } from "@/lib/active-project";
 import {
+  clearWorkspace,
   replaceWorkspaceSources,
-  resetWorkspace,
   useWorkspaceSources,
 } from "@/lib/kide/workspace-store";
 
@@ -33,7 +33,7 @@ export function useWorkspacePersistence(enabled: boolean) {
     if (!enabled) return;
 
     if (!activeProject) {
-      resetWorkspace();
+      clearWorkspace();
       return;
     }
 
@@ -48,7 +48,7 @@ export function useWorkspacePersistence(enabled: boolean) {
           lastSavedSourcesRef.current = JSON.stringify(workingCopy.sources);
           replaceWorkspaceSources(workingCopy.sources);
         } else {
-          resetWorkspace();
+          clearWorkspace();
         }
       })
       .catch((error) => {
