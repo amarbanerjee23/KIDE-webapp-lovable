@@ -1,15 +1,16 @@
 import { useSyncExternalStore } from "react";
 import {
-  initialWorkspaceSources,
+  emptyWorkspaceSources,
+  exampleWorkspaceSources,
   linkSources,
   type WorkspaceSources,
 } from "@/lib/kide/workspace-sources";
 
 /**
- * The open set of model files, shared by the browser editors, synthesis
- * review, scenario runner, and other client-side engineering computation.
+ * The active project's open model files. Engineering computation reads only
+ * this browser-resident source map; persistence is handled separately.
  */
-let sources: WorkspaceSources = initialWorkspaceSources();
+let sources: WorkspaceSources = emptyWorkspaceSources();
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -26,8 +27,13 @@ export function replaceWorkspaceSources(nextSources: WorkspaceSources) {
   emit();
 }
 
-export function resetWorkspace() {
-  sources = initialWorkspaceSources();
+export function clearWorkspace() {
+  sources = emptyWorkspaceSources();
+  emit();
+}
+
+export function loadExampleWorkspace() {
+  sources = exampleWorkspaceSources();
   emit();
 }
 
