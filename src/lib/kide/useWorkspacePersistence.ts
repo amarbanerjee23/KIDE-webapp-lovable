@@ -49,6 +49,7 @@ export function useWorkspacePersistence(enabled: boolean) {
       return;
     }
 
+    clearWorkspace();
     setWorkspaceAccessLoading(activeProject.projectId);
 
     void load({ data: { projectId: activeProject.projectId } })
