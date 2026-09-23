@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { parseActivity } from "@/lib/dsl";
 import { printActivityFile } from "@/lib/dsl/activity-printer";
 import type { ActivityFileNode } from "@/lib/dsl/ast";
+import { useActiveProject } from "@/lib/active-project";
 import { buildCatalogue } from "@/lib/kide/catalogue";
 import {
   NODE_HEIGHT,
@@ -28,7 +29,6 @@ import {
 } from "@/lib/kide/activity-graph";
 import { linkFrom, setSource, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
-const ACTIVITY_FILE = "MissionPlanning.activity";
 const title = "Activity Designer — KIDE";
 const description =
   "Lay out the workflow on a canvas: drag steps, draw normal and failure branches, drop in capabilities, and keep the activity source in sync.";
@@ -50,11 +50,15 @@ export const Route = createFileRoute("/designer")({
 type Positions = Record<string, { x: number; y: number }>;
 
 function Designer() {
+  const activeProject = useActiveProject();
   const sources = useWorkspaceSources();
-  const source = sources[ACTIVITY_FILE] ?? "";
+  const workspace = useMemo(() => linkFrom(sources), [sources]);
+  const activityFile = workspace.files.find((file) => file.kind === "activity") ?? null;
+  const activityPath = activityFile?.path ?? null;
+  const source = activityPath ? sources[activityPath] ?? "" : "";
   const parsed = useMemo(() => parseActivity(source), [source]);
   const diagram = parsed.ast?.diagrams[0] ?? null;
-  const catalogue = useMemo(() => buildCatalogue(linkFrom(sources)), [sources]);
+  const catalogue = useMemo(() => buildCatalogue(workspace), [workspace]);
 
   const [positions, setPositions] = useState<Positions>({});
   const [selectedRaw, setSelected] = useState<string | null>(null);
@@ -76,11 +80,12 @@ function Designer() {
 
   const commit = useCallback(
     (next: ActivityFileNode) => {
+      if (!activityPath) return;
       setUndoStack((stack) => [...stack, source]);
       setRedoStack([]);
-      setSource(ACTIVITY_FILE, printActivityFile(next));
+      setSource(activityPath, printActivityFile(next));
     },
-    [source],
+    [activityPath, source],
   );
 
   const mutate = useCallback(
@@ -100,7 +105,7 @@ function Designer() {
     if (previous === undefined) return;
     setUndoStack((stack) => stack.slice(0, -1));
     setRedoStack((stack) => [...stack, source]);
-    setSource(ACTIVITY_FILE, previous);
+    if (activityPath) setSource(activityPath, previous);
   };
 
   const redo = () => {
@@ -108,7 +113,7 @@ function Designer() {
     if (nextSource === undefined) return;
     setRedoStack((stack) => stack.slice(0, -1));
     setUndoStack((stack) => [...stack, source]);
-    setSource(ACTIVITY_FILE, nextSource);
+    if (activityPath) setSource(activityPath, nextSource);
   };
 
   const onPointerDown = (event: React.PointerEvent, id: string, x: number, y: number) => {
@@ -164,11 +169,50 @@ function Designer() {
   const height = Math.max(640, ...graph.nodes.map((node) => node.y + NODE_HEIGHT + 80));
   const errors = parsed.diagnostics.filter((item) => item.severity === "error");
 
+  if (!activeProject) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background p-8 text-foreground">
+        <div className="max-w-md text-center">
+          <h1 className="text-lg font-semibold">Select a project first</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The activity designer only displays source files from the active project. KIDE does not
+            inject a demo workflow automatically.
+          </p>
+          <Button asChild className="mt-5">
+            <Link to="/projects">Choose project</Link>
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  if (!activityFile) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background p-8 text-foreground">
+        <div className="max-w-md text-center">
+          <h1 className="text-lg font-semibold">No activity workflow in this project</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Add or import an .activity model in the project workspace before opening the visual
+            designer.
+          </p>
+          <div className="mt-5 flex justify-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/projects">Projects</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/models">Open model editor</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/">
+          <Link to="/workbench">
             <ArrowLeft />
             Workbench
           </Link>
