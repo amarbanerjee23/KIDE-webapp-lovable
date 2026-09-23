@@ -57,7 +57,6 @@ export function coerceStoredSources(value: unknown): Record<string, string> | nu
   return sources;
 }
 
-
 export function assertWorkingCopyVersion(
   expectedSavedAt: string | null,
   actualSavedAt: string | null,
