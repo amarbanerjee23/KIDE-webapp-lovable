@@ -39,6 +39,33 @@ function modelMatchesPath(model: editor.ITextModel, path: string): boolean {
   return uri === path || uri.endsWith(`/${path}`) || uriPath === path || uriPath.endsWith(`/${path}`);
 }
 
+function syncWorkspaceModels(
+  monaco: Monaco,
+  files: WorkspaceFile[],
+  activeModel: editor.ITextModel | null,
+  createdModels: editor.ITextModel[],
+) {
+  for (const file of files) {
+    const existing = monaco.editor
+      .getModels()
+      .find((model) => modelMatchesPath(model, file.path));
+
+    if (!existing) {
+      const model = monaco.editor.createModel(
+        file.source,
+        MONACO_LANGUAGE_ID[file.kind],
+        monaco.Uri.parse(file.path),
+      );
+      createdModels.push(model);
+      continue;
+    }
+
+    if (existing !== activeModel && existing.getValue() !== file.source) {
+      existing.setValue(file.source);
+    }
+  }
+}
+
 export default function MonacoDslEditorImpl({
   path,
   kind,
@@ -73,28 +100,12 @@ export default function MonacoDslEditorImpl({
     const monaco = monacoRef.current;
     if (!monaco) return;
 
-    for (const file of workspaceFiles) {
-      const existing = monaco.editor
-        .getModels()
-        .find((model) => modelMatchesPath(model, file.path));
-
-      if (!existing) {
-        const model = monaco.editor.createModel(
-          file.source,
-          MONACO_LANGUAGE_ID[file.kind],
-          monaco.Uri.parse(file.path),
-        );
-        createdModelsRef.current.push(model);
-        continue;
-      }
-
-      if (
-        existing !== editorRef.current?.getModel() &&
-        existing.getValue() !== file.source
-      ) {
-        existing.setValue(file.source);
-      }
-    }
+    syncWorkspaceModels(
+      monaco,
+      workspaceFiles,
+      editorRef.current?.getModel() ?? null,
+      createdModelsRef.current,
+    );
   }, [workspaceFiles]);
 
   useEffect(() => {
@@ -128,6 +139,12 @@ export default function MonacoDslEditorImpl({
         editorRef.current = instance;
         monacoRef.current = monaco;
         registerKideLanguages(monaco, getSymbols, getLanguageIndex);
+        syncWorkspaceModels(
+          monaco,
+          workspaceFilesRef.current,
+          instance.getModel(),
+          createdModelsRef.current,
+        );
 
         const model = instance.getModel();
         if (model) applyDiagnostics(monaco, model, diagnostics);
