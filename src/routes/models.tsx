@@ -14,9 +14,10 @@ import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
 import { Button } from "@/components/ui/button";
 import { DSL_LANGUAGES, type Diagnostic, type WorkspaceFile } from "@/lib/dsl";
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
+import { useActiveProject } from "@/lib/active-project";
 import {
   linkFrom,
-  resetWorkspace,
+  loadExampleWorkspace,
   setSource,
   useWorkspaceSources,
 } from "@/lib/kide/workspace-store";
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/models")({
 
 function ModelLanguages() {
   const hash = useLocation({ select: (location) => location.hash });
+  const activeProject = useActiveProject();
   const sources = useWorkspaceSources();
   const requestedPath = decodeURIComponent(hash.replace(/^#/, ""));
   const workspace = useMemo(() => linkFrom(sources), [sources]);
@@ -86,7 +88,11 @@ function ModelLanguages() {
         </Button>
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">Model languages</h1>
-          <p className="text-[10px] text-muted-foreground">Warehouse Fleet · five linked models</p>
+          <p className="text-[10px] text-muted-foreground">
+            {activeProject
+              ? `${workspace.files.length} project model${workspace.files.length === 1 ? "" : "s"}`
+              : "No active project"}
+          </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <span
@@ -103,9 +109,9 @@ function ModelLanguages() {
             )}
             {workspace.errorCount > 0 ? `${workspace.errorCount} errors` : "All models consistent"}
           </span>
-          <Button variant="outline" size="sm" onClick={resetWorkspace}>
+          <Button variant="outline" size="sm" onClick={loadExampleWorkspace} disabled={!activeProject}>
             <RotateCcw />
-            Reset example
+            Load example
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/scenario">
@@ -172,7 +178,33 @@ function ModelLanguages() {
           </div>
 
           <div className="min-h-0 flex-1">
-            {activeFile && (
+            {!activeProject ? (
+              <div className="grid h-full place-items-center p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-sm font-semibold">Select a project first</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    KIDE does not create or display demo engineering data until you explicitly ask
+                    for an example workspace.
+                  </p>
+                  <Button asChild className="mt-4" size="sm">
+                    <Link to="/projects">Choose project</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : workspace.files.length === 0 ? (
+              <div className="grid h-full place-items-center p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-sm font-semibold">This project has no model files yet</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Load the example only if you want starter content. Otherwise the project remains
+                    empty until model creation/import is added.
+                  </p>
+                  <Button className="mt-4" size="sm" onClick={loadExampleWorkspace}>
+                    Load example workspace
+                  </Button>
+                </div>
+              </div>
+            ) : activeFile ? (
               <MonacoDslEditor
                 path={activeFile.path}
                 kind={activeFile.kind}
@@ -184,7 +216,7 @@ function ModelLanguages() {
                 onOpenPath={setActivePath}
                 onChange={(next) => setSource(activeFile.path, next)}
               />
-            )}
+            ) : null}
           </div>
 
           <div className="h-48 shrink-0 overflow-auto border-t border-border bg-card px-4 py-3">
