@@ -109,7 +109,12 @@ function ModelLanguages() {
             )}
             {workspace.errorCount > 0 ? `${workspace.errorCount} errors` : "All models consistent"}
           </span>
-          <Button variant="outline" size="sm" onClick={loadExampleWorkspace} disabled={!activeProject}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadExampleWorkspace}
+            disabled={!activeProject}
+          >
             <RotateCcw />
             Load example
           </Button>
