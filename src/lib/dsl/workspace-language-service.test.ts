@@ -60,11 +60,7 @@ describe("workspace language service", () => {
 
   it("resolves interface-item aliases to concrete command declarations", () => {
     const offset = referenceOffset("MissionPlanning.activity", "MoveTo");
-    const definitions = findDefinitions(
-      index,
-      "MissionPlanning.activity",
-      offset,
-    );
+    const definitions = findDefinitions(index, "MissionPlanning.activity", offset);
 
     expect(definitions).toEqual(
       expect.arrayContaining([
