@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { DSL_LANGUAGES, type Diagnostic, type WorkspaceFile } from "@/lib/dsl";
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
 import { useActiveProject } from "@/lib/active-project";
+import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
 import {
   linkFrom,
   loadExampleWorkspace,
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/models")({
 function ModelLanguages() {
   const hash = useLocation({ select: (location) => location.hash });
   const activeProject = useActiveProject();
+  const workspaceAccess = useWorkspaceAccess();
   const sources = useWorkspaceSources();
   const requestedPath = decodeURIComponent(hash.replace(/^#/, ""));
   const workspace = useMemo(() => linkFrom(sources), [sources]);
@@ -73,6 +75,11 @@ function ModelLanguages() {
 
   const activeFile = workspace.files.find((file) => file.path === activePath);
   const language = DSL_LANGUAGES.find((entry) => entry.kind === activeFile?.kind);
+  const accessReady =
+    Boolean(activeProject) &&
+    workspaceAccess.status === "ready" &&
+    workspaceAccess.projectId === activeProject?.projectId;
+  const canEdit = accessReady && workspaceAccess.canEdit;
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
@@ -97,10 +104,15 @@ function ModelLanguages() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <WorkspaceFileActions
-            enabled={Boolean(activeProject)}
+            enabled={canEdit}
             activeFile={activeFile ? { path: activeFile.path, kind: activeFile.kind } : null}
             onActivePath={setActivePath}
           />
+          {accessReady && !canEdit && (
+            <span className="rounded border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
+              Read-only
+            </span>
+          )}
           <span
             className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] ${
               workspace.errorCount > 0
@@ -119,7 +131,7 @@ function ModelLanguages() {
             variant="outline"
             size="sm"
             onClick={loadExampleWorkspace}
-            disabled={!activeProject}
+            disabled={!canEdit}
           >
             <RotateCcw />
             Load example
@@ -207,14 +219,16 @@ function ModelLanguages() {
                 <div className="max-w-md">
                   <p className="text-sm font-semibold">This project has no model files yet</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Use New model in the toolbar to create a DSL file, or load the example workspace
-                    only if you want reference starter content.
+                    {canEdit
+                      ? "Use New model in the toolbar to create a DSL file, or load the example workspace only if you want reference starter content."
+                      : "This project is empty. Your project role is read-only, so no model files can be created here."}
                   </p>
                   <Button
                     className="mt-4"
                     size="sm"
                     variant="outline"
                     onClick={loadExampleWorkspace}
+                    disabled={!canEdit}
                   >
                     Load example workspace
                   </Button>
@@ -230,7 +244,10 @@ function ModelLanguages() {
                 getLanguageIndex={() => languageIndex}
                 workspaceFiles={editorFiles}
                 onOpenPath={setActivePath}
-                onChange={(next) => setSource(activeFile.path, next)}
+                onChange={(next) => {
+                  if (canEdit) setSource(activeFile.path, next);
+                }}
+                readOnly={!canEdit}
               />
             ) : null}
           </div>
