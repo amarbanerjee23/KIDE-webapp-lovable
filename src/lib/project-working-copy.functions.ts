@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
+  assertWorkingCopyVersion,
   coerceStoredSources,
   validateWorkingCopySources,
   WORKING_COPY_CONFLICT_MESSAGE,
@@ -94,11 +95,9 @@ export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
 
     if (lookupError) throw new Error(lookupError.message);
 
-    if (existing?.id) {
-      if (!data.expectedSavedAt || data.expectedSavedAt !== existing.created_at) {
-        throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
-      }
+    assertWorkingCopyVersion(data.expectedSavedAt, existing?.created_at ?? null);
 
+    if (existing?.id) {
       const { data: updated, error } = await context.supabase
         .from("model_checkpoints")
         .update({
@@ -116,10 +115,6 @@ export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       if (!updated) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
     } else {
-      if (data.expectedSavedAt) {
-        throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
-      }
-
       const { data: inserted, error } = await context.supabase
         .from("model_checkpoints")
         .insert({
