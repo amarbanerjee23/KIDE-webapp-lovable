@@ -9,6 +9,12 @@ import type { Monaco } from "@monaco-editor/react";
 import type { editor, languages, Position } from "monaco-editor";
 import { DSL_KEYWORDS, DSL_LANGUAGES } from "./index";
 import type { Diagnostic, DslKind, RefKind } from "./ast";
+import {
+  findDefinitions,
+  findReferences,
+  type WorkspaceLanguageIndex,
+  type WorkspaceLanguageLocation,
+} from "./workspace-language-service";
 
 export const MONACO_LANGUAGE_ID: Record<DslKind, string> = {
   dml: "kide-dml",
@@ -152,6 +158,44 @@ function monarchFor(kind: DslKind): languages.IMonarchLanguage {
 }
 
 let registered = false;
+let currentSymbols: () => SymbolTable | null = () => null;
+let currentLanguageIndex: () => WorkspaceLanguageIndex | null = () => null;
+
+function modelMatchesPath(model: editor.ITextModel, path: string): boolean {
+  const uri = decodeURIComponent(model.uri.toString());
+  const uriPath = decodeURIComponent(model.uri.path).replace(/^\/+/, "");
+  return uri === path || uri.endsWith(`/${path}`) || uriPath === path || uriPath.endsWith(`/${path}`);
+}
+
+function workspacePathForModel(
+  model: editor.ITextModel,
+  index: WorkspaceLanguageIndex,
+): string | null {
+  const paths = new Set([
+    ...index.definitions.map((location) => location.path),
+    ...index.references.map((location) => location.path),
+  ]);
+  for (const path of paths) {
+    if (modelMatchesPath(model, path)) return path;
+  }
+  return null;
+}
+
+function locationRange(monaco: Monaco, location: WorkspaceLanguageLocation) {
+  return new monaco.Range(
+    location.line,
+    location.column,
+    location.line,
+    location.column + Math.max(1, location.length),
+  );
+}
+
+function locationUri(monaco: Monaco, path: string) {
+  return (
+    monaco.editor.getModels().find((model) => modelMatchesPath(model, path))?.uri ??
+    monaco.Uri.parse(path)
+  );
+}
 
 /**
  * Registers all five languages, the workbench colour theme, and the
@@ -160,7 +204,11 @@ let registered = false;
 export function registerKideLanguages(
   monaco: Monaco,
   getSymbols: () => SymbolTable | null,
+  getLanguageIndex: () => WorkspaceLanguageIndex | null = () => null,
 ): void {
+  currentSymbols = getSymbols;
+  currentLanguageIndex = getLanguageIndex;
+
   if (registered) return;
   registered = true;
 
@@ -215,7 +263,7 @@ export function registerKideLanguages(
           });
         }
 
-        const symbols = getSymbols();
+        const symbols = currentSymbols();
         if (symbols) {
           const seen = new Set<string>();
           for (const refKind of RELEVANT_SYMBOLS[kind]) {
@@ -269,7 +317,7 @@ export function registerKideLanguages(
           return { range, contents: [{ value: `**${word.word}** — ${doc}` }] };
         }
 
-        const symbols = getSymbols();
+        const symbols = currentSymbols();
         if (symbols) {
           for (const refKind of RELEVANT_SYMBOLS[kind]) {
             if (symbols[refKind].has(word.word)) {
@@ -284,6 +332,47 @@ export function registerKideLanguages(
           }
         }
         return null;
+      },
+    });
+
+    monaco.languages.registerDefinitionProvider(id, {
+      provideDefinition: (model: editor.ITextModel, position: Position) => {
+        const index = currentLanguageIndex();
+        if (!index) return null;
+
+        const path = workspacePathForModel(model, index);
+        if (!path) return null;
+
+        const definitions = findDefinitions(index, path, model.getOffsetAt(position));
+        if (definitions.length === 0) return null;
+
+        return definitions.map((location) => ({
+          uri: locationUri(monaco, location.path),
+          range: locationRange(monaco, location),
+        }));
+      },
+    });
+
+    monaco.languages.registerReferenceProvider(id, {
+      provideReferences: (model, position, context) => {
+        const index = currentLanguageIndex();
+        if (!index) return null;
+
+        const path = workspacePathForModel(model, index);
+        if (!path) return null;
+
+        const references = findReferences(
+          index,
+          path,
+          model.getOffsetAt(position),
+          context.includeDeclaration,
+        );
+        if (references.length === 0) return null;
+
+        return references.map((location) => ({
+          uri: locationUri(monaco, location.path),
+          range: locationRange(monaco, location),
+        }));
       },
     });
   }
