@@ -37,3 +37,9 @@ Authentication entry invariant: visiting `/auth` must never auto-enter a protect
 Sign In / Start Engineering actions must clear stale post-auth redirect state and stay on `/auth`
 until authentication succeeds and the resulting session is validated. OAuth may leave `/auth`
 only when KIDE itself initiated the OAuth flow.
+
+
+Project workspace invariant: authenticated engineering pages must never fabricate sample project
+content. Persisted source-map filenames are authoritative and DSL kinds are derived from their file
+extensions. Demo/reference sources may enter a project only through an explicit user action. Do not
+hard-code sample filenames such as `MissionPlanning.activity` into project editors or designers.
