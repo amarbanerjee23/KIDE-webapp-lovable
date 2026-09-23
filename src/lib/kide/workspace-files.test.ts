@@ -8,9 +8,7 @@ import {
 
 describe("browser workspace file lifecycle", () => {
   it("normalizes nested model paths and appends the selected extension", () => {
-    expect(normalizeWorkspaceFilePath(" controls/main ", "mncspec")).toBe(
-      "controls/main.mncspec",
-    );
+    expect(normalizeWorkspaceFilePath(" controls/main ", "mncspec")).toBe("controls/main.mncspec");
   });
 
   it("rejects traversal, unsupported characters and language-extension mismatches", () => {
