@@ -1,4 +1,6 @@
 export const WORKING_COPY_LABEL = "__kide_working_copy__";
+export const WORKING_COPY_CONFLICT_MESSAGE =
+  "This project changed in another browser session. Your local edits are preserved; reload before saving again.";
 
 const MAX_WORKING_COPY_FILES = 100;
 const MAX_WORKING_COPY_PATH_LENGTH = 512;
