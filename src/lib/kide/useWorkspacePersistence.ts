@@ -8,6 +8,11 @@ import {
 import { useActiveProject } from "@/lib/active-project";
 import { WORKING_COPY_CONFLICT_MESSAGE } from "@/lib/project-working-copy";
 import {
+  clearWorkspaceAccess,
+  setWorkspaceAccess,
+  setWorkspaceAccessLoading,
+} from "@/lib/kide/workspace-access";
+import {
   clearWorkspace,
   replaceWorkspaceSources,
   useWorkspaceSources,
@@ -35,6 +40,7 @@ export function useWorkspacePersistence(enabled: boolean) {
     lastSavedSourcesRef.current = null;
     savedAtRef.current = null;
     conflictedRef.current = false;
+    clearWorkspaceAccess();
 
     if (!enabled) return;
 
@@ -43,6 +49,8 @@ export function useWorkspacePersistence(enabled: boolean) {
       return;
     }
 
+    setWorkspaceAccessLoading(activeProject.projectId);
+
     void load({ data: { projectId: activeProject.projectId } })
       .then((workingCopy) => {
         if (generation !== generationRef.current) return;
@@ -50,6 +58,7 @@ export function useWorkspacePersistence(enabled: boolean) {
         loadedProjectRef.current = activeProject.projectId;
         canEditRef.current = workingCopy.canEdit;
         savedAtRef.current = workingCopy.savedAt;
+        setWorkspaceAccess(activeProject.projectId, workingCopy.canEdit);
 
         if (workingCopy.sources) {
           lastSavedSourcesRef.current = JSON.stringify(workingCopy.sources);
@@ -61,6 +70,7 @@ export function useWorkspacePersistence(enabled: boolean) {
       })
       .catch((error) => {
         if (generation !== generationRef.current) return;
+        clearWorkspaceAccess();
         console.warn(
           "[Workspace] Could not load project working copy:",
           error instanceof Error ? error.message : error,
