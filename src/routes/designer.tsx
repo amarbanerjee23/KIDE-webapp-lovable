@@ -17,6 +17,7 @@ import { printActivityFile } from "@/lib/dsl/activity-printer";
 import type { ActivityFileNode } from "@/lib/dsl/ast";
 import { useActiveProject } from "@/lib/active-project";
 import { buildCatalogue } from "@/lib/kide/catalogue";
+import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
 import {
   NODE_HEIGHT,
   NODE_WIDTH,
@@ -51,6 +52,7 @@ type Positions = Record<string, { x: number; y: number }>;
 
 function Designer() {
   const activeProject = useActiveProject();
+  const workspaceAccess = useWorkspaceAccess();
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const activityFile = workspace.files.find((file) => file.kind === "activity") ?? null;
@@ -59,6 +61,11 @@ function Designer() {
   const parsed = useMemo(() => parseActivity(source), [source]);
   const diagram = parsed.ast?.diagrams[0] ?? null;
   const catalogue = useMemo(() => buildCatalogue(workspace), [workspace]);
+  const accessReady =
+    Boolean(activeProject) &&
+    workspaceAccess.status === "ready" &&
+    workspaceAccess.projectId === activeProject?.projectId;
+  const canEdit = accessReady && workspaceAccess.canEdit;
 
   const [positions, setPositions] = useState<Positions>({});
   const [selectedRaw, setSelected] = useState<string | null>(null);
@@ -80,17 +87,17 @@ function Designer() {
 
   const commit = useCallback(
     (next: ActivityFileNode) => {
-      if (!activityPath) return;
+      if (!activityPath || !canEdit) return;
       setUndoStack((stack) => [...stack, source]);
       setRedoStack([]);
       setSource(activityPath, printActivityFile(next));
     },
-    [activityPath, source],
+    [activityPath, canEdit, source],
   );
 
   const mutate = useCallback(
     (producer: (current: NonNullable<typeof diagram>) => NonNullable<typeof diagram>) => {
-      if (!parsed.ast || !diagram) return;
+      if (!canEdit || !parsed.ast || !diagram) return;
       const next: ActivityFileNode = {
         ...parsed.ast,
         diagrams: parsed.ast.diagrams.map((item, index) =>
@@ -99,10 +106,11 @@ function Designer() {
       };
       commit(next);
     },
-    [commit, diagram, parsed.ast],
+    [canEdit, commit, diagram, parsed.ast],
   );
 
   const undo = () => {
+    if (!canEdit) return;
     const previous = undoStack[undoStack.length - 1];
     if (previous === undefined) return;
     setUndoStack((stack) => stack.slice(0, -1));
@@ -111,6 +119,7 @@ function Designer() {
   };
 
   const redo = () => {
+    if (!canEdit) return;
     const nextSource = redoStack[redoStack.length - 1];
     if (nextSource === undefined) return;
     setRedoStack((stack) => stack.slice(0, -1));
@@ -121,6 +130,7 @@ function Designer() {
   const onPointerDown = (event: React.PointerEvent, id: string, x: number, y: number) => {
     event.stopPropagation();
     setSelected(id);
+    if (!canEdit) return;
     if (linking && linking !== id) {
       mutate((current) => connect(current, linking, id));
       setLinking(null);
@@ -137,6 +147,7 @@ function Designer() {
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
+    if (!canEdit) return;
     const drag = dragging.current;
     const rect = surface.current?.getBoundingClientRect();
     if (!drag || !rect) return;
@@ -150,7 +161,7 @@ function Designer() {
   };
 
   const addFromCapability = (name: string) => {
-    if (!diagram) return;
+    if (!canEdit || !diagram) return;
     let stepName = name;
     let suffix = 1;
     while (diagram.activities.some((activity) => activity.name === stepName)) {
@@ -227,11 +238,26 @@ function Designer() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={undo} disabled={undoStack.length === 0}>
+          {accessReady && !canEdit && (
+            <span className="mr-1 rounded border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
+              Read-only
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={undo}
+            disabled={!canEdit || undoStack.length === 0}
+          >
             <Undo2 />
             Undo
           </Button>
-          <Button variant="ghost" size="sm" onClick={redo} disabled={redoStack.length === 0}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={redo}
+            disabled={!canEdit || redoStack.length === 0}
+          >
             <Redo2 />
             Redo
           </Button>
@@ -275,9 +301,15 @@ function Designer() {
                   key={entry.name}
                   type="button"
                   onClick={() => addFromCapability(entry.name)}
-                  disabled={!entry.eligible}
+                  disabled={!canEdit || !entry.eligible}
                   className="flex w-full items-start gap-2 rounded-md border border-border bg-background p-2 text-left text-xs hover:border-primary disabled:opacity-50"
-                  title={entry.eligible ? "Add as a workflow step" : entry.reasons.join(" ")}
+                  title={
+                    !canEdit
+                      ? "Your project role is read-only."
+                      : entry.eligible
+                        ? "Add as a workflow step"
+                        : entry.reasons.join(" ")
+                  }
                 >
                   <Plus className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                   <span>
@@ -409,9 +441,10 @@ function Designer() {
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation();
-                    setLinking(linking === node.id ? null : node.id);
+                    if (canEdit) setLinking(linking === node.id ? null : node.id);
                   }}
-                  title="Draw a branch from this step"
+                  disabled={!canEdit}
+                  title={canEdit ? "Draw a branch from this step" : "Read-only project"}
                   className="absolute -right-2 top-1/2 size-4 -translate-y-1/2 rounded-full border border-border bg-background text-[9px] leading-none hover:border-primary"
                 >
                   →
@@ -432,6 +465,7 @@ function Designer() {
                 size="sm"
                 onClick={() => setLinking(selected)}
                 className="justify-start"
+                disabled={!canEdit}
               >
                 Draw branch from here
               </Button>
@@ -451,7 +485,8 @@ function Designer() {
                       <button
                         type="button"
                         onClick={() => mutate((current) => disconnect(current, edge.id))}
-                        className="text-muted-foreground hover:text-destructive"
+                        disabled={!canEdit}
+                        className="text-muted-foreground hover:text-destructive disabled:opacity-40"
                         aria-label={`Remove branch to ${edge.to}`}
                       >
                         <Trash2 className="size-3" />
@@ -473,6 +508,7 @@ function Designer() {
                 variant="outline"
                 size="sm"
                 className="justify-start text-destructive"
+                disabled={!canEdit}
                 onClick={() => {
                   mutate((current) => removeActivity(current, selected));
                   setSelected(null);
@@ -484,8 +520,9 @@ function Designer() {
             </>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              Drag steps to arrange them, use the arrow handle to draw a branch, and add a
-              capability from the left to create a new step. Dashed red branches are failure paths.
+              {canEdit
+                ? "Drag steps to arrange them, use the arrow handle to draw a branch, and add a capability from the left to create a new step. Dashed red branches are failure paths."
+                : "Your project role is read-only. You can inspect the workflow, problems, layout, and source without changing project content."}
             </p>
           )}
 
