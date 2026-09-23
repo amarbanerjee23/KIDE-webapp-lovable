@@ -260,10 +260,8 @@ function locationRange(monaco: Monaco, location: WorkspaceLanguageLocation) {
 
 function locationUri(monaco: Monaco, path: string) {
   return (
-    monaco.editor
-      .getModels()
-      .find((model: editor.ITextModel) => modelMatchesPath(model, path))?.uri ??
-    monaco.Uri.parse(path)
+    monaco.editor.getModels().find((model: editor.ITextModel) => modelMatchesPath(model, path))
+      ?.uri ?? monaco.Uri.parse(path)
   );
 }
 
