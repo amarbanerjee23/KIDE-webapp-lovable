@@ -11,6 +11,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
+import { WorkspaceFileActions } from "@/components/kide/WorkspaceFileActions";
 import { Button } from "@/components/ui/button";
 import { DSL_LANGUAGES, type Diagnostic, type WorkspaceFile } from "@/lib/dsl";
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
@@ -95,6 +96,11 @@ function ModelLanguages() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <WorkspaceFileActions
+            enabled={Boolean(activeProject)}
+            activeFile={activeFile ? { path: activeFile.path, kind: activeFile.kind } : null}
+            onActivePath={setActivePath}
+          />
           <span
             className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] ${
               workspace.errorCount > 0
@@ -201,10 +207,10 @@ function ModelLanguages() {
                 <div className="max-w-md">
                   <p className="text-sm font-semibold">This project has no model files yet</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Load the example only if you want starter content. Otherwise the project remains
-                    empty until model creation/import is added.
+                    Use New model in the toolbar to create a DSL file, or load the example workspace
+                    only if you want reference starter content.
                   </p>
-                  <Button className="mt-4" size="sm" onClick={loadExampleWorkspace}>
+                  <Button className="mt-4" size="sm" variant="outline" onClick={loadExampleWorkspace}>
                     Load example workspace
                   </Button>
                 </div>
