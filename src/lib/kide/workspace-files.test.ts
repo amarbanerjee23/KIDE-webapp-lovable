@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseDsl, type DslKind } from "@/lib/dsl";
 import {
   assertWorkspacePathAvailable,
   normalizeWorkspaceFilePath,
@@ -44,5 +45,16 @@ describe("browser workspace file lifecycle", () => {
     expect(starterSourceForKind("activity", "mission.activity")).toContain(
       "ActivityDiagram Mission",
     );
+  });
+
+  it.each([
+    ["dml", "plant.dml"],
+    ["op", "estimate-arrival.op"],
+    ["mncspec", "plant.mncspec"],
+    ["cap", "navigate.cap"],
+    ["activity", "mission.activity"],
+  ] as Array<[DslKind, string]>)("generates a parseable %s starter", (kind, path) => {
+    const result = parseDsl(kind, starterSourceForKind(kind, path));
+    expect(result.diagnostics.filter((item) => item.severity === "error")).toEqual([]);
   });
 });
