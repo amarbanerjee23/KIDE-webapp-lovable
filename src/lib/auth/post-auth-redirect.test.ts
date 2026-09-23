@@ -1,8 +1,17 @@
-import { describe, expect, it } from "vitest";
-import { normalizePostAuthRedirect } from "./post-auth-redirect";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  clearPostAuthRedirect,
+  consumePostAuthRedirect,
+  normalizePostAuthRedirect,
+  rememberPostAuthRedirect,
+} from "./post-auth-redirect";
 
 describe("post-auth redirect normalization", () => {
   const origin = "https://kide.example.com";
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
 
   it("preserves a same-origin application destination", () => {
     expect(
@@ -22,5 +31,12 @@ describe("post-auth redirect normalization", () => {
   it("falls back safely for malformed or missing destinations", () => {
     expect(normalizePostAuthRedirect(undefined, origin)).toBe("/projects");
     expect(normalizePostAuthRedirect("http://[bad", origin)).toBe("/projects");
+  });
+
+  it("clears a stale protected destination before an explicit home sign-in", () => {
+    rememberPostAuthRedirect("/designer");
+    clearPostAuthRedirect();
+
+    expect(consumePostAuthRedirect()).toBe("/projects");
   });
 });
