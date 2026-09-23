@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   coerceStoredSources,
   validateWorkingCopySources,
+  WORKING_COPY_CONFLICT_MESSAGE,
   WORKING_COPY_LABEL,
 } from "@/lib/project-working-copy";
 
@@ -50,7 +51,13 @@ export const loadProjectWorkingCopy = createServerFn({ method: "POST" })
 
 export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { projectId: string; sources: Record<string, string> }) => input)
+  .inputValidator(
+    (input: {
+      projectId: string;
+      sources: Record<string, string>;
+      expectedSavedAt: string | null;
+    }) => input,
+  )
   .handler(async ({ data, context }) => {
     const { data: project, error: projectError } = await context.supabase
       .from("projects")
@@ -78,7 +85,7 @@ export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
 
     const { data: existing, error: lookupError } = await context.supabase
       .from("model_checkpoints")
-      .select("id")
+      .select("id, created_at")
       .eq("project_id", data.projectId)
       .eq("label", WORKING_COPY_LABEL)
       .order("created_at", { ascending: false })
@@ -88,7 +95,11 @@ export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
     if (lookupError) throw new Error(lookupError.message);
 
     if (existing?.id) {
-      const { error } = await context.supabase
+      if (!data.expectedSavedAt || data.expectedSavedAt !== existing.created_at) {
+        throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
+      }
+
+      const { data: updated, error } = await context.supabase
         .from("model_checkpoints")
         .update({
           sources,
@@ -97,21 +108,34 @@ export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
           error_count: 0,
           warning_count: 0,
         })
-        .eq("id", existing.id);
+        .eq("id", existing.id)
+        .eq("created_at", data.expectedSavedAt)
+        .select("id")
+        .maybeSingle();
 
       if (error) throw new Error(error.message);
+      if (!updated) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
     } else {
-      const { error } = await context.supabase.from("model_checkpoints").insert({
-        project_id: data.projectId,
-        label: WORKING_COPY_LABEL,
-        sources,
-        error_count: 0,
-        warning_count: 0,
-        created_by: context.userId,
-        created_at: now,
-      });
+      if (data.expectedSavedAt) {
+        throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
+      }
+
+      const { data: inserted, error } = await context.supabase
+        .from("model_checkpoints")
+        .insert({
+          project_id: data.projectId,
+          label: WORKING_COPY_LABEL,
+          sources,
+          error_count: 0,
+          warning_count: 0,
+          created_by: context.userId,
+          created_at: now,
+        })
+        .select("id")
+        .maybeSingle();
 
       if (error) throw new Error(error.message);
+      if (!inserted) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
     }
 
     const { error: updatedError } = await context.supabase
