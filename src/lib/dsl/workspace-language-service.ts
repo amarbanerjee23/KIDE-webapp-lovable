@@ -205,6 +205,16 @@ function compatibleKinds(kind: RefKind): Set<RefKind> {
   return new Set(KIND_COMPATIBILITY[kind] ?? [kind]);
 }
 
+function uniqueLocations<T extends WorkspaceLanguageLocation>(locations: T[]): T[] {
+  const seen = new Set<string>();
+  return locations.filter((location) => {
+    const key = `${location.path}:${location.offset}:${location.length}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function sameSymbol(
   candidate: WorkspaceLanguageLocation,
   kind: RefKind,
@@ -238,8 +248,10 @@ export function findDefinitions(
   const symbol = symbolAt(index, path, offset);
   if (!symbol) return [];
 
-  return index.definitions.filter((candidate) =>
-    sameSymbol(candidate, symbol.kind, symbol.name),
+  return uniqueLocations(
+    index.definitions.filter((candidate) =>
+      sameSymbol(candidate, symbol.kind, symbol.name),
+    ),
   );
 }
 
@@ -256,12 +268,12 @@ export function findReferences(
     sameSymbol(candidate, symbol.kind, symbol.name),
   );
 
-  if (!includeDeclaration) return references;
+  if (!includeDeclaration) return uniqueLocations(references);
 
-  return [
+  return uniqueLocations([
     ...index.definitions.filter((candidate) =>
       sameSymbol(candidate, symbol.kind, symbol.name),
     ),
     ...references,
-  ];
+  ]);
 }
