@@ -52,3 +52,17 @@ An authenticated project workspace is never populated from demo data implicitly.
 
 The visual designer binds to the active project's actual `.activity` file. It must not assume the
 reference filename `MissionPlanning.activity`.
+
+
+## Concurrent browser protection
+
+Working-copy autosave uses optimistic concurrency based on the persisted working-copy timestamp.
+
+1. load returns the current `savedAt` version;
+2. every autosave sends that version as `expectedSavedAt`;
+3. the backend updates only when the persisted timestamp still matches;
+4. a mismatch rejects the save rather than overwriting another browser/tab;
+5. local browser edits remain intact;
+6. autosave is blocked for that project until the user reloads/reconciles.
+
+A newly empty project is a valid workspace state. Empty source maps are not treated as an error.
