@@ -210,7 +210,12 @@ function ModelLanguages() {
                     Use New model in the toolbar to create a DSL file, or load the example workspace
                     only if you want reference starter content.
                   </p>
-                  <Button className="mt-4" size="sm" variant="outline" onClick={loadExampleWorkspace}>
+                  <Button
+                    className="mt-4"
+                    size="sm"
+                    variant="outline"
+                    onClick={loadExampleWorkspace}
+                  >
                     Load example workspace
                   </Button>
                 </div>
