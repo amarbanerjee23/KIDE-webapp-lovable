@@ -101,9 +101,7 @@ function ModelLanguages() {
             ) : (
               <Check className="size-3.5" />
             )}
-            {workspace.errorCount > 0
-              ? `${workspace.errorCount} errors`
-              : "All models consistent"}
+            {workspace.errorCount > 0 ? `${workspace.errorCount} errors` : "All models consistent"}
           </span>
           <Button variant="outline" size="sm" onClick={resetWorkspace}>
             <RotateCcw />
@@ -150,9 +148,7 @@ function ModelLanguages() {
                 </span>
                 <span className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                   {meta?.label}
-                  {fileErrors > 0 && (
-                    <span className="text-destructive">{fileErrors} errors</span>
-                  )}
+                  {fileErrors > 0 && <span className="text-destructive">{fileErrors} errors</span>}
                   {fileErrors === 0 && fileWarnings > 0 && (
                     <span className="text-warning">{fileWarnings} warnings</span>
                   )}
