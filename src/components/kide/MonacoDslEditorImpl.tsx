@@ -47,7 +47,9 @@ function syncWorkspaceModels(
   createdModels: editor.ITextModel[],
 ) {
   for (const file of files) {
-    const existing = monaco.editor.getModels().find((model) => modelMatchesPath(model, file.path));
+    const existing = monaco.editor
+      .getModels()
+      .find((model: editor.ITextModel) => modelMatchesPath(model, file.path));
 
     if (!existing) {
       const model = monaco.editor.createModel(
