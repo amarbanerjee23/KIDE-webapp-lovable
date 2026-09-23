@@ -66,3 +66,19 @@ Working-copy autosave uses optimistic concurrency based on the persisted working
 6. autosave is blocked for that project until the user reloads/reconciles.
 
 A newly empty project is a valid workspace state. Empty source maps are not treated as an error.
+
+
+## Browser model file lifecycle
+
+Project model files are created, renamed, and deleted entirely in the browser working copy.
+
+- file paths are normalized and bounded before mutation;
+- DSL extensions must match the selected language;
+- duplicate paths are rejected case-insensitively;
+- starter source is deterministic and parser-valid for the selected DSL;
+- rename preserves source text;
+- delete removes only the selected working-copy entry;
+- no file-management backend endpoint exists;
+- PR #10 working-copy autosave persists the resulting source map.
+
+This keeps project file lifecycle aligned with the client-compute architecture.
