@@ -13,8 +13,7 @@ import type { WorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-servic
 
 // Bundle Monaco locally so the editor works without any external network call.
 (self as unknown as { MonacoEnvironment?: unknown }).MonacoEnvironment = {
-  getWorker: () =>
-    new Worker(new URL("./monaco.worker.ts", import.meta.url), { type: "module" }),
+  getWorker: () => new Worker(new URL("./monaco.worker.ts", import.meta.url), { type: "module" }),
 };
 loader.config({ monaco: monacoApi });
 
@@ -36,7 +35,9 @@ export interface MonacoDslEditorProps {
 function modelMatchesPath(model: editor.ITextModel, path: string): boolean {
   const uri = decodeURIComponent(model.uri.toString());
   const uriPath = decodeURIComponent(model.uri.path).replace(/^\/+/, "");
-  return uri === path || uri.endsWith(`/${path}`) || uriPath === path || uriPath.endsWith(`/${path}`);
+  return (
+    uri === path || uri.endsWith(`/${path}`) || uriPath === path || uriPath.endsWith(`/${path}`)
+  );
 }
 
 function syncWorkspaceModels(
@@ -46,9 +47,7 @@ function syncWorkspaceModels(
   createdModels: editor.ITextModel[],
 ) {
   for (const file of files) {
-    const existing = monaco.editor
-      .getModels()
-      .find((model) => modelMatchesPath(model, file.path));
+    const existing = monaco.editor.getModels().find((model) => modelMatchesPath(model, file.path));
 
     if (!existing) {
       const model = monaco.editor.createModel(
@@ -149,9 +148,7 @@ export default function MonacoDslEditorImpl({
         const model = instance.getModel();
         if (model) applyDiagnostics(monaco, model, diagnostics);
 
-        instance.onDidChangeCursorPosition((event) =>
-          onCursorLine?.(event.position.lineNumber),
-        );
+        instance.onDidChangeCursorPosition((event) => onCursorLine?.(event.position.lineNumber));
         instance.onDidChangeModel(() => {
           const nextModel = instance.getModel();
           if (!nextModel) return;
@@ -166,8 +163,7 @@ export default function MonacoDslEditorImpl({
       options={{
         readOnly,
         fontSize: 13,
-        fontFamily:
-          "ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace",
+        fontFamily: "ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace",
         lineHeight: 20,
         minimap: { enabled: true, renderCharacters: false },
         scrollBeyondLastLine: false,
