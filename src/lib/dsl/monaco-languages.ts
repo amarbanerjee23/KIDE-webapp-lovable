@@ -260,7 +260,9 @@ function locationRange(monaco: Monaco, location: WorkspaceLanguageLocation) {
 
 function locationUri(monaco: Monaco, path: string) {
   return (
-    monaco.editor.getModels().find((model) => modelMatchesPath(model, path))?.uri ??
+    monaco.editor
+      .getModels()
+      .find((model: editor.ITextModel) => modelMatchesPath(model, path))?.uri ??
     monaco.Uri.parse(path)
   );
 }
@@ -426,7 +428,11 @@ export function registerKideLanguages(
     });
 
     monaco.languages.registerReferenceProvider(id, {
-      provideReferences: (model, position, context) => {
+      provideReferences: (
+        model: editor.ITextModel,
+        position: Position,
+        context: languages.ReferenceContext,
+      ) => {
         const index = currentLanguageIndex();
         if (!index) return null;
 
