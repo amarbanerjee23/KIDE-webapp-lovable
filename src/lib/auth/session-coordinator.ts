@@ -3,17 +3,17 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { clearActiveProject } from "@/lib/active-project";
-import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
-import { resetWorkspace } from "@/lib/kide/workspace-store";
+import { getActiveBrowserSession } from "@/lib/auth/active-session";
+import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import {
   isPublicSessionPath,
   requiresActiveSession,
   type BrowserSessionState,
 } from "@/lib/auth/session-policy";
+import { resetWorkspace } from "@/lib/kide/workspace-store";
 
 const ROOT_PATH = "/";
 const AUTH_PATH = "/auth";
-const DEFAULT_AUTHENTICATED_PATH = "/projects";
 
 function currentBrowserTarget(): string {
   if (typeof window === "undefined") return ROOT_PATH;
@@ -44,31 +44,18 @@ export function useAuthSessionCoordinator(
       if (isPublicSessionPath(pathname)) return;
 
       rememberPostAuthRedirect(currentBrowserTarget());
-      await router.navigate({ to: ROOT_PATH, replace: true });
+      window.location.replace(ROOT_PATH);
     };
 
-    const markAuthenticated = async () => {
+    const markAuthenticated = () => {
       if (!active || typeof window === "undefined") return;
 
       setState({ status: "authenticated", verifiedPath: pathname });
       void queryClient.invalidateQueries();
 
-      if (pathname === ROOT_PATH) {
-        return;
-      }
-
-      if (pathname !== AUTH_PATH) {
+      if (pathname !== ROOT_PATH && pathname !== AUTH_PATH) {
         router.invalidate();
-        return;
       }
-
-      const target = consumePostAuthRedirect();
-      if (target === DEFAULT_AUTHENTICATED_PATH) {
-        await router.navigate({ to: DEFAULT_AUTHENTICATED_PATH, replace: true });
-        return;
-      }
-
-      window.location.replace(target);
     };
 
     const reconcile = async () => {
@@ -85,30 +72,23 @@ export function useAuthSessionCoordinator(
         );
       }
 
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+      const activeSession = await getActiveBrowserSession();
 
       if (!active) return;
 
-      if (error) {
-        console.warn("[Auth] Session reconciliation failed:", error.message);
-      }
-
-      if (!session || error) {
+      if (!activeSession) {
         await goHome();
       } else {
-        await markAuthenticated();
+        markAuthenticated();
       }
     };
 
     void reconcile();
 
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, authSession) => {
       if (!active) return;
 
-      if (event === "SIGNED_OUT" || !session) {
+      if (event === "SIGNED_OUT" || !authSession) {
         void goHome();
         return;
       }
@@ -119,7 +99,7 @@ export function useAuthSessionCoordinator(
         event === "TOKEN_REFRESHED" ||
         event === "USER_UPDATED"
       ) {
-        void markAuthenticated();
+        void reconcile();
       }
     });
 

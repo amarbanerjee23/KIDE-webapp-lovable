@@ -143,6 +143,16 @@ function RootComponent() {
   useWorkspacePersistence(pathVerified && protectedRoute);
   const gated = !pathVerified;
 
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      sessionState.status === "anonymous" &&
+      requiresActiveSession(location.pathname)
+    ) {
+      window.location.replace("/");
+    }
+  }, [location.pathname, sessionState.status]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

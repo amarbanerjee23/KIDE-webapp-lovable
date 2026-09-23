@@ -1,15 +1,17 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, KeyRound, Network, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "Sign in — KIDE Systems Engineering";
 const description = "Secure access to your KIDE engineering organization and projects.";
+const OAUTH_PENDING_KEY = "kide:oauth-pending";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -27,7 +29,6 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,14 +39,57 @@ function AuthPage() {
   );
   const [busy, setBusy] = useState(false);
 
-  async function completeAuthentication() {
-    const target = consumePostAuthRedirect();
-    if (target === "/projects") {
-      await navigate({ to: "/projects", replace: true });
+  const completeAuthentication = useCallback(async (showValidationError: boolean) => {
+    const activeSession = await getActiveBrowserSession();
+
+    if (!activeSession) {
+      if (showValidationError) {
+        setMessage("Your sign-in session could not be validated. Please sign in again.");
+      }
+      return false;
+    }
+
+    window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    window.location.replace(consumePostAuthRedirect());
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (
+      !isSupabaseConfigured ||
+      typeof window === "undefined" ||
+      window.sessionStorage.getItem(OAUTH_PENDING_KEY) !== "1"
+    ) {
       return;
     }
-    window.location.replace(target);
-  }
+
+    let active = true;
+
+    const finishOAuth = async () => {
+      if (!active) return;
+      await completeAuthentication(false);
+    };
+
+    void finishOAuth();
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        active &&
+        session &&
+        (event === "INITIAL_SESSION" ||
+          event === "SIGNED_IN" ||
+          event === "TOKEN_REFRESHED" ||
+          event === "USER_UPDATED")
+      ) {
+        void finishOAuth();
+      }
+    });
+
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, [completeAuthentication]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -76,7 +120,7 @@ function AuthPage() {
         return;
       }
 
-      await completeAuthentication();
+      await completeAuthentication(true);
     } finally {
       setBusy(false);
     }
@@ -92,6 +136,7 @@ function AuthPage() {
 
     setBusy(true);
     setMessage("");
+    window.sessionStorage.setItem(OAUTH_PENDING_KEY, "1");
 
     const redirectUri = new URL("/auth", window.location.origin).toString();
 
@@ -102,12 +147,13 @@ function AuthPage() {
       });
 
       if (result.error) {
+        window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
         setMessage(result.error.message);
         return;
       }
 
       if (!result.redirected) {
-        await completeAuthentication();
+        await completeAuthentication(true);
       }
     } finally {
       setBusy(false);
