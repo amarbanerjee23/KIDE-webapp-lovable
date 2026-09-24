@@ -151,7 +151,7 @@ function resolveInterfaceItem(
       node.kind === kind &&
       node.label === name &&
       node.sourcePath === sourcePath &&
-      interfaceNames.includes(String(node.properties.interface ?? "")),
+      interfaceNames.includes(String(node.properties["interface"] ?? "")),
   );
   if (matches.length === 1) return matches[0]?.id ?? null;
   return resolve(builder, kind, name, sourcePath);
