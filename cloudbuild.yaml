@@ -55,29 +55,14 @@ steps:
 
         if secret_version_exists "${_DATABASE_SECRET}"; then
           echo "Database secret version is present."
-
-          if ! secret_version_exists "${_AUTH_SECRET}"; then
-            echo "Better Auth secret is missing; attempting safe bootstrap."
-            if ! gcloud secrets describe "${_AUTH_SECRET}" \
-              --project="${PROJECT_ID}" >/dev/null 2>&1; then
-              gcloud secrets create "${_AUTH_SECRET}" \
-                --project="${PROJECT_ID}" \
-                --replication-policy=automatic >/dev/null 2>&1 || true
-            fi
-
-            if gcloud secrets describe "${_AUTH_SECRET}" \
-              --project="${PROJECT_ID}" >/dev/null 2>&1; then
-              AUTH_SECRET="$$(openssl rand -base64 48 | tr -d '\n')"
-              printf '%s' "$$AUTH_SECRET" | gcloud secrets versions add "${_AUTH_SECRET}" \
-                --project="${PROJECT_ID}" \
-                --data-file=- >/dev/null 2>&1 || true
-              unset AUTH_SECRET
-            fi
-          fi
         else
           echo "NOTICE: Secret ${_DATABASE_SECRET}:latest is not available."
-          echo "KIDE will deploy with authentication disabled instead of failing Cloud Run deployment."
-          echo "Configure PostgreSQL later with deploy/gcp/bootstrap-auth-secrets.sh."
+        fi
+
+        if secret_version_exists "${_AUTH_SECRET}"; then
+          echo "Better Auth secret version is present."
+        else
+          echo "NOTICE: Secret ${_AUTH_SECRET}:latest is not available."
         fi
 
         if secret_version_exists "${_DATABASE_SECRET}" &&
@@ -86,6 +71,8 @@ steps:
           echo "Authentication secrets are ready for Cloud Run."
         else
           echo "NOTICE: Authentication remains unconfigured for this deployment."
+          echo "KIDE will deploy without the missing auth secrets instead of failing."
+          echo "Run deploy/gcp/bootstrap-auth-secrets.sh once a PostgreSQL DATABASE_URL is available."
         fi
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -109,13 +96,13 @@ steps:
 
         if [[ -f /workspace/.kide-auth-secrets-ready ]]; then
           DEPLOY_ARGS+=(
-            "--set-secrets=DATABASE_URL=${_DATABASE_SECRET}:latest,BETTER_AUTH_SECRET=${_AUTH_SECRET}:latest"
-            "--set-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured"
+            "--update-secrets=DATABASE_URL=${_DATABASE_SECRET}:latest,BETTER_AUTH_SECRET=${_AUTH_SECRET}:latest"
+            "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured"
           )
         else
           DEPLOY_ARGS+=(
-            --clear-secrets
-            "--set-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=unconfigured"
+            "--remove-secrets=DATABASE_URL,BETTER_AUTH_SECRET"
+            "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=unconfigured"
           )
         fi
 
