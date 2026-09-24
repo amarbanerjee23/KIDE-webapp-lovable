@@ -13,6 +13,7 @@ export default defineConfig({
         "src/lib/auth/session-policy.ts",
         "src/lib/auth/post-auth-redirect.ts",
         "src/lib/auth/active-session.ts",
+        "src/lib/data-access.server.ts",
         "src/lib/project-working-copy.ts",
         "src/lib/active-project.ts",
         "src/lib/kide/workspace-access.ts",
