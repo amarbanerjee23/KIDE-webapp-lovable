@@ -73,7 +73,6 @@ test("explicit sign-out invalidates server session and protected navigation", as
   await expect(page).toHaveURL("/");
 });
 
-
 test("authenticated user can traverse every protected product surface without page exceptions", async ({
   page,
 }) => {
