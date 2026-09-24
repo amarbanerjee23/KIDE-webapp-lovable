@@ -31,9 +31,7 @@ export const listAllProjects = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<{ organizations: OrgWithProjects[] }> => {
     const { db, userId } = context;
 
-    const organizations = await db<
-      { id: string; name: string; slug: string; role: Role }[]
-    >`
+    const organizations = await db<{ id: string; name: string; slug: string; role: Role }[]>`
       SELECT o.id, o.name, o.slug, r.role
       FROM public.organizations o
       JOIN public.organization_roles r ON r.organization_id = o.id
@@ -241,8 +239,7 @@ export const requestReview = createServerFn({ method: "POST" })
       context.db,
       reviewers
         .filter(
-          (reviewer) =>
-            REVIEW_ROLES.includes(reviewer.role) && reviewer.user_id !== context.userId,
+          (reviewer) => REVIEW_ROLES.includes(reviewer.role) && reviewer.user_id !== context.userId,
         )
         .map((reviewer) => reviewer.user_id),
       project.organization_id,

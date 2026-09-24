@@ -87,12 +87,7 @@ export const getWorkspace = createServerFn({ method: "GET" })
 export const updateProfile = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
   .inputValidator(
-    (input: {
-      displayName: string;
-      jobTitle: string;
-      density: string;
-      theme: string;
-    }) => input,
+    (input: { displayName: string; jobTitle: string; density: string; theme: string }) => input,
   )
   .handler(async ({ data, context }) => {
     await context.db`
@@ -151,11 +146,7 @@ export const getOrganization = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
   .inputValidator((input: { organizationId: string }) => input)
   .handler(async ({ data, context }) => {
-    const myRole = await requireOrganizationAccess(
-      context.db,
-      context.userId,
-      data.organizationId,
-    );
+    const myRole = await requireOrganizationAccess(context.db, context.userId, data.organizationId);
 
     const organizations = await context.db<
       {
@@ -267,12 +258,7 @@ export const inviteMember = createServerFn({ method: "POST" })
       throw new Error("Enter a valid email address.");
     }
 
-    await requireOrganizationAccess(
-      context.db,
-      context.userId,
-      data.organizationId,
-      ADMIN_ROLES,
-    );
+    await requireOrganizationAccess(context.db, context.userId, data.organizationId, ADMIN_ROLES);
 
     const token = randomToken();
     await context.db`
@@ -304,12 +290,7 @@ export const revokeInvitation = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
   .inputValidator((input: { organizationId: string; invitationId: string }) => input)
   .handler(async ({ data, context }) => {
-    await requireOrganizationAccess(
-      context.db,
-      context.userId,
-      data.organizationId,
-      ADMIN_ROLES,
-    );
+    await requireOrganizationAccess(context.db, context.userId, data.organizationId, ADMIN_ROLES);
 
     await context.db`
       UPDATE public.invitations
@@ -332,16 +313,9 @@ export const revokeInvitation = createServerFn({ method: "POST" })
 
 export const changeMemberRole = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
-  .inputValidator(
-    (input: { organizationId: string; memberRoleId: string; role: Role }) => input,
-  )
+  .inputValidator((input: { organizationId: string; memberRoleId: string; role: Role }) => input)
   .handler(async ({ data, context }) => {
-    await requireOrganizationAccess(
-      context.db,
-      context.userId,
-      data.organizationId,
-      ADMIN_ROLES,
-    );
+    await requireOrganizationAccess(context.db, context.userId, data.organizationId, ADMIN_ROLES);
 
     const members = await context.db<{ user_id: string; role: Role }[]>`
       SELECT user_id, role
@@ -379,12 +353,7 @@ export const removeMember = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
   .inputValidator((input: { organizationId: string; memberRoleId: string }) => input)
   .handler(async ({ data, context }) => {
-    await requireOrganizationAccess(
-      context.db,
-      context.userId,
-      data.organizationId,
-      ADMIN_ROLES,
-    );
+    await requireOrganizationAccess(context.db, context.userId, data.organizationId, ADMIN_ROLES);
 
     const members = await context.db<{ role: Role }[]>`
       SELECT role

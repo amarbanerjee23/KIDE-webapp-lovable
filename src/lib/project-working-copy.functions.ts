@@ -15,9 +15,7 @@ export const loadProjectWorkingCopy = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const project = await requireProjectAccess(context.db, context.userId, data.projectId);
 
-    const rows = await context.db<
-      { sources: Record<string, string>; created_at: string | Date }[]
-    >`
+    const rows = await context.db<{ sources: Record<string, string>; created_at: string | Date }[]>`
       SELECT sources, created_at
       FROM public.model_checkpoints
       WHERE project_id = ${data.projectId}::uuid

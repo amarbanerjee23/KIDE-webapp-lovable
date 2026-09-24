@@ -47,12 +47,9 @@ export const getBillingStatus = createServerFn({ method: "GET" })
       organizations: organizations.map((organization) => ({
         ...organization,
         subscription:
-          subscriptions.find(
-            (subscription) => subscription.organization_id === organization.id,
-          ) ?? null,
-        payments: payments.filter(
-          (payment) => payment.organization_id === organization.id,
-        ),
+          subscriptions.find((subscription) => subscription.organization_id === organization.id) ??
+          null,
+        payments: payments.filter((payment) => payment.organization_id === organization.id),
       })),
     };
   });
@@ -80,12 +77,7 @@ export const createCheckout = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }): Promise<CreateCheckoutResult> => {
-    await requireOrganizationAccess(
-      context.db,
-      context.userId,
-      data.organizationId,
-      ADMIN_ROLES,
-    );
+    await requireOrganizationAccess(context.db, context.userId, data.organizationId, ADMIN_ROLES);
 
     const baseUrl = process.env["HYPERSWITCH_BASE_URL"]?.replace(/\/+$/, "");
     const apiKey = process.env["HYPERSWITCH_API_KEY"];

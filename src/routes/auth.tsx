@@ -83,10 +83,7 @@ function AuthPage() {
   }, [readAuthReadiness]);
 
   useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      window.sessionStorage.getItem(OAUTH_PENDING_KEY) !== "1"
-    ) {
+    if (typeof window === "undefined" || window.sessionStorage.getItem(OAUTH_PENDING_KEY) !== "1") {
       return;
     }
 
@@ -245,7 +242,10 @@ function AuthPage() {
             </>
           )}
 
-          <form onSubmit={(event) => void submit(event)} className={readiness?.googleConfigured ? "space-y-4" : "mt-7 space-y-4"}>
+          <form
+            onSubmit={(event) => void submit(event)}
+            className={readiness?.googleConfigured ? "space-y-4" : "mt-7 space-y-4"}
+          >
             <div>
               <Label htmlFor="email">Work email</Label>
               <Input
