@@ -23,7 +23,7 @@
       "cardinality": "SINGLE"
     },
     {
-      "key": "label",
+      "key": "displayName",
       "className": "java.lang.String",
       "cardinality": "SINGLE"
     },
