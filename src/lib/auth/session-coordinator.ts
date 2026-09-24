@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { AUTH_CHANGED_EVENT } from "@/lib/auth-client";
 import { clearActiveProject } from "@/lib/active-project";
 import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
@@ -63,11 +63,6 @@ export function useAuthSessionCoordinator(
     const reconcile = async () => {
       if (!active) return;
 
-      if (!isSupabaseConfigured) {
-        await goHome();
-        return;
-      }
-
       if (requiresActiveSession(pathname)) {
         setState((current) =>
           current.verifiedPath === pathname ? current : { status: "checking", verifiedPath: null },
@@ -85,29 +80,20 @@ export function useAuthSessionCoordinator(
       }
     };
 
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void reconcile();
+    };
+
     void reconcile();
-
-    const { data } = supabase.auth.onAuthStateChange((event, authSession) => {
-      if (!active) return;
-
-      if (event === "SIGNED_OUT" || !authSession) {
-        void goHome();
-        return;
-      }
-
-      if (
-        event === "INITIAL_SESSION" ||
-        event === "SIGNED_IN" ||
-        event === "TOKEN_REFRESHED" ||
-        event === "USER_UPDATED"
-      ) {
-        void reconcile();
-      }
-    });
+    window.addEventListener("focus", reconcile);
+    window.addEventListener(AUTH_CHANGED_EVENT, reconcile);
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       active = false;
-      data.subscription.unsubscribe();
+      window.removeEventListener("focus", reconcile);
+      window.removeEventListener(AUTH_CHANGED_EVENT, reconcile);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [pathname, queryClient, router]);
 

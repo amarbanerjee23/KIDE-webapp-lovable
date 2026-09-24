@@ -5,17 +5,23 @@ import { toast } from "sonner";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { getWorkspace, updateProfile } from "@/lib/teams.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { authClient, notifyAuthChanged } from "@/lib/auth-client";
 
 const title = "KIDE Profile — your account and working preferences";
-const description = "Set your display name, job title, interface density and theme for the KIDE engineering workspace.";
+const description =
+  "Set your display name, job title, interface density and theme for the KIDE engineering workspace.";
 
 export const Route = createFileRoute("/_authenticated/profile")({
-  head: () => ({ meta: [
-    { title }, { name: "description", content: description },
-    { property: "og:title", content: title }, { property: "og:description", content: description },
-    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title },
+      { name: "description", content: description },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: ProfilePage,
 });
 
@@ -41,7 +47,7 @@ function ProfilePage() {
       setTheme(prefs.theme ?? "dark");
       setOrgs(data.organizations.map((org) => ({ id: org.id, name: org.name, role: org.role })));
     })();
-  }, []);
+  }, [load]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -52,10 +58,25 @@ function ProfilePage() {
 
         <div className="mt-6 space-y-4 rounded-md border border-border bg-card p-5">
           <Field label="Display name" value={displayName} onChange={setDisplayName} />
-          <Field label="Job title" value={jobTitle} onChange={setJobTitle} placeholder="Control systems engineer" />
+          <Field
+            label="Job title"
+            value={jobTitle}
+            onChange={setJobTitle}
+            placeholder="Control systems engineer"
+          />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Choice label="Density" value={density} onChange={setDensity} options={["compact", "comfortable"]} />
-            <Choice label="Theme" value={theme} onChange={setTheme} options={["dark", "light", "high-contrast"]} />
+            <Choice
+              label="Density"
+              value={density}
+              onChange={setDensity}
+              options={["compact", "comfortable"]}
+            />
+            <Choice
+              label="Theme"
+              value={theme}
+              onChange={setTheme}
+              options={["dark", "light", "high-contrast"]}
+            />
           </div>
           <Button
             disabled={busy}
@@ -65,7 +86,9 @@ function ProfilePage() {
                 await save({ data: { displayName, jobTitle, density, theme } });
                 toast.success("Profile saved");
               } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Could not save your profile.");
+                toast.error(
+                  error instanceof Error ? error.message : "Could not save your profile.",
+                );
               } finally {
                 setBusy(false);
               }
@@ -76,9 +99,13 @@ function ProfilePage() {
         </div>
 
         <section className="mt-6 rounded-md border border-border bg-card">
-          <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">Your organizations</h2>
+          <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">
+            Your organizations
+          </h2>
           {orgs.length === 0 ? (
-            <p className="px-4 py-4 text-xs text-muted-foreground">You are not in an organization yet.</p>
+            <p className="px-4 py-4 text-xs text-muted-foreground">
+              You are not in an organization yet.
+            </p>
           ) : (
             <ul className="divide-y divide-border">
               {orgs.map((org) => (
@@ -95,7 +122,8 @@ function ProfilePage() {
           variant="outline"
           className="mt-6"
           onClick={async () => {
-            await supabase.auth.signOut();
+            await authClient.signOut();
+            notifyAuthChanged();
             window.location.href = "/";
           }}
         >
@@ -106,12 +134,22 @@ function ProfilePage() {
   );
 }
 
-function Field({ label, value, onChange, placeholder }: {
-  label: string; value: string; onChange: (value: string) => void; placeholder?: string;
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-muted-foreground">{label}</span>
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-muted-foreground">
+        {label}
+      </span>
       <input
         value={value}
         placeholder={placeholder}
@@ -122,18 +160,32 @@ function Field({ label, value, onChange, placeholder }: {
   );
 }
 
-function Choice({ label, value, onChange, options }: {
-  label: string; value: string; onChange: (value: string) => void; options: string[];
+function Choice({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-muted-foreground">{label}</span>
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase text-muted-foreground">
+        {label}
+      </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
       >
-        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
       </select>
     </label>
   );

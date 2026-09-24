@@ -1,11 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
+import { ensureApplicationSchema } from "@/lib/application-schema.server";
+import { getDatabase } from "@/lib/database.server";
 
-/**
- * Receives Hyperswitch payment events. Public route (external caller), so the
- * HMAC-SHA512 signature in x-webhook-signature-512 is verified against the
- * configured webhook secret before anything is read or written.
- */
 export const Route = createFileRoute("/api/public/hyperswitch-webhook")({
   server: {
     handlers: {
@@ -51,64 +48,103 @@ export const Route = createFileRoute("/api/public/hyperswitch-webhook")({
               ? "failed"
               : "processing";
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await ensureApplicationSchema();
+        const db = getDatabase();
 
-        const paymentQuery = supabaseAdmin.from("payments").update({
-          status,
-          updated_at: new Date().toISOString(),
-        });
-        const { data: updated } = kidePaymentId
-          ? await paymentQuery
-              .eq("id", kidePaymentId)
-              .select("id, organization_id, plan, created_by")
-          : await paymentQuery
-              .eq("processor_payment_id", processorPaymentId!)
-              .select("id, organization_id, plan, created_by");
+        const payments = kidePaymentId
+          ? await db<
+              {
+                id: string;
+                organization_id: string;
+                plan: string;
+                created_by: string | null;
+              }[]
+            >`
+              UPDATE public.payments
+              SET status = ${status}, updated_at = now()
+              WHERE id = ${kidePaymentId}::uuid
+              RETURNING id, organization_id, plan, created_by
+            `
+          : await db<
+              {
+                id: string;
+                organization_id: string;
+                plan: string;
+                created_by: string | null;
+              }[]
+            >`
+              UPDATE public.payments
+              SET status = ${status}, updated_at = now()
+              WHERE processor_payment_id = ${processorPaymentId}
+              RETURNING id, organization_id, plan, created_by
+            `;
 
-        const payment = updated?.[0];
+        const payment = payments[0];
 
         if (status === "succeeded" && (payment?.organization_id ?? organizationId)) {
           const orgId = payment?.organization_id ?? organizationId!;
+          const selectedPlan = payment?.plan ?? plan ?? "professional";
           const periodEnd = new Date();
           periodEnd.setMonth(periodEnd.getMonth() + 1);
-          await supabaseAdmin.from("subscriptions").upsert(
-            {
-              organization_id: orgId,
-              plan: payment?.plan ?? plan ?? "professional",
-              status: "active",
-              current_period_end: periodEnd.toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "organization_id" },
-          );
 
-          const { data: admins } = await supabaseAdmin
-            .from("organization_roles")
-            .select("user_id")
-            .eq("organization_id", orgId)
-            .in("role", ["owner", "administrator"]);
-          for (const admin of admins ?? []) {
-            await supabaseAdmin.from("notifications").insert({
-              user_id: admin.user_id,
-              kind: "plan_upgraded",
-              title: `Plan upgraded to ${payment?.plan ?? plan ?? "professional"}`,
-              body: "The subscription is now active. Thank you for supporting KIDE.",
-            });
+          await db`
+            INSERT INTO public.subscriptions (
+              organization_id, plan, status, current_period_end, updated_at
+            )
+            VALUES (
+              ${orgId}::uuid,
+              ${selectedPlan},
+              'active',
+              ${periodEnd.toISOString()}::timestamptz,
+              now()
+            )
+            ON CONFLICT (organization_id) DO UPDATE SET
+              plan = EXCLUDED.plan,
+              status = 'active',
+              current_period_end = EXCLUDED.current_period_end,
+              updated_at = now()
+          `;
+
+          const admins = await db<{ user_id: string }[]>`
+            SELECT user_id
+            FROM public.organization_roles
+            WHERE organization_id = ${orgId}::uuid
+              AND role IN ('owner', 'administrator')
+          `;
+
+          for (const admin of admins) {
+            await db`
+              INSERT INTO public.notifications (
+                user_id, organization_id, kind, title, body
+              )
+              VALUES (
+                ${admin.user_id}::uuid,
+                ${orgId}::uuid,
+                'plan_upgraded',
+                ${`Plan upgraded to ${selectedPlan}`},
+                'The subscription is now active. Thank you for supporting KIDE.'
+              )
+            `;
           }
 
           if (payment?.created_by) {
-            await supabaseAdmin.from("audit_events").insert({
-              organization_id: orgId,
-              actor_id: payment.created_by,
-              action: "billing.plan_upgraded",
-              target_type: "subscription",
-              target_id: payment.id,
-              change_summary: {
-                plan: payment.plan ?? plan,
-                processor: "hyperswitch",
-                processor_payment_id: processorPaymentId,
-              },
-            });
+            await db`
+              INSERT INTO public.audit_events (
+                organization_id, actor_id, action, target_type, target_id, change_summary
+              )
+              VALUES (
+                ${orgId}::uuid,
+                ${payment.created_by}::uuid,
+                'billing.plan_upgraded',
+                'subscription',
+                ${payment.id},
+                ${db.json({
+                  plan: selectedPlan,
+                  processor: "hyperswitch",
+                  processor_payment_id: processorPaymentId,
+                })}
+              )
+            `;
           }
         }
 

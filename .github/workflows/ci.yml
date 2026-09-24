@@ -40,6 +40,17 @@ jobs:
           test ! -e deploy/helm/kide-platform
           test ! -e src/lib/kide/standalone-synthesis.functions.ts
           test ! -e src/lib/kide/standalone-synthesis.server.ts
+          test ! -e src/integrations/supabase
+          ! grep -q '"@supabase/supabase-js"' package.json
+
+          stale_baas_refs="$(
+            git grep -nE '@supabase/supabase-js|integrations/supabase|VITE_SUPABASE_|SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_PUBLISHABLE_KEY|@lovable\.dev/cloud-auth-js' -- src Dockerfile cloudbuild.yaml package.json || true
+          )"
+          if [[ -n "$stale_baas_refs" ]]; then
+            echo "Hosted-BaaS runtime references are forbidden after PR24."
+            printf '%s\n' "$stale_baas_refs"
+            exit 1
+          fi
 
           forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' || true)"
           if [[ -n "$forbidden_runtime" ]]; then
@@ -83,20 +94,12 @@ jobs:
 
       - name: Build production application
         run: bun run build
-        env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: placeholder
-          VITE_SUPABASE_PROJECT_ID: placeholder
 
       - name: Build production container
         shell: bash
         run: |
           set -o pipefail
-          docker build --pull \
-            --build-arg KIDE_SUPABASE_URL=https://placeholder.supabase.co \
-            --build-arg KIDE_SUPABASE_PUBLISHABLE=placeholder \
-            --build-arg KIDE_SUPABASE_PROJECT=placeholder \
-            -t kide-webapp:ci . 2>&1 | tee /tmp/kide-docker-build.log
+          docker build --pull -t kide-webapp:ci . 2>&1 | tee /tmp/kide-docker-build.log
 
           if grep -q "SecretsUsedInArgOrEnv" /tmp/kide-docker-build.log; then
             echo "Docker build emitted a secret-like ARG/ENV warning."

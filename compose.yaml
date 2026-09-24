@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: kide
+      POSTGRES_USER: kide
+      POSTGRES_PASSWORD: kide-local
+    volumes:
+      - kide-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kide -d kide"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kide:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://kide:kide-local@postgres:5432/kide
+      BETTER_AUTH_URL: http://localhost:8080
+      BETTER_AUTH_SECRET: kide-local-development-secret-only-change-for-production
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+
+volumes:
+  kide-postgres-data:

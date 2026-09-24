@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, KeyRound, Network, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+import { authClient, notifyAuthChanged } from "@/lib/auth-client";
+import { getAuthReadiness } from "@/lib/auth.functions";
 import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
@@ -29,15 +30,16 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  const readAuthReadiness = useServerFn(getAuthReadiness);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(
-    isSupabaseConfigured
-      ? ""
-      : "Authentication is unavailable because Supabase environment variables are not configured.",
-  );
+  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [readiness, setReadiness] = useState<{
+    configured: boolean;
+    googleConfigured: boolean;
+  } | null>(null);
 
   const completeAuthentication = useCallback(async (showValidationError: boolean) => {
     const activeSession = await getActiveBrowserSession();
@@ -50,53 +52,50 @@ function AuthPage() {
     }
 
     window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    notifyAuthChanged();
     window.location.replace(consumePostAuthRedirect());
     return true;
   }, []);
 
   useEffect(() => {
-    if (
-      !isSupabaseConfigured ||
-      typeof window === "undefined" ||
-      window.sessionStorage.getItem(OAUTH_PENDING_KEY) !== "1"
-    ) {
-      return;
-    }
-
     let active = true;
 
-    const finishOAuth = async () => {
-      if (!active) return;
-      await completeAuthentication(false);
-    };
-
-    void finishOAuth();
-
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (
-        active &&
-        session &&
-        (event === "INITIAL_SESSION" ||
-          event === "SIGNED_IN" ||
-          event === "TOKEN_REFRESHED" ||
-          event === "USER_UPDATED")
-      ) {
-        void finishOAuth();
-      }
-    });
+    void readAuthReadiness()
+      .then((value) => {
+        if (!active) return;
+        setReadiness(value);
+        if (!value.configured) {
+          setMessage(
+            "Authentication is not configured on this deployment. Configure DATABASE_URL, BETTER_AUTH_URL and BETTER_AUTH_SECRET.",
+          );
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setReadiness({ configured: false, googleConfigured: false });
+          setMessage("Authentication configuration could not be loaded.");
+        }
+      });
 
     return () => {
       active = false;
-      data.subscription.unsubscribe();
     };
+  }, [readAuthReadiness]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.sessionStorage.getItem(OAUTH_PENDING_KEY) !== "1") {
+      return;
+    }
+
+    void completeAuthentication(false);
   }, [completeAuthentication]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
 
-    if (!isSupabaseConfigured) {
+    if (!readiness?.configured) {
       setMessage(
-        "Authentication is unavailable because Supabase environment variables are not configured.",
+        "Authentication is not configured on this deployment. Configure DATABASE_URL, BETTER_AUTH_URL and BETTER_AUTH_SECRET.",
       );
       return;
     }
@@ -105,18 +104,18 @@ function AuthPage() {
     setMessage("");
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const result =
         mode === "signin"
-          ? await supabase.auth.signInWithPassword({ email, password })
-          : await supabase.auth.signUp({ email, password });
+          ? await authClient.signIn.email({ email: normalizedEmail, password })
+          : await authClient.signUp.email({
+              name: normalizedEmail.split("@")[0] || "Engineer",
+              email: normalizedEmail,
+              password,
+            });
 
       if (result.error) {
-        setMessage(result.error.message);
-        return;
-      }
-
-      if (mode === "signup" && !result.data.session) {
-        setMessage("Check your email to confirm your account.");
+        setMessage(result.error.message || "Authentication failed.");
         return;
       }
 
@@ -127,9 +126,11 @@ function AuthPage() {
   }
 
   async function google() {
-    if (!isSupabaseConfigured) {
+    if (!readiness?.configured || !readiness.googleConfigured) {
       setMessage(
-        "Authentication is unavailable because Supabase environment variables are not configured.",
+        readiness?.configured
+          ? "Google sign-in is not configured. Use email and password, or configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
+          : "Authentication is not configured on this deployment.",
       );
       return;
     }
@@ -138,27 +139,22 @@ function AuthPage() {
     setMessage("");
     window.sessionStorage.setItem(OAUTH_PENDING_KEY, "1");
 
-    const redirectUri = new URL("/auth", window.location.origin).toString();
-
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: redirectUri,
-        extraParams: { prompt: "select_account" },
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/auth",
       });
 
       if (result.error) {
         window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
-        setMessage(result.error.message);
-        return;
-      }
-
-      if (!result.redirected) {
-        await completeAuthentication(true);
+        setMessage(result.error.message || "Google sign-in failed.");
       }
     } finally {
       setBusy(false);
     }
   }
+
+  const authReady = readiness?.configured === true;
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
@@ -216,33 +212,40 @@ function AuthPage() {
               : "Start a governed KIDE workspace for your team."}
           </p>
 
-          {!isSupabaseConfigured && (
+          {readiness && !readiness.configured && (
             <div
               role="alert"
               className="mt-5 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
             >
-              Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
-              (or VITE_SUPABASE_ANON_KEY), then restart the application.
+              This deployment needs DATABASE_URL, BETTER_AUTH_URL and a 32+ character
+              BETTER_AUTH_SECRET. No Supabase account or key is required.
             </div>
           )}
 
-          <Button
-            variant="outline"
-            className="mt-7 w-full"
-            onClick={() => void google()}
-            disabled={busy || !isSupabaseConfigured}
+          {readiness?.googleConfigured && (
+            <>
+              <Button
+                variant="outline"
+                className="mt-7 w-full"
+                onClick={() => void google()}
+                disabled={busy || !authReady}
+              >
+                <span className="font-semibold">G</span>
+                Continue with Google
+              </Button>
+
+              <div className="my-5 flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                OR USE EMAIL
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          )}
+
+          <form
+            onSubmit={(event) => void submit(event)}
+            className={readiness?.googleConfigured ? "space-y-4" : "mt-7 space-y-4"}
           >
-            <span className="font-semibold">G</span>
-            Continue with Google
-          </Button>
-
-          <div className="my-5 flex items-center gap-3 text-[10px] text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            OR USE EMAIL
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <form onSubmit={(event) => void submit(event)} className="space-y-4">
             <div>
               <Label htmlFor="email">Work email</Label>
               <Input
@@ -251,7 +254,7 @@ function AuthPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                disabled={!isSupabaseConfigured}
+                disabled={!authReady}
                 className="mt-1.5"
                 placeholder="engineer@company.com"
               />
@@ -260,7 +263,7 @@ function AuthPage() {
               <div className="flex justify-between">
                 <Label htmlFor="password">Password</Label>
                 {mode === "signin" && (
-                  <span className="text-xs text-primary">Forgot password?</span>
+                  <span className="text-xs text-muted-foreground">Self-hosted account</span>
                 )}
               </div>
               <Input
@@ -270,7 +273,7 @@ function AuthPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
-                disabled={!isSupabaseConfigured}
+                disabled={!authReady}
                 className="mt-1.5"
               />
             </div>
@@ -282,7 +285,7 @@ function AuthPage() {
                 {message}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={busy || !isSupabaseConfigured}>
+            <Button type="submit" className="w-full" disabled={busy || !authReady}>
               {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
@@ -291,8 +294,8 @@ function AuthPage() {
             {mode === "signin" ? "New to KIDE?" : "Already have an account?"}{" "}
             <button
               type="button"
-              className="font-medium text-primary"
-              disabled={!isSupabaseConfigured}
+              className="font-medium text-primary disabled:opacity-50"
+              disabled={!authReady}
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             >
               {mode === "signin" ? "Create account" : "Sign in"}
