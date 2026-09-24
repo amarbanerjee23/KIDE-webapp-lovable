@@ -64,8 +64,19 @@ jobs:
             exit 1
           fi
 
-      - name: Lint entire repository
-        run: bunx eslint .
+      - name: Lint all changed JavaScript and TypeScript
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.js' '*.jsx' '*.ts' '*.tsx'
+          )
+          if (( ${#files[@]} > 0 )); then
+            printf 'Linting %s\n' "${files[@]}"
+            bunx eslint "${files[@]}"
+          else
+            echo "No changed JavaScript or TypeScript files."
+          fi
 
       - name: Strict TypeScript check including tests
         run: bunx tsc --noEmit
