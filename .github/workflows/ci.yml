@@ -161,7 +161,7 @@ jobs:
             -H 'content-type: application/json' \
             --data '{"gremlin":"g.addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:device\u0027).as(\u0027d\u0027).addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:capability\u0027).as(\u0027c\u0027).addE(\u0027semanticRelation\u0027).from(\u0027d\u0027).property(\u0027kind\u0027,\u0027hasCapability\u0027).iterate(); g.E().has(\u0027kind\u0027,\u0027hasCapability\u0027).count()"}' \
             http://127.0.0.1:8182)"
-          printf '%s' "$response" | grep -Eq '"data"[[:space:]]*:[[:space:]]*\[[1-9][0-9]*\]' || {
+          printf '%s' "$response" | grep -Eq '"@type":"g:Int64","@value":[1-9][0-9]*' || {
             echo "JanusGraph write/traversal contract did not produce the expected relationship."
             printf '%s\n' "$response"
             exit 1
