@@ -1,6 +1,5 @@
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
-import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { Pool } from "pg";
 import { databaseUrl } from "@/lib/database.server";
 
@@ -35,7 +34,10 @@ function createAuth() {
         generateId: "uuid" as const,
       },
     },
-    plugins: [tanstackStartCookies()],
+    // Browser sign-in/sign-up uses authClient -> /api/auth/* -> auth.handler.
+    // The raw Better Auth response already carries Set-Cookie headers. Avoid
+    // the TanStack server-action cookie plugin here: KIDE does not call
+    // cookie-setting auth.api methods from server actions.
   });
 }
 

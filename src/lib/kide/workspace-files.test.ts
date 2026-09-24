@@ -9,12 +9,20 @@ import {
 describe("browser workspace file lifecycle", () => {
   it("normalizes nested model paths and appends the selected extension", () => {
     expect(normalizeWorkspaceFilePath(" controls/main ", "mncspec")).toBe("controls/main.mncspec");
+    expect(normalizeWorkspaceFilePath("\\controls\\main", "dml")).toBe("controls/main.dml");
+    expect(normalizeWorkspaceFilePath("///controls//main", "cap")).toBe("controls/main.cap");
+    expect(normalizeWorkspaceFilePath("MODEL.DML", "dml")).toBe("MODEL.DML");
   });
 
   it("rejects traversal, unsupported characters and language-extension mismatches", () => {
+    expect(() => normalizeWorkspaceFilePath("", "dml")).toThrow("Enter a model file name");
     expect(() => normalizeWorkspaceFilePath("../secret", "dml")).toThrow("invalid segment");
+    expect(() => normalizeWorkspaceFilePath("a/./b", "dml")).toThrow("invalid segment");
+    expect(() => normalizeWorkspaceFilePath("a/../b", "dml")).toThrow("invalid segment");
     expect(() => normalizeWorkspaceFilePath("bad name", "dml")).toThrow("letters, numbers");
+    expect(() => normalizeWorkspaceFilePath("bad:name", "dml")).toThrow("letters, numbers");
     expect(() => normalizeWorkspaceFilePath("model.cap", "dml")).toThrow("does not match");
+    expect(() => normalizeWorkspaceFilePath(`${"a".repeat(513)}`, "dml")).toThrow("too long");
   });
 
   it("detects duplicate paths case-insensitively", () => {
@@ -31,6 +39,16 @@ describe("browser workspace file lifecycle", () => {
         "models/Plant.dml",
       ),
     ).not.toThrow();
+  });
+
+  it("still rejects collisions with another file while renaming", () => {
+    expect(() =>
+      assertWorkspacePathAvailable(
+        { "models/Plant.dml": "", "models/Other.dml": "" },
+        "models/other.dml",
+        "models/Plant.dml",
+      ),
+    ).toThrow("already exists");
   });
 
   it("creates deterministic starter source for each DSL kind", () => {
