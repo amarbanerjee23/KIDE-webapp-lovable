@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -21,7 +21,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -37,13 +38,29 @@ jobs:
             bun install --frozen-lockfile
           fi
 
-      - name: Capture PR24 lockfile
+      - name: Normalize PR24 dependency and formatting state
         if: github.head_ref == 'auth/pr24-better-auth-postgres'
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr24-bun-lock
-          path: bun.lock
-          if-no-files-found: error
+        shell: bash
+        run: |
+          mapfile -t format_files < <(
+            git diff --name-only --diff-filter=ACMR origin/main...HEAD -- \
+              '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.md' '*.yaml' '*.yml'
+          )
+          if (( ${#format_files[@]} > 0 )); then
+            bunx prettier --write "${format_files[@]}"
+          fi
+
+          git add bun.lock
+          if (( ${#format_files[@]} > 0 )); then
+            git add "${format_files[@]}"
+          fi
+
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore(pr24): refresh lockfile and formatting"
+            git push origin "HEAD:${GITHUB_HEAD_REF}"
+          fi
 
       - name: Enforce client-compute architecture
         shell: bash
