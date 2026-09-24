@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { Pool } from "pg";
 import { databaseUrl } from "@/lib/database.server";
+import type { AuthReadiness } from "@/lib/auth/readiness";
 
 const LOCAL_AUTH_URL = "http://localhost:3000";
 const LOCAL_AUTH_SECRET = "kide-local-development-secret-change-before-production-2026";
@@ -60,19 +61,37 @@ function authSecret(): string {
   throw new Error("BETTER_AUTH_SECRET must be at least 32 characters in production.");
 }
 
-export function authReadiness() {
+export function authReadiness(): AuthReadiness {
   const production = process.env["NODE_ENV"] === "production";
-  const databaseConfigured = Boolean(process.env["DATABASE_URL"]?.trim()) || !production;
-  const urlConfigured = Boolean(process.env["BETTER_AUTH_URL"]?.trim()) || !production;
-  const secretConfigured =
-    (process.env["BETTER_AUTH_SECRET"]?.trim().length ?? 0) >= 32 || !production;
+  const databasePresent = Boolean(process.env["DATABASE_URL"]?.trim());
+  const authUrlPresent = Boolean(process.env["BETTER_AUTH_URL"]?.trim());
+  const secretValue = process.env["BETTER_AUTH_SECRET"]?.trim() ?? "";
+  const secretPresent = secretValue.length > 0;
+  const secretValid = secretValue.length >= 32;
+
+  const requirements: AuthReadiness["requirements"] = production
+    ? {
+        databaseUrl: databasePresent ? "ready" : "missing",
+        betterAuthUrl: authUrlPresent ? "ready" : "missing",
+        betterAuthSecret: !secretPresent ? "missing" : secretValid ? "ready" : "too_short",
+      }
+    : {
+        databaseUrl: "ready",
+        betterAuthUrl: "ready",
+        betterAuthSecret: "ready",
+      };
+
   const googleConfigured = Boolean(
     process.env["GOOGLE_CLIENT_ID"]?.trim() && process.env["GOOGLE_CLIENT_SECRET"]?.trim(),
   );
 
   return {
-    configured: databaseConfigured && urlConfigured && secretConfigured,
+    configured:
+      requirements.databaseUrl === "ready" &&
+      requirements.betterAuthUrl === "ready" &&
+      requirements.betterAuthSecret === "ready",
     googleConfigured,
+    requirements,
   };
 }
 
