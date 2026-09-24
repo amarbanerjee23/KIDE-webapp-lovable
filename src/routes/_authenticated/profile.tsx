@@ -47,7 +47,7 @@ function ProfilePage() {
       setTheme(prefs.theme ?? "dark");
       setOrgs(data.organizations.map((org) => ({ id: org.id, name: org.name, role: org.role })));
     })();
-  }, []);
+  }, [load]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
