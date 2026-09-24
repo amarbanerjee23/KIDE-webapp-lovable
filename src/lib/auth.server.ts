@@ -7,7 +7,39 @@ import { databaseUrl } from "@/lib/database.server";
 const LOCAL_AUTH_URL = "http://localhost:3000";
 const LOCAL_AUTH_SECRET = "kide-local-development-secret-change-before-production-2026";
 
-type KideAuth = ReturnType<typeof betterAuth>;
+function createAuth() {
+  const googleClientId = process.env["GOOGLE_CLIENT_ID"]?.trim();
+  const googleClientSecret = process.env["GOOGLE_CLIENT_SECRET"]?.trim();
+
+  return betterAuth({
+    appName: "KIDE",
+    baseURL: authUrl(),
+    secret: authSecret(),
+    database: new Pool({ connectionString: databaseUrl() }),
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 8,
+    },
+    socialProviders:
+      googleClientId && googleClientSecret
+        ? {
+            google: {
+              clientId: googleClientId,
+              clientSecret: googleClientSecret,
+              prompt: "select_account" as const,
+            },
+          }
+        : undefined,
+    advanced: {
+      database: {
+        generateId: "uuid" as const,
+      },
+    },
+    plugins: [tanstackStartCookies()],
+  });
+}
+
+type KideAuth = ReturnType<typeof createAuth>;
 
 let authInstance: KideAuth | undefined;
 let authMigration: Promise<void> | undefined;
@@ -43,38 +75,7 @@ export function authReadiness() {
 }
 
 export function getAuth(): KideAuth {
-  if (authInstance) return authInstance;
-
-  const googleClientId = process.env["GOOGLE_CLIENT_ID"]?.trim();
-  const googleClientSecret = process.env["GOOGLE_CLIENT_SECRET"]?.trim();
-
-  authInstance = betterAuth({
-    appName: "KIDE",
-    baseURL: authUrl(),
-    secret: authSecret(),
-    database: new Pool({ connectionString: databaseUrl() }),
-    emailAndPassword: {
-      enabled: true,
-      minPasswordLength: 8,
-    },
-    socialProviders:
-      googleClientId && googleClientSecret
-        ? {
-            google: {
-              clientId: googleClientId,
-              clientSecret: googleClientSecret,
-              prompt: "select_account",
-            },
-          }
-        : undefined,
-    advanced: {
-      database: {
-        generateId: "uuid",
-      },
-    },
-    plugins: [tanstackStartCookies()],
-  });
-
+  authInstance ??= createAuth();
   return authInstance;
 }
 
