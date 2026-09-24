@@ -71,8 +71,9 @@ function addNode(
   label: string,
   sourcePath: string,
   properties: Record<string, string | number | boolean | string[]> = {},
+  identity = label,
 ): string {
-  const id = nodeId(builder.projectId, kind, sourcePath, label);
+  const id = nodeId(builder.projectId, kind, sourcePath, identity);
   if (!builder.nodes.some((node) => node.id === id)) {
     builder.nodes.push({
       id,
@@ -109,6 +110,16 @@ function addEdge(
   });
 }
 
+function scopedNode(
+  builder: Builder,
+  kind: KnowledgeNodeKind,
+  sourcePath: string,
+  identity: string,
+): string | null {
+  const id = nodeId(builder.projectId, kind, sourcePath, identity);
+  return builder.nodes.some((node) => node.id === id) ? id : null;
+}
+
 function resolve(
   builder: Builder,
   kind: KnowledgeNodeKind,
@@ -126,6 +137,24 @@ function resolve(
     });
   }
   return null;
+}
+
+function resolveInterfaceItem(
+  builder: Builder,
+  kind: "Command" | "Event" | "Alarm" | "DataPoint" | "Response" | "OperatingState",
+  name: string,
+  interfaceNames: string[],
+  sourcePath: string,
+): string | null {
+  const matches = builder.nodes.filter(
+    (node) =>
+      node.kind === kind &&
+      node.label === name &&
+      node.sourcePath === sourcePath &&
+      interfaceNames.includes(String(node.properties.interface ?? "")),
+  );
+  if (matches.length === 1) return matches[0]?.id ?? null;
+  return resolve(builder, kind, name, sourcePath);
 }
 
 function projectRoot(projectId: string): KnowledgeNode {
@@ -150,7 +179,14 @@ function firstPass(builder: Builder, workspace: Workspace) {
           package: ast.name ?? "",
         });
         for (const parameter of model.primitives) {
-          addNode(builder, "Parameter", parameter.name, file.path, parameterProperties(parameter));
+          addNode(
+            builder,
+            "Parameter",
+            parameter.name,
+            file.path,
+            parameterProperties(parameter),
+            `${model.name}/${parameter.name}`,
+          );
         }
       }
     }
@@ -161,7 +197,14 @@ function firstPass(builder: Builder, workspace: Workspace) {
           executableScript: operation.executableScript ?? "",
         });
         for (const parameter of operation.inputParameters) {
-          addNode(builder, "Parameter", parameter.name, file.path, parameterProperties(parameter));
+          addNode(
+            builder,
+            "Parameter",
+            parameter.name,
+            file.path,
+            parameterProperties(parameter),
+            `${operation.name}/${parameter.name}`,
+          );
         }
         if (operation.outputParameter) {
           addNode(
@@ -170,6 +213,7 @@ function firstPass(builder: Builder, workspace: Workspace) {
             operation.outputParameter.name,
             file.path,
             parameterProperties(operation.outputParameter),
+            `${operation.name}/${operation.outputParameter.name}`,
           );
         }
       }
@@ -179,38 +223,97 @@ function firstPass(builder: Builder, workspace: Workspace) {
       const model = ast as MncModelNode;
       addNode(builder, "ControlModel", model.name, file.path, { imports: model.imports });
       for (const iface of model.interfaces) {
-        addNode(builder, "Interface", iface.name, file.path, {
-          ipaddress: iface.ipaddress ?? "",
-          port: iface.port?.value ?? 0,
-          uses: iface.uses,
-        });
+        addNode(
+          builder,
+          "Interface",
+          iface.name,
+          file.path,
+          {
+            controlModel: model.name,
+            ipaddress: iface.ipaddress ?? "",
+            port: iface.port?.value ?? 0,
+            uses: iface.uses,
+          },
+          `${model.name}/${iface.name}`,
+        );
         for (const command of iface.commands) {
-          addNode(builder, "Command", command.name, file.path, { asynchronous: command.asynch });
+          addNode(
+            builder,
+            "Command",
+            command.name,
+            file.path,
+            { asynchronous: command.asynch, interface: iface.name },
+            `${model.name}/${iface.name}/${command.name}`,
+          );
         }
         for (const event of iface.events) {
-          addNode(builder, "Event", event.name, file.path, { publish: event.publish });
+          addNode(
+            builder,
+            "Event",
+            event.name,
+            file.path,
+            { publish: event.publish, interface: iface.name },
+            `${model.name}/${iface.name}/${event.name}`,
+          );
         }
         for (const alarm of iface.alarms) {
-          addNode(builder, "Alarm", alarm.name, file.path, {
-            publish: alarm.publish,
-            level: alarm.level ?? 0,
-          });
+          addNode(
+            builder,
+            "Alarm",
+            alarm.name,
+            file.path,
+            {
+              publish: alarm.publish,
+              level: alarm.level ?? 0,
+              interface: iface.name,
+            },
+            `${model.name}/${iface.name}/${alarm.name}`,
+          );
         }
         for (const dataPoint of iface.dataPoints) {
-          addNode(builder, "DataPoint", dataPoint.name, file.path, {
-            publish: dataPoint.publish,
-            valueType: dataPoint.type ?? "",
-          });
+          addNode(
+            builder,
+            "DataPoint",
+            dataPoint.name,
+            file.path,
+            {
+              publish: dataPoint.publish,
+              valueType: dataPoint.type ?? "",
+              interface: iface.name,
+            },
+            `${model.name}/${iface.name}/${dataPoint.name}`,
+          );
         }
         for (const response of iface.responses) {
-          addNode(builder, "Response", response.name, file.path);
+          addNode(
+            builder,
+            "Response",
+            response.name,
+            file.path,
+            { interface: iface.name },
+            `${model.name}/${iface.name}/${response.name}`,
+          );
         }
         for (const state of iface.operatingStates?.operatingStates ?? []) {
-          addNode(builder, "OperatingState", state.name, file.path);
+          addNode(
+            builder,
+            "OperatingState",
+            state.name,
+            file.path,
+            { interface: iface.name },
+            `${model.name}/${iface.name}/${state.name}`,
+          );
         }
       }
       for (const controlNode of model.controlNodes) {
-        addNode(builder, "ControlNode", controlNode.name, file.path);
+        addNode(
+          builder,
+          "ControlNode",
+          controlNode.name,
+          file.path,
+          { controlModel: model.name },
+          `${model.name}/${controlNode.name}`,
+        );
       }
     }
 
@@ -246,11 +349,18 @@ function firstPass(builder: Builder, workspace: Workspace) {
           dataObjects: diagram.dataObjects,
         });
         for (const activity of diagram.activities) {
-          addNode(builder, "Activity", activity.name, file.path, {
-            description: activity.description ?? "",
-            time: activity.time ?? 0,
-            unit: activity.unit ?? "",
-          });
+          addNode(
+            builder,
+            "Activity",
+            activity.name,
+            file.path,
+            {
+              description: activity.description ?? "",
+              time: activity.time ?? 0,
+              unit: activity.unit ?? "",
+            },
+            `${diagram.name}/${activity.name}`,
+          );
           if (diagram.physicalContext.length > 0 || diagram.contextDataModel.length > 0) {
             addNode(builder, "Context", `${diagram.name}:${activity.name}:context`, file.path, {
               physicalContext: diagram.physicalContext,
@@ -276,7 +386,12 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
         if (!modelId) continue;
         addEdge(builder, "containsDataModel", root, modelId);
         for (const parameter of model.primitives) {
-          const parameterId = resolve(builder, "Parameter", parameter.name, file.path);
+          const parameterId = scopedNode(
+            builder,
+            "Parameter",
+            file.path,
+            `${model.name}/${parameter.name}`,
+          );
           if (parameterId) addEdge(builder, "hasParameter", modelId, parameterId, model.name);
         }
       }
@@ -288,15 +403,20 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
         if (!operationId) continue;
         addEdge(builder, "containsOperation", root, operationId);
         for (const parameter of operation.inputParameters) {
-          const parameterId = resolve(builder, "Parameter", parameter.name, file.path);
+          const parameterId = scopedNode(
+            builder,
+            "Parameter",
+            file.path,
+            `${operation.name}/${parameter.name}`,
+          );
           if (parameterId) addEdge(builder, "hasParameter", operationId, parameterId, "input");
         }
         if (operation.outputParameter) {
-          const parameterId = resolve(
+          const parameterId = scopedNode(
             builder,
             "Parameter",
-            operation.outputParameter.name,
             file.path,
+            `${operation.name}/${operation.outputParameter.name}`,
           );
           if (parameterId) addEdge(builder, "hasParameter", operationId, parameterId, "output");
         }
@@ -310,7 +430,12 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
       addEdge(builder, "containsControlModel", root, modelId);
 
       for (const iface of model.interfaces) {
-        const ifaceId = resolve(builder, "Interface", iface.name, file.path);
+        const ifaceId = scopedNode(
+          builder,
+          "Interface",
+          file.path,
+          `${model.name}/${iface.name}`,
+        );
         if (!ifaceId) continue;
         addEdge(builder, "hasInterface", modelId, ifaceId);
 
@@ -323,15 +448,30 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
           ["OperatingState", iface.operatingStates?.operatingStates ?? [], "hasOperatingState"],
         ] as const) {
           for (const entry of entries) {
-            const itemId = resolve(builder, kind, entry.name, file.path);
+            const itemId = scopedNode(
+              builder,
+              kind,
+              file.path,
+              `${model.name}/${iface.name}/${entry.name}`,
+            );
             if (itemId) addEdge(builder, relation, ifaceId, itemId, iface.name);
           }
         }
       }
 
       for (const controlNode of model.controlNodes) {
-        const controlId = resolve(builder, "ControlNode", controlNode.name, file.path);
-        const ifaceId = resolve(builder, "Interface", controlNode.interfaceDescription, file.path);
+        const controlId = scopedNode(
+          builder,
+          "ControlNode",
+          file.path,
+          `${model.name}/${controlNode.name}`,
+        );
+        const ifaceId = scopedNode(
+          builder,
+          "Interface",
+          file.path,
+          `${model.name}/${controlNode.interfaceDescription}`,
+        );
         if (controlId) addEdge(builder, "hasControlNode", modelId, controlId);
         if (controlId && ifaceId) addEdge(builder, "bindsInterface", controlId, ifaceId);
       }
@@ -360,7 +500,13 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
             ["DataPoint", controls.dataPoints],
           ] as const) {
             for (const name of names) {
-              const itemId = resolve(builder, kind, name, file.path);
+              const itemId = resolveInterfaceItem(
+                builder,
+                kind,
+                name,
+                capability.componentInterface,
+                file.path,
+              );
               if (itemId) addEdge(builder, "realizesInterfaceItem", behaviorId, itemId, name);
             }
           }
@@ -396,7 +542,12 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
         }
 
         for (const activity of diagram.activities) {
-          const activityId = resolve(builder, "Activity", activity.name, file.path);
+          const activityId = scopedNode(
+            builder,
+            "Activity",
+            file.path,
+            `${diagram.name}/${activity.name}`,
+          );
           if (!activityId) continue;
           addEdge(builder, "hasActivities", workflowId, activityId);
 
@@ -421,7 +572,12 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
           }
 
           if (activity.nextActivity) {
-            const targetId = resolve(builder, "Activity", activity.nextActivity, file.path);
+            const targetId = scopedNode(
+              builder,
+              "Activity",
+              file.path,
+              `${diagram.name}/${activity.nextActivity}`,
+            );
             if (targetId) addEdge(builder, "nextActivity", activityId, targetId);
           }
         }
