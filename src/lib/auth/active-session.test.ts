@@ -1,36 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const auth = vi.hoisted(() => ({
-  getSession: vi.fn(),
-  getUser: vi.fn(),
-  signOut: vi.fn(),
-}));
+const getSession = vi.hoisted(() => vi.fn());
 
-vi.mock("@/integrations/supabase/client", () => ({
-  isSupabaseConfigured: true,
-  supabase: { auth },
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { getSession },
 }));
 
 import { getActiveBrowserSession } from "./active-session";
 
 describe("active browser session validation", () => {
   beforeEach(() => {
-    auth.getSession.mockReset();
-    auth.getUser.mockReset();
-    auth.signOut.mockReset();
-    auth.signOut.mockResolvedValue({ error: null });
+    getSession.mockReset();
   });
 
-  it("accepts a cached session only when Supabase validates the same user", async () => {
-    const session = { user: { id: "user-1" } };
-    const user = { id: "user-1" };
+  it("returns a Better Auth session and user when the server validates the cookie", async () => {
+    const session = { id: "session-1", userId: "user-1" };
+    const user = { id: "user-1", email: "engineer@example.com" };
 
-    auth.getSession.mockResolvedValue({
-      data: { session },
-      error: null,
-    });
-    auth.getUser.mockResolvedValue({
-      data: { user },
+    getSession.mockResolvedValue({
+      data: { session, user },
       error: null,
     });
 
@@ -38,44 +26,23 @@ describe("active browser session validation", () => {
 
     expect(result?.session).toBe(session);
     expect(result?.user).toBe(user);
-    expect(auth.signOut).not.toHaveBeenCalled();
   });
 
-  it("rejects an empty cached session without attempting protected access", async () => {
-    auth.getSession.mockResolvedValue({
-      data: { session: null },
+  it("rejects an empty session", async () => {
+    getSession.mockResolvedValue({
+      data: null,
       error: null,
     });
 
     await expect(getActiveBrowserSession()).resolves.toBeNull();
-    expect(auth.getUser).not.toHaveBeenCalled();
   });
 
-  it("rejects and clears a stale cached session when current-user validation fails", async () => {
-    auth.getSession.mockResolvedValue({
-      data: { session: { user: { id: "user-1" } } },
-      error: null,
-    });
-    auth.getUser.mockResolvedValue({
-      data: { user: null },
-      error: { message: "invalid token" },
+  it("rejects a failed session lookup", async () => {
+    getSession.mockResolvedValue({
+      data: null,
+      error: { message: "invalid session" },
     });
 
     await expect(getActiveBrowserSession()).resolves.toBeNull();
-    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
-  });
-
-  it("rejects a session whose validated user does not match the cached session", async () => {
-    auth.getSession.mockResolvedValue({
-      data: { session: { user: { id: "user-1" } } },
-      error: null,
-    });
-    auth.getUser.mockResolvedValue({
-      data: { user: { id: "user-2" } },
-      error: null,
-    });
-
-    await expect(getActiveBrowserSession()).resolves.toBeNull();
-    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });
