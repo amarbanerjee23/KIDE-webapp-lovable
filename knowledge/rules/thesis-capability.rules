@@ -1,0 +1,16 @@
+# Jena-compatible rule representation of the thesis capability inference rule.
+# Device(?d) ^ CapabilityInvocation(?ci) ^ Capability(?c) ^
+# invokesCapability(?d, ?ci) ^ offersCapability(?ci, ?c) -> hasCapability(?d, ?c)
+
+@prefix kide: <https://kide.dev/ontology/capability#>
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+[inferDeviceCapability:
+  (?d rdf:type kide:Device)
+  (?ci rdf:type kide:CapabilityInvocation)
+  (?c rdf:type kide:Capability)
+  (?d kide:invokesCapability ?ci)
+  (?ci kide:offersCapability ?c)
+  ->
+  (?d kide:hasCapability ?c)
+]

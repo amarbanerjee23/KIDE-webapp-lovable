@@ -1,0 +1,181 @@
+@prefix kide: <https://kide.dev/ontology/capability#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://kide.dev/ontology/capability> a owl:Ontology ;
+  rdfs:label "KIDE Capability Ontology" ;
+  rdfs:comment "Operational form of the thesis capability ontology. A capability is treated as a contract over Interface, Behavior, Context, Preconditions and Postconditions." .
+
+# Thesis ontology classes.
+kide:Action a owl:Class .
+kide:Activity a owl:Class .
+kide:Device a owl:Class .
+kide:Capability a owl:Class .
+kide:Interface a owl:Class .
+kide:SessionType a owl:Class .
+kide:Workflow a owl:Class .
+kide:Behavior a owl:Class .
+kide:Interaction a owl:Class .
+kide:CapabilityInvocation a owl:Class .
+
+# KIDE engineering extensions used to bind the five DSL families to the ontology.
+kide:Project a owl:Class .
+kide:DataModel a owl:Class .
+kide:Parameter a owl:Class .
+kide:Operation a owl:Class .
+kide:ControlModel a owl:Class .
+kide:ControlNode a owl:Class .
+kide:Command a owl:Class .
+kide:Response a owl:Class .
+kide:Event a owl:Class .
+kide:Alarm a owl:Class .
+kide:DataPoint a owl:Class .
+kide:OperatingState a owl:Class .
+kide:Precondition a owl:Class .
+kide:Postcondition a owl:Class .
+kide:Context a owl:Class .
+
+# Thesis object properties.
+kide:fulfilledBy a owl:ObjectProperty ;
+  rdfs:domain kide:Capability ;
+  rdfs:range kide:Device .
+
+kide:hasActivities a owl:ObjectProperty ;
+  rdfs:domain kide:Workflow ;
+  rdfs:range kide:Activity .
+
+kide:hasCapability a owl:ObjectProperty ;
+  rdfs:domain kide:Device ;
+  rdfs:range kide:Capability .
+
+kide:hasInteractions a owl:ObjectProperty ;
+  rdfs:domain kide:SessionType ;
+  rdfs:range kide:Interaction .
+
+kide:hasInterface a owl:ObjectProperty ;
+  rdfs:range kide:Interface .
+
+kide:implementsSession a owl:ObjectProperty ;
+  rdfs:domain kide:Device ;
+  rdfs:range kide:SessionType .
+
+kide:requiredCapability a owl:ObjectProperty ;
+  rdfs:domain kide:Activity ;
+  rdfs:range kide:Capability .
+
+# Capability 5-tuple.
+kide:hasBehavior a owl:ObjectProperty ;
+  rdfs:domain kide:Capability ;
+  rdfs:range kide:Behavior .
+
+kide:hasContext a owl:ObjectProperty ;
+  rdfs:domain kide:Capability ;
+  rdfs:range kide:Context .
+
+kide:hasPrecondition a owl:ObjectProperty ;
+  rdfs:domain kide:Capability ;
+  rdfs:range kide:Precondition .
+
+kide:hasPostcondition a owl:ObjectProperty ;
+  rdfs:domain kide:Capability ;
+  rdfs:range kide:Postcondition .
+
+# KIDE model binding properties.
+kide:containsDataModel a owl:ObjectProperty ;
+  rdfs:domain kide:Project ;
+  rdfs:range kide:DataModel .
+
+kide:containsControlModel a owl:ObjectProperty ;
+  rdfs:domain kide:Project ;
+  rdfs:range kide:ControlModel .
+
+kide:containsWorkflow a owl:ObjectProperty ;
+  rdfs:domain kide:Project ;
+  rdfs:range kide:Workflow .
+
+kide:containsCapability a owl:ObjectProperty ;
+  rdfs:domain kide:Project ;
+  rdfs:range kide:Capability .
+
+kide:containsOperation a owl:ObjectProperty ;
+  rdfs:domain kide:Project ;
+  rdfs:range kide:Operation .
+
+kide:hasParameter a owl:ObjectProperty ;
+  rdfs:range kide:Parameter .
+
+kide:hasControlNode a owl:ObjectProperty ;
+  rdfs:domain kide:ControlModel ;
+  rdfs:range kide:ControlNode .
+
+kide:bindsInterface a owl:ObjectProperty ;
+  rdfs:range kide:Interface .
+
+kide:exposesCommand a owl:ObjectProperty ;
+  rdfs:domain kide:Interface ;
+  rdfs:range kide:Command .
+
+kide:emitsEvent a owl:ObjectProperty ;
+  rdfs:domain kide:Interface ;
+  rdfs:range kide:Event .
+
+kide:raisesAlarm a owl:ObjectProperty ;
+  rdfs:domain kide:Interface ;
+  rdfs:range kide:Alarm .
+
+kide:exposesDataPoint a owl:ObjectProperty ;
+  rdfs:domain kide:Interface ;
+  rdfs:range kide:DataPoint .
+
+kide:returnsResponse a owl:ObjectProperty ;
+  rdfs:domain kide:Interface ;
+  rdfs:range kide:Response .
+
+kide:hasOperatingState a owl:ObjectProperty ;
+  rdfs:domain kide:Interface ;
+  rdfs:range kide:OperatingState .
+
+kide:realizesInterfaceItem a owl:ObjectProperty ;
+  rdfs:domain kide:Behavior .
+
+kide:requiresOperation a owl:ObjectProperty ;
+  rdfs:domain kide:Activity ;
+  rdfs:range kide:Operation .
+
+kide:usesDataModel a owl:ObjectProperty ;
+  rdfs:range kide:DataModel .
+
+kide:nextActivity a owl:ObjectProperty ;
+  rdfs:domain kide:Activity ;
+  rdfs:range kide:Activity .
+
+kide:invokesCapability a owl:ObjectProperty ;
+  rdfs:range kide:CapabilityInvocation .
+
+kide:offersCapability a owl:ObjectProperty ;
+  rdfs:domain kide:CapabilityInvocation ;
+  rdfs:range kide:Capability .
+
+# Provenance / identity properties used by ingestion and project overlays.
+kide:semanticId a owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+
+kide:sourcePath a owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+
+kide:projectId a owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+
+kide:sourceUri a owl:DatatypeProperty ;
+  rdfs:range xsd:anyURI .
+
+kide:sourceLicense a owl:DatatypeProperty ;
+  rdfs:range xsd:string .
+
+kide:retrievedAt a owl:DatatypeProperty ;
+  rdfs:range xsd:dateTime .
+
+kide:confidence a owl:DatatypeProperty ;
+  rdfs:range xsd:decimal .

@@ -1,0 +1,113 @@
+{
+  "vertexLabels": [
+    {
+      "label": "KideEntity"
+    }
+  ],
+  "edgeLabels": [
+    {
+      "label": "semanticRelation",
+      "multiplicity": "MULTI",
+      "unidirected": false
+    }
+  ],
+  "propertyKeys": [
+    {
+      "key": "semanticId",
+      "className": "java.lang.String",
+      "cardinality": "SINGLE"
+    },
+    {
+      "key": "kind",
+      "className": "java.lang.String",
+      "cardinality": "SINGLE"
+    },
+    {
+      "key": "displayName",
+      "className": "java.lang.String",
+      "cardinality": "SINGLE"
+    },
+    {
+      "key": "scope",
+      "className": "java.lang.String",
+      "cardinality": "SINGLE"
+    },
+    {
+      "key": "projectId",
+      "className": "java.lang.String",
+      "cardinality": "SINGLE"
+    },
+    {
+      "key": "sourcePath",
+      "className": "java.lang.String",
+      "cardinality": "SINGLE"
+    },
+    {
+      "key": "propertiesJson",
+      "className": "java.lang.String",
+      "cardinality": "SINGLE"
+    }
+  ],
+  "compositeIndexes": [
+    {
+      "name": "vertexBySemanticId",
+      "typeClass": "org.apache.tinkerpop.gremlin.structure.Vertex",
+      "unique": true,
+      "consistency": "LOCK",
+      "keys": [
+        {
+          "propertyKey": "semanticId"
+        }
+      ]
+    },
+    {
+      "name": "vertexByProjectScope",
+      "typeClass": "org.apache.tinkerpop.gremlin.structure.Vertex",
+      "unique": false,
+      "keys": [
+        {
+          "propertyKey": "scope"
+        },
+        {
+          "propertyKey": "projectId"
+        }
+      ]
+    },
+    {
+      "name": "vertexByKind",
+      "typeClass": "org.apache.tinkerpop.gremlin.structure.Vertex",
+      "unique": false,
+      "keys": [
+        {
+          "propertyKey": "kind"
+        }
+      ]
+    },
+    {
+      "name": "edgeBySemanticId",
+      "typeClass": "org.apache.tinkerpop.gremlin.structure.Edge",
+      "unique": false,
+      "keys": [
+        {
+          "propertyKey": "semanticId"
+        }
+      ]
+    },
+    {
+      "name": "edgeByProjectScope",
+      "typeClass": "org.apache.tinkerpop.gremlin.structure.Edge",
+      "unique": false,
+      "keys": [
+        {
+          "propertyKey": "scope"
+        },
+        {
+          "propertyKey": "projectId"
+        }
+      ]
+    }
+  ],
+  "vertexCentricEdgeIndexes": [],
+  "vertexCentricPropertyIndexes": [],
+  "mixedIndexes": []
+}

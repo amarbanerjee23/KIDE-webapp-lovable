@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { getWorkspace, updateProfile } from "@/lib/teams.functions";
-import { authClient, notifyAuthChanged } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
+import { clearPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "KIDE Profile — your account and working preferences";
 const description =
@@ -123,8 +124,8 @@ function ProfilePage() {
           className="mt-6"
           onClick={async () => {
             await authClient.signOut();
-            notifyAuthChanged();
-            window.location.href = "/";
+            clearPostAuthRedirect();
+            window.location.replace("/");
           }}
         >
           Sign out

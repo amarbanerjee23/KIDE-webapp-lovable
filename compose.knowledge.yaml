@@ -1,0 +1,55 @@
+# Optional Knowledge Fabric overlay.
+#
+# Start the normal KIDE stack plus the distributed graph substrate with:
+#   docker compose -f compose.yaml -f compose.knowledge.yaml up --build
+#
+# PR27 deliberately keeps full-text/vector search out of JanusGraph. PR29 adds
+# the independently scalable OpenSearch search projection.
+
+services:
+  cassandra:
+    image: cassandra:4.0
+    environment:
+      CASSANDRA_CLUSTER_NAME: kide-knowledge
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    volumes:
+      - kide-cassandra-data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'DESCRIBE CLUSTER' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  janusgraph:
+    image: janusgraph/janusgraph:1.1.0
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      JANUS_PROPS_TEMPLATE: cql
+      JANUS_STORAGE_TIMEOUT: "120"
+      janusgraph.storage.hostname: cassandra
+      janusgraph.storage.cql.keyspace: kide_knowledge
+      janusgraph.schema.default: none
+      janusgraph.schema.init.strategy: json
+      janusgraph.schema.init.json.file: /etc/opt/janusgraph/kide-schema.json
+      janusgraph.schema.init.json.indices-activation: reindex_and_enable_non_enabled
+      gremlinserver.channelizer: org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer
+    volumes:
+      - ./knowledge/janusgraph/schema.json:/etc/opt/janusgraph/kide-schema.json:ro
+    ports:
+      - "8182:8182"
+
+  kide:
+    depends_on:
+      cassandra:
+        condition: service_healthy
+      janusgraph:
+        condition: service_started
+    environment:
+      KIDE_KNOWLEDGE_GRAPH_URL: http://janusgraph:8182
+
+volumes:
+  kide-cassandra-data:

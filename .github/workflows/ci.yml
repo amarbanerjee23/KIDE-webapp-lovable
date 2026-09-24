@@ -116,9 +116,73 @@ jobs:
       - name: Validate PostgreSQL schema, constraints and cascades
         run: bash scripts/ci/test-postgres-schema.sh
 
+      - name: Validate Knowledge Fabric contracts
+        run: bash scripts/ci/test-knowledge-fabric.sh
+
+  knowledge-graph-runtime:
+    name: JanusGraph HTTP runtime contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Start JanusGraph HTTP endpoint
+        shell: bash
+        run: |
+          docker run -d --name kide-janusgraph-ci -p 8182:8182 \
+            -v "$PWD/knowledge/janusgraph/schema.json:/etc/opt/janusgraph/kide-schema.json:ro" \
+            -e JANUS_PROPS_TEMPLATE=inmemory \
+            -e janusgraph.schema.default=none \
+            -e janusgraph.schema.init.strategy=json \
+            -e janusgraph.schema.init.json.file=/etc/opt/janusgraph/kide-schema.json \
+            -e janusgraph.schema.init.json.indices-activation=reindex_and_enable_non_enabled \
+            -e gremlinserver.channelizer=org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer \
+            janusgraph/janusgraph:1.1.0 >/dev/null
+
+          ready=0
+          for _ in $(seq 1 90); do
+            if curl --silent --fail \
+              -H 'content-type: application/json' \
+              --data '{"gremlin":"g.V().count()"}' \
+              http://127.0.0.1:8182 >/tmp/janusgraph-count.json; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$ready" != "1" ]]; then
+            echo "JanusGraph HTTP endpoint did not become ready."
+            docker logs kide-janusgraph-ci || true
+            exit 1
+          fi
+
+      - name: Prove graph write and traversal
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            --data '{"gremlin":"g.addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:device\u0027).as(\u0027d\u0027).addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:capability\u0027).as(\u0027c\u0027).addE(\u0027semanticRelation\u0027).from(\u0027d\u0027).property(\u0027kind\u0027,\u0027hasCapability\u0027).iterate(); g.E().has(\u0027kind\u0027,\u0027hasCapability\u0027).count()"}' \
+            http://127.0.0.1:8182)"
+          printf '%s' "$response" | grep -Eq '"@type":"g:Int64","@value":[1-9][0-9]*' || {
+            echo "JanusGraph write/traversal contract did not produce the expected relationship."
+            printf '%s\n' "$response"
+            exit 1
+          }
+
+      - name: Capture JanusGraph diagnostics
+        if: failure()
+        run: docker logs kide-janusgraph-ci || true
+
+      - name: Stop JanusGraph
+        if: always()
+        run: docker rm -f kide-janusgraph-ci >/dev/null 2>&1 || true
+
   production-container-e2e:
     name: Production container + Better Auth + browser E2E
-    needs: [static-unit-and-coverage, database-and-deployment-contracts]
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:

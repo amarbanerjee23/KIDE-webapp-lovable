@@ -1,0 +1,31 @@
+@prefix kide: <https://kide.dev/ontology/capability#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+
+kide:CapabilityShape a sh:NodeShape ;
+  sh:targetClass kide:Capability ;
+  sh:property [
+    sh:path kide:hasInterface ;
+    sh:minCount 1 ;
+    sh:message "A capability contract must bind at least one interface."
+  ] ;
+  sh:property [
+    sh:path kide:hasBehavior ;
+    sh:minCount 1 ;
+    sh:message "A capability contract must expose an observable behavior."
+  ] .
+
+kide:ActivityShape a sh:NodeShape ;
+  sh:targetClass kide:Activity ;
+  sh:or (
+    [ sh:property [ sh:path kide:requiredCapability ; sh:minCount 1 ] ]
+    [ sh:property [ sh:path kide:requiresOperation ; sh:minCount 1 ] ]
+  ) ;
+  sh:message "An executable activity should require a capability or operation." .
+
+kide:DeviceShape a sh:NodeShape ;
+  sh:targetClass kide:Device ;
+  sh:property [
+    sh:path kide:hasInterface ;
+    sh:minCount 1 ;
+    sh:message "A device must expose at least one interface."
+  ] .
