@@ -30,21 +30,21 @@ export const getWorkspace = createServerFn({ method: "GET" })
         created_at: string | Date;
         updated_at: string | Date;
       }[]
-    >\`
+    >`
       SELECT *
       FROM public.profiles
-      WHERE user_id = \${userId}::uuid
+      WHERE user_id = ${userId}::uuid
       LIMIT 1
-    \`;
+    `;
 
     if (!profiles[0]) {
       const fallback = user.email?.split("@")[0] || user.name || "Engineer";
-      profiles = await db\`
+      profiles = await db`
         INSERT INTO public.profiles (user_id, display_name)
-        VALUES (\${userId}::uuid, \${fallback})
+        VALUES (${userId}::uuid, ${fallback})
         ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
         RETURNING *
-      \`;
+      `;
     }
 
     const organizations = await db<
@@ -57,13 +57,13 @@ export const getWorkspace = createServerFn({ method: "GET" })
         updated_at: string | Date;
         role: Role;
       }[]
-    >\`
+    >`
       SELECT o.*, r.role
       FROM public.organizations o
       JOIN public.organization_roles r ON r.organization_id = o.id
-      WHERE r.user_id = \${userId}::uuid
+      WHERE r.user_id = ${userId}::uuid
       ORDER BY o.name
-    \`;
+    `;
 
     const profile = profiles[0];
     return {
@@ -95,15 +95,15 @@ export const updateProfile = createServerFn({ method: "POST" })
     }) => input,
   )
   .handler(async ({ data, context }) => {
-    await context.db\`
+    await context.db`
       INSERT INTO public.profiles (
         user_id, display_name, job_title, preferences, updated_at
       )
       VALUES (
-        \${context.userId}::uuid,
-        \${data.displayName.slice(0, 80)},
-        \${data.jobTitle.slice(0, 80)},
-        \${context.db.json({ density: data.density, theme: data.theme })},
+        ${context.userId}::uuid,
+        ${data.displayName.slice(0, 80)},
+        ${data.jobTitle.slice(0, 80)},
+        ${context.db.json({ density: data.density, theme: data.theme })},
         now()
       )
       ON CONFLICT (user_id) DO UPDATE SET
@@ -111,7 +111,7 @@ export const updateProfile = createServerFn({ method: "POST" })
         job_title = EXCLUDED.job_title,
         preferences = EXCLUDED.preferences,
         updated_at = now()
-    \`;
+    `;
     return { ok: true };
   });
 
@@ -127,21 +127,21 @@ export const createOrganization = createServerFn({ method: "POST" })
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "")
       .slice(0, 80);
-    const slug = \`\${base || "organization"}-\${crypto.randomUUID().slice(0, 8)}\`;
+    const slug = `${base || "organization"}-${crypto.randomUUID().slice(0, 8)}`;
 
     return context.db.begin(async (transaction) => {
-      const organizations = await transaction<{ id: string }[]>\`
+      const organizations = await transaction<{ id: string }[]>`
         INSERT INTO public.organizations (name, slug, created_by)
-        VALUES (\${name}, \${slug}, \${context.userId}::uuid)
+        VALUES (${name}, ${slug}, ${context.userId}::uuid)
         RETURNING id
-      \`;
+      `;
       const organization = organizations[0];
       if (!organization) throw new Error("Could not create the organization.");
 
-      await transaction\`
+      await transaction`
         INSERT INTO public.organization_roles (organization_id, user_id, role)
-        VALUES (\${organization.id}::uuid, \${context.userId}::uuid, 'owner')
-      \`;
+        VALUES (${organization.id}::uuid, ${context.userId}::uuid, 'owner')
+      `;
 
       return { id: organization.id };
     });
@@ -166,12 +166,12 @@ export const getOrganization = createServerFn({ method: "POST" })
         created_at: string | Date;
         updated_at: string | Date;
       }[]
-    >\`
+    >`
       SELECT *
       FROM public.organizations
-      WHERE id = \${data.organizationId}::uuid
+      WHERE id = ${data.organizationId}::uuid
       LIMIT 1
-    \`;
+    `;
     const organization = organizations[0];
     if (!organization) throw new Error("Organization not found or not visible to you.");
 
@@ -184,7 +184,7 @@ export const getOrganization = createServerFn({ method: "POST" })
         display_name: string | null;
         job_title: string | null;
       }[]
-    >\`
+    >`
       SELECT
         r.id,
         r.user_id,
@@ -194,9 +194,9 @@ export const getOrganization = createServerFn({ method: "POST" })
         p.job_title
       FROM public.organization_roles r
       LEFT JOIN public.profiles p ON p.user_id = r.user_id
-      WHERE r.organization_id = \${data.organizationId}::uuid
+      WHERE r.organization_id = ${data.organizationId}::uuid
       ORDER BY r.created_at
-    \`;
+    `;
 
     const invitations = await context.db<
       {
@@ -207,12 +207,12 @@ export const getOrganization = createServerFn({ method: "POST" })
         expires_at: string | Date;
         created_at: string | Date;
       }[]
-    >\`
+    >`
       SELECT id, email, role, status, expires_at, created_at
       FROM public.invitations
-      WHERE organization_id = \${data.organizationId}::uuid
+      WHERE organization_id = ${data.organizationId}::uuid
       ORDER BY created_at DESC
-    \`;
+    `;
 
     const projects = await context.db<
       {
@@ -223,12 +223,12 @@ export const getOrganization = createServerFn({ method: "POST" })
         current_stage: number;
         updated_at: string | Date;
       }[]
-    >\`
+    >`
       SELECT id, name, description, status::text AS status, current_stage, updated_at
       FROM public.projects
-      WHERE organization_id = \${data.organizationId}::uuid
+      WHERE organization_id = ${data.organizationId}::uuid
       ORDER BY updated_at DESC
-    \`;
+    `;
 
     return {
       organization: {
@@ -275,18 +275,18 @@ export const inviteMember = createServerFn({ method: "POST" })
     );
 
     const token = randomToken();
-    await context.db\`
+    await context.db`
       INSERT INTO public.invitations (
         organization_id, email, role, token, invited_by
       )
       VALUES (
-        \${data.organizationId}::uuid,
-        \${email},
-        \${data.role},
-        \${token},
-        \${context.userId}::uuid
+        ${data.organizationId}::uuid,
+        ${email},
+        ${data.role},
+        ${token},
+        ${context.userId}::uuid
       )
-    \`;
+    `;
 
     await recordAudit(
       context.db,
@@ -311,12 +311,12 @@ export const revokeInvitation = createServerFn({ method: "POST" })
       ADMIN_ROLES,
     );
 
-    await context.db\`
+    await context.db`
       UPDATE public.invitations
       SET status = 'revoked'
-      WHERE id = \${data.invitationId}::uuid
-        AND organization_id = \${data.organizationId}::uuid
-    \`;
+      WHERE id = ${data.invitationId}::uuid
+        AND organization_id = ${data.organizationId}::uuid
+    `;
 
     await recordAudit(
       context.db,
@@ -343,25 +343,25 @@ export const changeMemberRole = createServerFn({ method: "POST" })
       ADMIN_ROLES,
     );
 
-    const members = await context.db<{ user_id: string; role: Role }[]>\`
+    const members = await context.db<{ user_id: string; role: Role }[]>`
       SELECT user_id, role
       FROM public.organization_roles
-      WHERE id = \${data.memberRoleId}::uuid
-        AND organization_id = \${data.organizationId}::uuid
+      WHERE id = ${data.memberRoleId}::uuid
+        AND organization_id = ${data.organizationId}::uuid
       LIMIT 1
-    \`;
+    `;
     const member = members[0];
     if (!member) throw new Error("Member not found.");
     if (member.role === "owner" && data.role !== "owner") {
       throw new Error("Transfer ownership before changing the owner role.");
     }
 
-    await context.db\`
+    await context.db`
       UPDATE public.organization_roles
-      SET role = \${data.role}
-      WHERE id = \${data.memberRoleId}::uuid
-        AND organization_id = \${data.organizationId}::uuid
-    \`;
+      SET role = ${data.role}
+      WHERE id = ${data.memberRoleId}::uuid
+        AND organization_id = ${data.organizationId}::uuid
+    `;
 
     await recordAudit(
       context.db,
@@ -386,20 +386,20 @@ export const removeMember = createServerFn({ method: "POST" })
       ADMIN_ROLES,
     );
 
-    const members = await context.db<{ role: Role }[]>\`
+    const members = await context.db<{ role: Role }[]>`
       SELECT role
       FROM public.organization_roles
-      WHERE id = \${data.memberRoleId}::uuid
-        AND organization_id = \${data.organizationId}::uuid
+      WHERE id = ${data.memberRoleId}::uuid
+        AND organization_id = ${data.organizationId}::uuid
       LIMIT 1
-    \`;
+    `;
     if (members[0]?.role === "owner") throw new Error("The owner cannot be removed.");
 
-    await context.db\`
+    await context.db`
       DELETE FROM public.organization_roles
-      WHERE id = \${data.memberRoleId}::uuid
-        AND organization_id = \${data.organizationId}::uuid
-    \`;
+      WHERE id = ${data.memberRoleId}::uuid
+        AND organization_id = ${data.organizationId}::uuid
+    `;
 
     await recordAudit(
       context.db,
@@ -426,7 +426,7 @@ export const previewInvitation = createServerFn({ method: "POST" })
         organization_id: string;
         organization_name: string;
       }[]
-    >\`
+    >`
       SELECT
         i.email,
         i.role,
@@ -436,9 +436,9 @@ export const previewInvitation = createServerFn({ method: "POST" })
         o.name AS organization_name
       FROM public.invitations i
       JOIN public.organizations o ON o.id = i.organization_id
-      WHERE i.token = \${data.token}
+      WHERE i.token = ${data.token}
       LIMIT 1
-    \`;
+    `;
     const invite = invitations[0];
     if (!invite) return { found: false as const };
 
@@ -467,12 +467,12 @@ export const acceptInvitation = createServerFn({ method: "POST" })
         organization_id: string;
         invited_by: string;
       }[]
-    >\`
+    >`
       SELECT id, email, role, status, expires_at, organization_id, invited_by
       FROM public.invitations
-      WHERE token = \${data.token}
+      WHERE token = ${data.token}
       LIMIT 1
-    \`;
+    `;
     const invite = invitations[0];
 
     if (!invite) throw new Error("This invitation link is not valid.");
@@ -486,30 +486,30 @@ export const acceptInvitation = createServerFn({ method: "POST" })
     const email = context.user.email?.toLowerCase();
     if (email && email !== invite.email.toLowerCase()) {
       throw new Error(
-        \`This invitation was sent to \${invite.email}. Sign in with that address to accept it.\`,
+        `This invitation was sent to ${invite.email}. Sign in with that address to accept it.`,
       );
     }
 
     await context.db.begin(async (transaction) => {
-      await transaction\`
+      await transaction`
         INSERT INTO public.organization_roles (organization_id, user_id, role)
         VALUES (
-          \${invite.organization_id}::uuid,
-          \${context.userId}::uuid,
-          \${invite.role}
+          ${invite.organization_id}::uuid,
+          ${context.userId}::uuid,
+          ${invite.role}
         )
         ON CONFLICT (organization_id, user_id) DO NOTHING
-      \`;
+      `;
 
-      await transaction\`
+      await transaction`
         UPDATE public.invitations
         SET
           status = 'accepted',
-          accepted_by = \${context.userId}::uuid,
+          accepted_by = ${context.userId}::uuid,
           accepted_at = now()
-        WHERE id = \${invite.id}::uuid
+        WHERE id = ${invite.id}::uuid
           AND status = 'pending'
-      \`;
+      `;
     });
 
     await createNotifications(
@@ -517,8 +517,8 @@ export const acceptInvitation = createServerFn({ method: "POST" })
       [invite.invited_by],
       invite.organization_id,
       "invitation.accepted",
-      \`\${invite.email} joined the organization\`,
-      \`They now have the \${invite.role} role.\`,
+      `${invite.email} joined the organization`,
+      `They now have the ${invite.role} role.`,
       "/team",
     );
 
@@ -540,13 +540,13 @@ export const listNotifications = createServerFn({ method: "GET" })
         read_at: string | Date | null;
         created_at: string | Date;
       }[]
-    >\`
+    >`
       SELECT *
       FROM public.notifications
-      WHERE user_id = \${context.userId}::uuid
+      WHERE user_id = ${context.userId}::uuid
       ORDER BY created_at DESC
       LIMIT 30
-    \`;
+    `;
 
     return rows.map((row) => ({
       ...row,
@@ -558,11 +558,11 @@ export const listNotifications = createServerFn({ method: "GET" })
 export const markNotificationsRead = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
   .handler(async ({ context }) => {
-    await context.db\`
+    await context.db`
       UPDATE public.notifications
       SET read_at = now()
-      WHERE user_id = \${context.userId}::uuid
+      WHERE user_id = ${context.userId}::uuid
         AND read_at IS NULL
-    \`;
+    `;
     return { ok: true };
   });
