@@ -1,8 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const configuredBase = process.env["KIDE_E2E_URL"] ?? "http://127.0.0.1:8080";
-const unconfiguredBase =
-  process.env["KIDE_E2E_UNCONFIGURED_URL"] ?? "http://127.0.0.1:8081";
+const unconfiguredBase = process.env["KIDE_E2E_UNCONFIGURED_URL"] ?? "http://127.0.0.1:8081";
 
 export default defineConfig({
   testDir: "./tests/e2e",
