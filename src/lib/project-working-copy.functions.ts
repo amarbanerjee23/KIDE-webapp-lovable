@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireKideAuth } from "@/lib/auth-middleware";
+import { EDIT_ROLES, iso, requireProjectAccess } from "@/lib/data-access.server";
 import {
   assertWorkingCopyVersion,
   coerceStoredSources,
@@ -8,50 +9,33 @@ import {
   WORKING_COPY_LABEL,
 } from "@/lib/project-working-copy";
 
-const EDIT_ROLES = new Set(["owner", "administrator", "engineer"]);
-
 export const loadProjectWorkingCopy = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireKideAuth])
   .inputValidator((input: { projectId: string }) => input)
   .handler(async ({ data, context }) => {
-    const { data: project, error: projectError } = await context.supabase
-      .from("projects")
-      .select("id, organization_id")
-      .eq("id", data.projectId)
-      .maybeSingle();
+    const project = await requireProjectAccess(context.db, context.userId, data.projectId);
 
-    if (projectError) throw new Error(projectError.message);
-    if (!project) throw new Error("This project is not available to you.");
-
-    const { data: roleRow, error: roleError } = await context.supabase
-      .from("organization_roles")
-      .select("role")
-      .eq("organization_id", project.organization_id)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-
-    if (roleError) throw new Error(roleError.message);
-
-    const { data: row, error } = await context.supabase
-      .from("model_checkpoints")
-      .select("sources, created_at")
-      .eq("project_id", data.projectId)
-      .eq("label", WORKING_COPY_LABEL)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
+    const rows = await context.db<
+      { sources: Record<string, string>; created_at: string | Date }[]
+    >\`
+      SELECT sources, created_at
+      FROM public.model_checkpoints
+      WHERE project_id = \${data.projectId}::uuid
+        AND label = \${WORKING_COPY_LABEL}
+      ORDER BY created_at DESC
+      LIMIT 1
+    \`;
+    const row = rows[0];
 
     return {
       sources: coerceStoredSources(row?.sources) ?? null,
-      savedAt: row?.created_at ?? null,
-      canEdit: EDIT_ROLES.has(roleRow?.role ?? "viewer"),
+      savedAt: iso(row?.created_at),
+      canEdit: EDIT_ROLES.includes(project.role),
     };
   });
 
 export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireKideAuth])
   .inputValidator(
     (input: {
       projectId: string;
@@ -60,89 +44,69 @@ export const saveProjectWorkingCopy = createServerFn({ method: "POST" })
     }) => input,
   )
   .handler(async ({ data, context }) => {
-    const { data: project, error: projectError } = await context.supabase
-      .from("projects")
-      .select("id, organization_id")
-      .eq("id", data.projectId)
-      .maybeSingle();
-
-    if (projectError) throw new Error(projectError.message);
-    if (!project) throw new Error("This project is not available to you.");
-
-    const { data: roleRow, error: roleError } = await context.supabase
-      .from("organization_roles")
-      .select("role")
-      .eq("organization_id", project.organization_id)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-
-    if (roleError) throw new Error(roleError.message);
-    if (!EDIT_ROLES.has(roleRow?.role ?? "viewer")) {
-      throw new Error("Your project role is read-only.");
-    }
+    const project = await requireProjectAccess(
+      context.db,
+      context.userId,
+      data.projectId,
+      EDIT_ROLES,
+    );
 
     const sources = validateWorkingCopySources(data.sources);
     const now = new Date().toISOString();
 
-    const { data: existing, error: lookupError } = await context.supabase
-      .from("model_checkpoints")
-      .select("id, created_at")
-      .eq("project_id", data.projectId)
-      .eq("label", WORKING_COPY_LABEL)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const existingRows = await context.db<{ id: string; created_at: string | Date }[]>\`
+      SELECT id, created_at
+      FROM public.model_checkpoints
+      WHERE project_id = \${data.projectId}::uuid
+        AND label = \${WORKING_COPY_LABEL}
+      ORDER BY created_at DESC
+      LIMIT 1
+    \`;
+    const existing = existingRows[0];
+    const existingSavedAt = iso(existing?.created_at);
 
-    if (lookupError) throw new Error(lookupError.message);
-
-    assertWorkingCopyVersion(data.expectedSavedAt, existing?.created_at ?? null);
+    assertWorkingCopyVersion(data.expectedSavedAt, existingSavedAt);
 
     if (existing?.id) {
-      if (!data.expectedSavedAt) {
-        throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
-      }
+      if (!data.expectedSavedAt) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
 
-      const { data: updated, error } = await context.supabase
-        .from("model_checkpoints")
-        .update({
-          sources,
-          created_at: now,
-          created_by: context.userId,
-          error_count: 0,
-          warning_count: 0,
-        })
-        .eq("id", existing.id)
-        .eq("created_at", data.expectedSavedAt)
-        .select("id")
-        .maybeSingle();
-
-      if (error) throw new Error(error.message);
-      if (!updated) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
+      const updated = await context.db<{ id: string }[]>\`
+        UPDATE public.model_checkpoints
+        SET
+          sources = \${context.db.json(sources)},
+          created_at = \${now}::timestamptz,
+          created_by = \${context.userId}::uuid,
+          error_count = 0,
+          warning_count = 0
+        WHERE id = \${existing.id}::uuid
+          AND created_at = \${data.expectedSavedAt}::timestamptz
+        RETURNING id
+      \`;
+      if (!updated[0]) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
     } else {
-      const { data: inserted, error } = await context.supabase
-        .from("model_checkpoints")
-        .insert({
-          project_id: data.projectId,
-          label: WORKING_COPY_LABEL,
-          sources,
-          error_count: 0,
-          warning_count: 0,
-          created_by: context.userId,
-          created_at: now,
-        })
-        .select("id")
-        .maybeSingle();
-
-      if (error) throw new Error(error.message);
-      if (!inserted) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
+      const inserted = await context.db<{ id: string }[]>\`
+        INSERT INTO public.model_checkpoints (
+          project_id, label, sources, error_count, warning_count, created_by, created_at
+        )
+        VALUES (
+          \${data.projectId}::uuid,
+          \${WORKING_COPY_LABEL},
+          \${context.db.json(sources)},
+          0,
+          0,
+          \${context.userId}::uuid,
+          \${now}::timestamptz
+        )
+        RETURNING id
+      \`;
+      if (!inserted[0]) throw new Error(WORKING_COPY_CONFLICT_MESSAGE);
     }
 
-    const { error: updatedError } = await context.supabase
-      .from("projects")
-      .update({ updated_at: now })
-      .eq("id", project.id);
-
-    if (updatedError) throw new Error(updatedError.message);
+    await context.db\`
+      UPDATE public.projects
+      SET updated_at = \${now}::timestamptz
+      WHERE id = \${project.id}::uuid
+    \`;
 
     return { ok: true, savedAt: now };
   });
