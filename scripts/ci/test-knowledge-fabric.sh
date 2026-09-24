@@ -10,6 +10,7 @@ test -f knowledge/ontology/kide-capability.ttl || fail "ontology missing"
 test -f knowledge/ontology/kide-capability.shacl.ttl || fail "SHACL shapes missing"
 test -f knowledge/rules/thesis-capability.rules || fail "thesis inference rule missing"
 test -f compose.knowledge.yaml || fail "knowledge compose overlay missing"
+test -f knowledge/janusgraph/schema.json || fail "JanusGraph schema missing"
 
 for concept in Action Activity Device Capability Interface SessionType Workflow Behavior Interaction; do
   grep -q "kide:${concept} a owl:Class" knowledge/ontology/kide-capability.ttl ||
@@ -39,5 +40,14 @@ grep -q "cassandra:4.0" /tmp/kide-knowledge-compose.yaml ||
   fail "Cassandra is not pinned"
 grep -q "KIDE_KNOWLEDGE_GRAPH_URL" /tmp/kide-knowledge-compose.yaml ||
   fail "KIDE is not wired to the knowledge graph endpoint"
+grep -q "schema.init.strategy" /tmp/kide-knowledge-compose.yaml ||
+  fail "JanusGraph schema initialization is not enabled"
+grep -q "schema.default" /tmp/kide-knowledge-compose.yaml ||
+  fail "JanusGraph automatic schema policy is not explicit"
 
-echo "Ontology, reasoning and distributed graph deployment contracts validated."
+for index in vertexBySemanticId vertexByProjectScope vertexByKind edgeBySemanticId edgeByProjectScope; do
+  grep -q "\"name\": \"${index}\"" knowledge/janusgraph/schema.json ||
+    fail "JanusGraph index missing: ${index}"
+done
+
+echo "Ontology, reasoning, indexed graph schema and distributed deployment contracts validated."
