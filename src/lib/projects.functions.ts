@@ -33,13 +33,13 @@ export const listAllProjects = createServerFn({ method: "GET" })
 
     const organizations = await db<
       { id: string; name: string; slug: string; role: Role }[]
-    >\`
+    >`
       SELECT o.id, o.name, o.slug, r.role
       FROM public.organizations o
       JOIN public.organization_roles r ON r.organization_id = o.id
-      WHERE r.user_id = \${userId}::uuid
+      WHERE r.user_id = ${userId}::uuid
       ORDER BY o.name
-    \`;
+    `;
 
     if (!organizations.length) return { organizations: [] };
 
@@ -53,7 +53,7 @@ export const listAllProjects = createServerFn({ method: "GET" })
         current_stage: number;
         updated_at: string | Date;
       }[]
-    >\`
+    >`
       SELECT
         p.id,
         p.organization_id,
@@ -65,9 +65,9 @@ export const listAllProjects = createServerFn({ method: "GET" })
       FROM public.projects p
       JOIN public.organization_roles r
         ON r.organization_id = p.organization_id
-       AND r.user_id = \${userId}::uuid
+       AND r.user_id = ${userId}::uuid
       ORDER BY p.updated_at DESC
-    \`;
+    `;
 
     return {
       organizations: organizations.map((org) => ({
@@ -95,18 +95,18 @@ export const createProject = createServerFn({ method: "POST" })
 
     await requireOrganizationAccess(context.db, context.userId, data.organizationId, EDIT_ROLES);
 
-    const rows = await context.db<{ id: string; name: string }[]>\`
+    const rows = await context.db<{ id: string; name: string }[]>`
       INSERT INTO public.projects (
         organization_id, name, description, created_by
       )
       VALUES (
-        \${data.organizationId}::uuid,
-        \${name},
-        \${(data.description ?? "").slice(0, 500)},
-        \${context.userId}::uuid
+        ${data.organizationId}::uuid,
+        ${name},
+        ${(data.description ?? "").slice(0, 500)},
+        ${context.userId}::uuid
       )
       RETURNING id, name
-    \`;
+    `;
     const row = rows[0];
     if (!row) throw new Error("Could not create the project.");
 
@@ -142,20 +142,20 @@ export const saveCheckpoint = createServerFn({ method: "POST" })
       EDIT_ROLES,
     );
     const label = data.label.trim().slice(0, 120) || "Checkpoint";
-    const rows = await context.db<{ id: string; label: string; created_at: string | Date }[]>\`
+    const rows = await context.db<{ id: string; label: string; created_at: string | Date }[]>`
       INSERT INTO public.model_checkpoints (
         project_id, label, sources, error_count, warning_count, created_by
       )
       VALUES (
-        \${data.projectId}::uuid,
-        \${label},
-        \${context.db.json(data.sources)},
-        \${data.errorCount},
-        \${data.warningCount},
-        \${context.userId}::uuid
+        ${data.projectId}::uuid,
+        ${label},
+        ${context.db.json(data.sources)},
+        ${data.errorCount},
+        ${data.warningCount},
+        ${context.userId}::uuid
       )
       RETURNING id, label, created_at
-    \`;
+    `;
     const row = rows[0];
     if (!row) throw new Error("Could not save the checkpoint.");
 
@@ -188,13 +188,13 @@ export const listCheckpoints = createServerFn({ method: "POST" })
         created_at: string | Date;
         created_by: string;
       }[]
-    >\`
+    >`
       SELECT id, label, sources, error_count, warning_count, created_at, created_by
       FROM public.model_checkpoints
-      WHERE project_id = \${data.projectId}::uuid
+      WHERE project_id = ${data.projectId}::uuid
       ORDER BY created_at DESC
       LIMIT 50
-    \`;
+    `;
 
     return rows.map((row) => ({ ...row, created_at: iso(row.created_at) ?? "" }));
   });
@@ -215,27 +215,27 @@ export const requestReview = createServerFn({ method: "POST" })
     const title = data.title.trim().slice(0, 160);
     if (!title) throw new Error("Please describe what should be reviewed.");
 
-    const rows = await context.db<{ id: string }[]>\`
+    const rows = await context.db<{ id: string }[]>`
       INSERT INTO public.review_requests (
         project_id, title, summary, design_fingerprint, requested_by
       )
       VALUES (
-        \${data.projectId}::uuid,
-        \${title},
-        \${data.summary.slice(0, 2000)},
-        \${data.designFingerprint.slice(0, 200_000)},
-        \${context.userId}::uuid
+        ${data.projectId}::uuid,
+        ${title},
+        ${data.summary.slice(0, 2000)},
+        ${data.designFingerprint.slice(0, 200_000)},
+        ${context.userId}::uuid
       )
       RETURNING id
-    \`;
+    `;
     const row = rows[0];
     if (!row) throw new Error("Could not request the review.");
 
-    const reviewers = await context.db<{ user_id: string; role: Role }[]>\`
+    const reviewers = await context.db<{ user_id: string; role: Role }[]>`
       SELECT user_id, role
       FROM public.organization_roles
-      WHERE organization_id = \${project.organization_id}::uuid
-    \`;
+      WHERE organization_id = ${project.organization_id}::uuid
+    `;
 
     await createNotifications(
       context.db,
@@ -247,8 +247,8 @@ export const requestReview = createServerFn({ method: "POST" })
         .map((reviewer) => reviewer.user_id),
       project.organization_id,
       "review.requested",
-      \`Review requested: \${title}\`,
-      \`\${project.name} is waiting for a decision.\`,
+      `Review requested: ${title}`,
+      `${project.name} is waiting for a decision.`,
       "/reviews",
     );
 
@@ -283,15 +283,15 @@ export const listReviews = createServerFn({ method: "POST" })
         decided_at: string | Date | null;
         decision_note: string | null;
       }[]
-    >\`
+    >`
       SELECT
         id, title, summary, status, created_at, requested_by,
         decided_by, decided_at, decision_note
       FROM public.review_requests
-      WHERE project_id = \${data.projectId}::uuid
+      WHERE project_id = ${data.projectId}::uuid
       ORDER BY created_at DESC
       LIMIT 50
-    \`;
+    `;
 
     const comments = await context.db<
       {
@@ -302,13 +302,13 @@ export const listReviews = createServerFn({ method: "POST" })
         author_id: string;
         created_at: string | Date;
       }[]
-    >\`
+    >`
       SELECT c.id, c.review_id, c.body, c.anchor, c.author_id, c.created_at
       FROM public.review_comments c
       JOIN public.review_requests r ON r.id = c.review_id
-      WHERE r.project_id = \${data.projectId}::uuid
+      WHERE r.project_id = ${data.projectId}::uuid
       ORDER BY c.created_at ASC
-    \`;
+    `;
 
     return reviews.map((review) => ({
       ...review,
@@ -334,25 +334,25 @@ export const addReviewComment = createServerFn({ method: "POST" })
       "reviewer",
     ]);
 
-    const reviewRows = await context.db<{ requested_by: string; title: string }[]>\`
+    const reviewRows = await context.db<{ requested_by: string; title: string }[]>`
       SELECT requested_by, title
       FROM public.review_requests
-      WHERE id = \${data.reviewId}::uuid
-        AND project_id = \${data.projectId}::uuid
+      WHERE id = ${data.reviewId}::uuid
+        AND project_id = ${data.projectId}::uuid
       LIMIT 1
-    \`;
+    `;
     const review = reviewRows[0];
     if (!review) throw new Error("Review not found.");
 
-    await context.db\`
+    await context.db`
       INSERT INTO public.review_comments (review_id, author_id, body, anchor)
       VALUES (
-        \${data.reviewId}::uuid,
-        \${context.userId}::uuid,
-        \${body.slice(0, 4000)},
-        \${(data.anchor ?? "").slice(0, 200)}
+        ${data.reviewId}::uuid,
+        ${context.userId}::uuid,
+        ${body.slice(0, 4000)},
+        ${(data.anchor ?? "").slice(0, 200)}
       )
-    \`;
+    `;
 
     if (review.requested_by !== context.userId) {
       await createNotifications(
@@ -360,7 +360,7 @@ export const addReviewComment = createServerFn({ method: "POST" })
         [review.requested_by],
         project.organization_id,
         "review.commented",
-        \`New comment on "\${review.title}"\`,
+        `New comment on "${review.title}"`,
         body.slice(0, 160),
         "/reviews",
       );
@@ -391,17 +391,17 @@ export const decideReview = createServerFn({ method: "POST" })
       throw new Error("Say what needs to change before sending it back.");
     }
 
-    const rows = await context.db<{ requested_by: string; title: string }[]>\`
+    const rows = await context.db<{ requested_by: string; title: string }[]>`
       UPDATE public.review_requests
       SET
-        status = \${data.decision},
-        decided_by = \${context.userId}::uuid,
+        status = ${data.decision},
+        decided_by = ${context.userId}::uuid,
         decided_at = now(),
-        decision_note = \${data.note.slice(0, 2000)}
-      WHERE id = \${data.reviewId}::uuid
-        AND project_id = \${data.projectId}::uuid
+        decision_note = ${data.note.slice(0, 2000)}
+      WHERE id = ${data.reviewId}::uuid
+        AND project_id = ${data.projectId}::uuid
       RETURNING requested_by, title
-    \`;
+    `;
     const review = rows[0];
     if (!review) throw new Error("Review not found.");
 
@@ -409,10 +409,10 @@ export const decideReview = createServerFn({ method: "POST" })
       context.db,
       [review.requested_by],
       project.organization_id,
-      \`review.\${data.decision}\`,
+      `review.${data.decision}`,
       data.decision === "approved"
-        ? \`Approved: \${review.title}\`
-        : \`Changes requested: \${review.title}\`,
+        ? `Approved: ${review.title}`
+        : `Changes requested: ${review.title}`,
       data.note || "No note was added.",
       "/reviews",
     );
@@ -421,7 +421,7 @@ export const decideReview = createServerFn({ method: "POST" })
       context.db,
       context.userId,
       project.organization_id,
-      \`review.\${data.decision}\`,
+      `review.${data.decision}`,
       "review",
       data.reviewId,
       { note: data.note.slice(0, 200) },
