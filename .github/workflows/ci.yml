@@ -50,7 +50,12 @@ jobs:
             bunx prettier --write "${format_files[@]}"
           fi
 
-          git add bun.lock
+          # Loading Vite runs TanStack Router's file-route generator. The build
+          # may still expose later migration errors; route generation itself is
+          # needed before the strict TypeScript check sees newly added routes.
+          bun run build >/tmp/pr24-route-generation.log 2>&1 || true
+
+          git add bun.lock src/routeTree.gen.ts
           if (( ${#format_files[@]} > 0 )); then
             git add "${format_files[@]}"
           fi
