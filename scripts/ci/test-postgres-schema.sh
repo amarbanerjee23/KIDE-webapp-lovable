@@ -3,7 +3,13 @@ set -euo pipefail
 
 name="kide-pr26-postgres"
 cleanup() { docker rm -f "$name" >/dev/null 2>&1 || true; }
+diagnostics() {
+  echo "=== PostgreSQL diagnostics ===" >&2
+  docker ps -a --filter "name=$name" >&2 || true
+  docker logs "$name" >&2 || true
+}
 trap cleanup EXIT
+trap diagnostics ERR
 cleanup
 
 docker run -d --name "$name" \
@@ -12,16 +18,20 @@ docker run -d --name "$name" \
   -e POSTGRES_PASSWORD=kide-ci-password \
   postgres:17-alpine >/dev/null
 
-for _ in $(seq 1 40); do
-  if docker exec "$name" pg_isready -U kide -d kide >/dev/null 2>&1; then break; fi
+ready=0
+for _ in $(seq 1 60); do
+  if docker exec "$name" psql -At -U kide -d kide -c "select 1" 2>/dev/null | grep -qx 1; then
+    ready=1
+    break
+  fi
   sleep 1
 done
-
-docker exec "$name" pg_isready -U kide -d kide >/dev/null
+[[ "$ready" == "1" ]] || { echo "PostgreSQL did not become ready" >&2; exit 1; }
 
 for pass in 1 2; do
   echo "Applying application schema pass $pass"
-  docker exec -i "$name" psql -v ON_ERROR_STOP=1 -U kide -d kide < db/kide-application-schema.sql >/dev/null
+  cat db/kide-application-schema.sql | docker exec -i "$name" \
+    psql -v ON_ERROR_STOP=1 -U kide -d kide -f -
 done
 
 required_tables=(
