@@ -51,8 +51,11 @@ describe("post-auth redirect normalization", () => {
     ).toBe("/projects?tab=active#latest");
   });
 
-  it("rejects external destinations", () => {
+  it("rejects external and non-http destinations", () => {
     expect(normalizePostAuthRedirect("https://evil.example.com/steal", origin)).toBe("/projects");
+    expect(normalizePostAuthRedirect("//evil.example.com/steal", origin)).toBe("/projects");
+    expect(normalizePostAuthRedirect("javascript:alert(1)", origin)).toBe("/projects");
+    expect(normalizePostAuthRedirect("data:text/html,bad", origin)).toBe("/projects");
   });
 
   it("prevents auth and root redirect loops", () => {
@@ -70,5 +73,17 @@ describe("post-auth redirect normalization", () => {
     clearPostAuthRedirect();
 
     expect(consumePostAuthRedirect()).toBe("/projects");
+  });
+
+  it("consumes a remembered destination exactly once", () => {
+    rememberPostAuthRedirect("/designer?tab=logic#node");
+    expect(consumePostAuthRedirect()).toBe("/designer?tab=logic#node");
+    expect(consumePostAuthRedirect()).toBe("/projects");
+  });
+
+  it("preserves encoded same-origin query and hash values", () => {
+    expect(normalizePostAuthRedirect("/models?q=a%2Fb#Ecre.cap", origin)).toBe(
+      "/models?q=a%2Fb#Ecre.cap",
+    );
   });
 });
