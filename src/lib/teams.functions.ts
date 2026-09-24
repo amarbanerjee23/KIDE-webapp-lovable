@@ -26,7 +26,7 @@ export const getWorkspace = createServerFn({ method: "GET" })
         display_name: string;
         avatar_url: string | null;
         job_title: string | null;
-        preferences: Record<string, unknown>;
+        preferences: { density?: string; theme?: string };
         created_at: string | Date;
         updated_at: string | Date;
       }[]
@@ -72,14 +72,14 @@ export const getWorkspace = createServerFn({ method: "GET" })
       profile: profile
         ? {
             ...profile,
-            created_at: iso(profile.created_at),
-            updated_at: iso(profile.updated_at),
+            created_at: iso(profile.created_at) ?? "",
+            updated_at: iso(profile.updated_at) ?? "",
           }
         : null,
       organizations: organizations.map((organization) => ({
         ...organization,
-        created_at: iso(organization.created_at),
-        updated_at: iso(organization.updated_at),
+        created_at: iso(organization.created_at) ?? "",
+        updated_at: iso(organization.updated_at) ?? "",
       })),
     };
   });
@@ -232,19 +232,19 @@ export const getOrganization = createServerFn({ method: "POST" })
         id: member.id,
         user_id: member.user_id,
         role: member.role,
-        created_at: iso(member.created_at),
+        created_at: iso(member.created_at) ?? "",
         displayName: member.display_name ?? "Member",
         jobTitle: member.job_title ?? "",
         isSelf: member.user_id === context.userId,
       })),
       invitations: invitations.map((invitation) => ({
         ...invitation,
-        expires_at: iso(invitation.expires_at),
-        created_at: iso(invitation.created_at),
+        expires_at: iso(invitation.expires_at) ?? "",
+        created_at: iso(invitation.created_at) ?? "",
       })),
       projects: projects.map((project) => ({
         ...project,
-        updated_at: iso(project.updated_at),
+        updated_at: iso(project.updated_at) ?? "",
       })),
     };
   });
@@ -520,7 +520,7 @@ export const listNotifications = createServerFn({ method: "GET" })
     return rows.map((row) => ({
       ...row,
       read_at: iso(row.read_at),
-      created_at: iso(row.created_at),
+      created_at: iso(row.created_at) ?? "",
     }));
   });
 
