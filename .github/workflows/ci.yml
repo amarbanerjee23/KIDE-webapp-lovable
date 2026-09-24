@@ -110,7 +110,10 @@ jobs:
       - name: Validate GCP, Compose and secret contracts
         run: bash scripts/ci/validate-deployment-contract.sh
 
-      - name: Validate PostgreSQL schema twice
+      - name: Simulate GCP auth-secret bootstrap
+        run: bash scripts/ci/test-gcp-bootstrap.sh
+
+      - name: Validate PostgreSQL schema, constraints and cascades
         run: bash scripts/ci/test-postgres-schema.sh
 
   production-container-e2e:
@@ -130,8 +133,8 @@ jobs:
       - name: Install frozen dependencies
         run: bun install --frozen-lockfile
 
-      - name: Install Chromium for Playwright
-        run: bunx playwright install --with-deps chromium
+      - name: Install Chromium, Firefox and WebKit for Playwright
+        run: bunx playwright install --with-deps chromium firefox webkit
 
       - name: Build production container
         shell: bash
@@ -203,11 +206,33 @@ jobs:
             fi
           done
 
-      - name: Run browser critical-path and accessibility E2E
+      - name: Run browser critical paths, auth lifecycle, accessibility and compatibility E2E
         env:
           KIDE_E2E_URL: http://127.0.0.1:8080
           KIDE_E2E_UNCONFIGURED_URL: http://127.0.0.1:8081
         run: bun run test:e2e
+
+      - name: Verify Better Auth and KIDE persistence reached PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for table in user session account verification; do
+            exists="$(docker exec kide-e2e-db psql -At -U kide -d kide -c \
+              "select to_regclass('public.\"${table}\"') is not null;")"
+            if [[ "$exists" != "t" ]]; then
+              echo "Better Auth table missing after real browser authentication: $table"
+              exit 1
+            fi
+          done
+
+          users="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public."user";')"
+          orgs="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public.organizations;')"
+          projects="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public.projects;')"
+
+          [[ "$users" -ge 1 ]] || { echo "No persisted Better Auth users"; exit 1; }
+          [[ "$orgs" -ge 1 ]] || { echo "No persisted KIDE organizations"; exit 1; }
+          [[ "$projects" -ge 1 ]] || { echo "No persisted KIDE projects"; exit 1; }
 
       - name: Capture container diagnostics
         if: failure()
