@@ -210,6 +210,7 @@ jobs:
         env:
           KIDE_E2E_URL: http://127.0.0.1:8080
           KIDE_E2E_UNCONFIGURED_URL: http://127.0.0.1:8081
+          KIDE_E2E_RUN_ID: ${{ github.run_id }}
         run: bun run test:e2e
 
       - name: Verify Better Auth and KIDE persistence reached PostgreSQL
@@ -233,6 +234,38 @@ jobs:
           [[ "$users" -ge 1 ]] || { echo "No persisted Better Auth users"; exit 1; }
           [[ "$orgs" -ge 1 ]] || { echo "No persisted KIDE organizations"; exit 1; }
           [[ "$projects" -ge 1 ]] || { echo "No persisted KIDE projects"; exit 1; }
+
+      - name: Prove authentication survives an application-container restart
+        shell: bash
+        env:
+          KIDE_E2E_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          docker restart kide-e2e-app >/dev/null
+
+          ready=0
+          for _ in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          [[ "$ready" == "1" ]] || { echo "KIDE did not recover after restart"; exit 1; }
+
+          email="persistence-${KIDE_E2E_RUN_ID}@example.com"
+          response="$(curl --fail-with-body --silent             -H 'content-type: application/json'             -c /tmp/kide-restart.cookies             --data "{\"email\":\"${email}\",\"password\":\"Pr26-Lifecycle-Password!\"}"             http://127.0.0.1:8080/api/auth/sign-in/email)"
+
+          printf '%s' "$response" | grep -Fq "$email" || {
+            echo "Persisted Better Auth user could not sign in after application restart"
+            exit 1
+          }
+
+          session="$(curl --fail-with-body --silent             -b /tmp/kide-restart.cookies             http://127.0.0.1:8080/api/auth/get-session)"
+          printf '%s' "$session" | grep -Fq "$email" || {
+            echo "Session recovery failed after application restart"
+            exit 1
+          }
 
       - name: Capture container diagnostics
         if: failure()
