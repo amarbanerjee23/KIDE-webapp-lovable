@@ -58,4 +58,22 @@ describe("active project browser state", () => {
     expect(state.getActiveProject()).toBeNull();
     expect(window.localStorage.getItem("kide:active-project")).toBeNull();
   });
+
+  it("fails closed on malformed stored project state", async () => {
+    window.localStorage.setItem("kide:active-project", "{not-json");
+    const state = await import("./active-project");
+
+    expect(state.getActiveProject()).toBeNull();
+    expect(window.localStorage.getItem("kide:active-project")).toBeNull();
+  });
+
+  it("does not hydrate partial project identifiers", async () => {
+    window.localStorage.setItem(
+      "kide:active-project",
+      JSON.stringify({ projectId: "project-only" }),
+    );
+    const state = await import("./active-project");
+
+    expect(state.getActiveProject()).toBeNull();
+  });
 });
