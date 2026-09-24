@@ -4,7 +4,8 @@ import AxeBuilder from "@axe-core/playwright";
 test("password auth rejects bad credentials and preserves workspace after re-login", async ({
   page,
 }) => {
-  const email = `lifecycle-${Date.now()}@example.com`;
+  const runId = process.env["KIDE_E2E_RUN_ID"] ?? `${Date.now()}`;
+  const email = `persistence-${runId}@example.com`;
   const password = "Pr26-Lifecycle-Password!";
 
   await page.goto("/auth");
