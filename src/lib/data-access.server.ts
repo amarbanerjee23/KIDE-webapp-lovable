@@ -11,13 +11,13 @@ export async function roleOf(
   userId: string,
   organizationId: string,
 ): Promise<Role | null> {
-  const rows = await db<{ role: Role }[]>\`
+  const rows = await db<{ role: Role }[]>`
     SELECT role
     FROM public.organization_roles
-    WHERE organization_id = \${organizationId}::uuid
-      AND user_id = \${userId}::uuid
+    WHERE organization_id = ${organizationId}::uuid
+      AND user_id = ${userId}::uuid
     LIMIT 1
-  \`;
+  `;
   return rows[0]?.role ?? null;
 }
 
@@ -48,7 +48,7 @@ export async function requireProjectAccess(
       current_stage: number;
       role: Role;
     }[]
-  >\`
+  >`
     SELECT
       p.id,
       p.name,
@@ -59,10 +59,10 @@ export async function requireProjectAccess(
     FROM public.projects p
     JOIN public.organization_roles r
       ON r.organization_id = p.organization_id
-     AND r.user_id = \${userId}::uuid
-    WHERE p.id = \${projectId}::uuid
+     AND r.user_id = ${userId}::uuid
+    WHERE p.id = ${projectId}::uuid
     LIMIT 1
-  \`;
+  `;
 
   const project = rows[0];
   if (!project) throw new Error("This project is not available to you.");
@@ -82,20 +82,20 @@ export async function recordAudit(
   summary: Record<string, unknown>,
   projectId?: string | null,
 ) {
-  await db\`
+  await db`
     INSERT INTO public.audit_events (
       organization_id, project_id, actor_id, action, target_type, target_id, change_summary
     )
     VALUES (
-      \${organizationId}::uuid,
-      \${projectId ?? null}::uuid,
-      \${userId}::uuid,
-      \${action},
-      \${targetType},
-      \${targetId},
-      \${db.json(summary)}
+      ${organizationId}::uuid,
+      ${projectId ?? null}::uuid,
+      ${userId}::uuid,
+      ${action},
+      ${targetType},
+      ${targetId},
+      ${db.json(summary)}
     )
-  \`;
+  `;
 }
 
 export async function createNotifications(
@@ -111,19 +111,19 @@ export async function createNotifications(
   if (!unique.length) return;
 
   for (const userId of unique) {
-    await db\`
+    await db`
       INSERT INTO public.notifications (
         user_id, organization_id, kind, title, body, link
       )
       VALUES (
-        \${userId}::uuid,
-        \${organizationId}::uuid,
-        \${kind},
-        \${title},
-        \${body},
-        \${link}
+        ${userId}::uuid,
+        ${organizationId}::uuid,
+        ${kind},
+        ${title},
+        ${body},
+        ${link}
       )
-    \`;
+    `;
   }
 }
 
