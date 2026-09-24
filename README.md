@@ -14,7 +14,17 @@ KIDE is self-hostable and does not require Supabase.
 
 ### Local development
 
-Run PostgreSQL locally, then set:
+The quickest fully self-hosted path uses only open-source containers:
+
+```sh
+docker compose up --build
+```
+
+KIDE is then available at `http://localhost:8080` with PostgreSQL stored in a named Docker
+volume. The compose credentials are development-only defaults and must not be reused for a
+production deployment.
+
+For a native development process, run PostgreSQL locally, then set:
 
 ```sh
 export DATABASE_URL='postgres://kide:kide@127.0.0.1:5432/kide'
