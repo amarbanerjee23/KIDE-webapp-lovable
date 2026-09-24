@@ -79,7 +79,7 @@ export async function recordAudit(
   action: string,
   targetType: string,
   targetId: string,
-  summary: Record<string, unknown>,
+  summary: Record<string, string | number | boolean | null>,
   projectId?: string | null,
 ) {
   await db`
