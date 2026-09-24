@@ -81,7 +81,7 @@ export async function replaceProjectKnowledgeProjection(
       g.addV('KideEntity')
         .property('semanticId', n.id)
         .property('kind', n.kind)
-        .property('label', n.label)
+        .property('displayName', n.label)
         .property('scope', n.scope)
         .property('projectId', n.projectId)
         .property('sourcePath', n.sourcePath)
