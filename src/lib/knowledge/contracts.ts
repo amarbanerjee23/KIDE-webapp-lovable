@@ -89,7 +89,7 @@ export interface KnowledgeDiagnostic {
   code: string;
   message: string;
   entityId?: string;
-  sourcePath?: string;
+  sourcePath?: string | undefined;
 }
 
 export interface KnowledgeProjection {
