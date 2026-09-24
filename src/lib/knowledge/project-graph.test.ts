@@ -152,7 +152,7 @@ InterfaceDescription DeviceB {
     );
     expect(commands).toHaveLength(2);
     expect(new Set(commands.map((node) => node.id)).size).toBe(2);
-    expect(commands.map((node) => node.properties.interface).sort()).toEqual([
+    expect(commands.map((node) => node.properties["interface"]).sort()).toEqual([
       "DeviceA",
       "DeviceB",
     ]);
