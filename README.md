@@ -48,8 +48,26 @@ Required runtime variables:
 - `BETTER_AUTH_URL`
 - `BETTER_AUTH_SECRET` (minimum 32 characters)
 
-The supplied `cloudbuild.yaml` maps the database URL and Better Auth secret from Secret Manager
-and discovers the deployed Cloud Run URL for `BETTER_AUTH_URL`.
+The supplied `cloudbuild.yaml` discovers the deployed Cloud Run URL for `BETTER_AUTH_URL`.
+It no longer fails a first deployment when authentication secrets have not been provisioned:
+KIDE deploys with its public surface available and authentication explicitly unconfigured.
+
+To enable authentication on GCP, point KIDE at any reachable PostgreSQL database and bootstrap the
+two Secret Manager values:
+
+```sh
+PROJECT_ID=your-project-id \
+DATABASE_URL='postgres://user:password@host:5432/kide?sslmode=require' \
+bash deploy/gcp/bootstrap-auth-secrets.sh
+```
+
+The script creates/versions `kide-database-url` and `kide-better-auth-secret`, generates the
+Better Auth secret when necessary, and grants the Cloud Run runtime service account Secret Manager
+access. Re-run the Cloud Build trigger afterward.
+
+A PostgreSQL server itself is not fabricated by Cloud Build. This is intentional: silently creating
+a Cloud SQL instance could incur GCP charges. Local development can continue to use the included
+Docker Compose PostgreSQL service at no software-license cost.
 
 ## Quality gates
 

@@ -1,11 +1,13 @@
 # Google Cloud Build: build and deploy the self-hosted KIDE web application.
 #
-# Required Secret Manager secrets:
-#   kide-database-url       -> PostgreSQL DATABASE_URL
-#   kide-better-auth-secret -> random Better Auth secret, at least 32 characters
+# Authentication is optional at deployment time. When both Secret Manager
+# versions below exist, Cloud Run receives them and Better Auth is enabled:
+#   kide-database-url        -> PostgreSQL DATABASE_URL
+#   kide-better-auth-secret  -> random Better Auth secret, at least 32 chars
 #
-# The Cloud Run runtime service account needs Secret Manager Secret Accessor on
-# those two secrets. No Supabase project, URL or API key is required.
+# A new GCP project MUST still be deployable before those secrets are created.
+# In that case KIDE deploys with authentication explicitly unconfigured; the
+# public landing page remains available and /auth explains the missing setup.
 
 substitutions:
   _REGION: us-central1
@@ -36,32 +38,95 @@ steps:
       - "${_IMAGE}:latest"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - deploy
-      - ${_SERVICE}
-      - "--image=${_IMAGE}:${COMMIT_SHA}"
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=8080
-      - --memory=1Gi
-      - --cpu=1
-      - --min-instances=0
-      - --max-instances=10
-      - "--set-secrets=DATABASE_URL=${_DATABASE_SECRET}:latest,BETTER_AUTH_SECRET=${_AUTH_SECRET}:latest"
-
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: auth-secret-preflight
     entrypoint: bash
     args:
       - -ceu
       - |
-        SERVICE_URL="$(gcloud run services describe "${_SERVICE}" --region "${_REGION}" --format='value(status.url)')"
+        READY_FILE=/workspace/.kide-auth-secrets-ready
+        rm -f "$$READY_FILE"
+
+        secret_version_exists() {
+          gcloud secrets versions describe latest \
+            --project="${PROJECT_ID}" \
+            --secret="$$1" \
+            --format='value(name)' >/dev/null 2>&1
+        }
+
+        if secret_version_exists "${_DATABASE_SECRET}"; then
+          echo "Database secret version is present."
+        else
+          echo "NOTICE: Secret ${_DATABASE_SECRET}:latest is not available."
+        fi
+
+        if secret_version_exists "${_AUTH_SECRET}"; then
+          echo "Better Auth secret version is present."
+        else
+          echo "NOTICE: Secret ${_AUTH_SECRET}:latest is not available."
+        fi
+
+        if secret_version_exists "${_DATABASE_SECRET}" &&
+           secret_version_exists "${_AUTH_SECRET}"; then
+          touch "$$READY_FILE"
+          echo "Authentication secrets are ready for Cloud Run."
+        else
+          echo "NOTICE: Authentication remains unconfigured for this deployment."
+          echo "KIDE will deploy without the missing auth secrets instead of failing."
+          echo "Run deploy/gcp/bootstrap-auth-secrets.sh once a PostgreSQL DATABASE_URL is available."
+        fi
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: deploy-cloud-run
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        DEPLOY_ARGS=(
+          run deploy "${_SERVICE}"
+          "--image=${_IMAGE}:${COMMIT_SHA}"
+          "--region=${_REGION}"
+          --platform=managed
+          --allow-unauthenticated
+          --port=8080
+          --memory=1Gi
+          --cpu=1
+          --min-instances=0
+          --max-instances=10
+        )
+
+        if [[ -f /workspace/.kide-auth-secrets-ready ]]; then
+          DEPLOY_ARGS+=(
+            "--update-secrets=DATABASE_URL=${_DATABASE_SECRET}:latest,BETTER_AUTH_SECRET=${_AUTH_SECRET}:latest"
+            "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured"
+          )
+        else
+          DEPLOY_ARGS+=(
+            "--remove-secrets=DATABASE_URL,BETTER_AUTH_SECRET"
+            "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=unconfigured"
+          )
+        fi
+
+        gcloud "$${DEPLOY_ARGS[@]}"
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: configure-auth-url
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        SERVICE_URL="$$(gcloud run services describe "${_SERVICE}" \
+          --region "${_REGION}" \
+          --format='value(status.url)')"
         test -n "$$SERVICE_URL"
+
         gcloud run services update "${_SERVICE}" \
           --region "${_REGION}" \
           --update-env-vars "BETTER_AUTH_URL=$$SERVICE_URL"
+
+        echo "KIDE deployed at $$SERVICE_URL"
+        if [[ ! -f /workspace/.kide-auth-secrets-ready ]]; then
+          echo "Authentication is currently disabled because the PostgreSQL/auth secrets are not configured."
+        fi
 
 images:
   - ${_IMAGE}:${COMMIT_SHA}
