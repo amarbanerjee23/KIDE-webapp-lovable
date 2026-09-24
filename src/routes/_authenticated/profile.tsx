@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { getWorkspace, updateProfile } from "@/lib/teams.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { authClient, notifyAuthChanged } from "@/lib/auth-client";
 
 const title = "KIDE Profile — your account and working preferences";
 const description = "Set your display name, job title, interface density and theme for the KIDE engineering workspace.";
@@ -95,7 +95,8 @@ function ProfilePage() {
           variant="outline"
           className="mt-6"
           onClick={async () => {
-            await supabase.auth.signOut();
+            await authClient.signOut();
+            notifyAuthChanged();
             window.location.href = "/";
           }}
         >
