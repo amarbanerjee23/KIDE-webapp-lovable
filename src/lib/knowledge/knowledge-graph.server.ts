@@ -1,7 +1,4 @@
-import type {
-  KnowledgeGraphStatus,
-  KnowledgeProjection,
-} from "@/lib/knowledge/contracts";
+import type { KnowledgeGraphStatus, KnowledgeProjection } from "@/lib/knowledge/contracts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -19,10 +16,7 @@ export function knowledgeGraphStatus(): KnowledgeGraphStatus {
   };
 }
 
-async function gremlin<T>(
-  script: string,
-  bindings: Record<string, unknown>,
-): Promise<T> {
+async function gremlin<T>(script: string, bindings: Record<string, unknown>): Promise<T> {
   const endpoint = configuredEndpoint();
   if (!endpoint) {
     throw new Error(
@@ -41,9 +35,10 @@ async function gremlin<T>(
       signal: controller.signal,
     });
 
-    const payload = (await response.json().catch(() => null)) as
-      | { result?: { data?: T }; message?: string }
-      | null;
+    const payload = (await response.json().catch(() => null)) as {
+      result?: { data?: T };
+      message?: string;
+    } | null;
 
     if (!response.ok) {
       throw new Error(

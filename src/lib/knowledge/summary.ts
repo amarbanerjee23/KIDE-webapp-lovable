@@ -1,7 +1,4 @@
-import type {
-  KnowledgeGraphSummary,
-  KnowledgeProjection,
-} from "@/lib/knowledge/contracts";
+import type { KnowledgeGraphSummary, KnowledgeProjection } from "@/lib/knowledge/contracts";
 
 export function summarizeKnowledgeGraph(projection: KnowledgeProjection): KnowledgeGraphSummary {
   const byKind: KnowledgeGraphSummary["byKind"] = {};

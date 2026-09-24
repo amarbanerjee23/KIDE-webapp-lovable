@@ -64,31 +64,23 @@ describe("project knowledge projection", () => {
     expect(
       projection.edges.some(
         (edge) =>
-          edge.kind === "requiredCapability" &&
-          edge.from === move?.id &&
-          edge.to === navigate?.id,
+          edge.kind === "requiredCapability" && edge.from === move?.id && edge.to === navigate?.id,
       ),
     ).toBe(true);
 
     expect(
       projection.edges.some(
         (edge) =>
-          edge.kind === "hasInterface" &&
-          edge.from === navigate?.id &&
-          edge.to === vehicle?.id,
+          edge.kind === "hasInterface" && edge.from === navigate?.id && edge.to === vehicle?.id,
       ),
     ).toBe(true);
 
     expect(
-      projection.edges.some(
-        (edge) => edge.kind === "hasBehavior" && edge.from === navigate?.id,
-      ),
+      projection.edges.some((edge) => edge.kind === "hasBehavior" && edge.from === navigate?.id),
     ).toBe(true);
 
     expect(
-      projection.edges.some(
-        (edge) => edge.kind === "hasContext" && edge.from === navigate?.id,
-      ),
+      projection.edges.some((edge) => edge.kind === "hasContext" && edge.from === navigate?.id),
     ).toBe(true);
   });
 

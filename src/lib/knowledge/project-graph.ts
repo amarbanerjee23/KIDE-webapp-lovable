@@ -22,7 +22,12 @@ function segment(value: string): string {
   return encodeURIComponent(value.trim()).replace(/%2F/gi, "~");
 }
 
-function nodeId(projectId: string, kind: KnowledgeNodeKind, sourcePath: string, name: string): string {
+function nodeId(
+  projectId: string,
+  kind: KnowledgeNodeKind,
+  sourcePath: string,
+  name: string,
+): string {
   return `urn:kide:project:${segment(projectId)}:${kind.toLowerCase()}:${segment(sourcePath)}:${segment(name)}`;
 }
 
@@ -104,7 +109,12 @@ function addEdge(
   });
 }
 
-function resolve(builder: Builder, kind: KnowledgeNodeKind, name: string, sourcePath: string): string | null {
+function resolve(
+  builder: Builder,
+  kind: KnowledgeNodeKind,
+  name: string,
+  sourcePath: string,
+): string | null {
   const matches = builder.symbols.get(symbolKey(kind, name)) ?? [];
   if (matches.length === 1) return matches[0] ?? null;
   if (matches.length > 1) {
@@ -282,7 +292,12 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
           if (parameterId) addEdge(builder, "hasParameter", operationId, parameterId, "input");
         }
         if (operation.outputParameter) {
-          const parameterId = resolve(builder, "Parameter", operation.outputParameter.name, file.path);
+          const parameterId = resolve(
+            builder,
+            "Parameter",
+            operation.outputParameter.name,
+            file.path,
+          );
           if (parameterId) addEdge(builder, "hasParameter", operationId, parameterId, "output");
         }
       }

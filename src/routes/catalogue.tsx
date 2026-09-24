@@ -54,9 +54,7 @@ function Catalogue() {
 
   const projection = useMemo(
     () =>
-      activeProject
-        ? projectWorkspaceToKnowledgeGraph(activeProject.projectId, workspace)
-        : null,
+      activeProject ? projectWorkspaceToKnowledgeGraph(activeProject.projectId, workspace) : null,
     [activeProject, workspace],
   );
   const semanticSummary = useMemo(
@@ -152,7 +150,11 @@ function Catalogue() {
                     entry.eligible ? "text-primary" : "text-destructive"
                   }`}
                 >
-                  {entry.eligible ? <Check className="size-3.5" /> : <CircleAlert className="size-3.5" />}
+                  {entry.eligible ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <CircleAlert className="size-3.5" />
+                  )}
                   {entry.eligible ? "Eligible" : "Not eligible"}
                 </span>
               </header>
@@ -162,10 +164,18 @@ function Catalogue() {
                   <Chip key={`c${name}`} label={`cmd ${name}`} tone="bg-primary/10 text-primary" />
                 ))}
                 {entry.events.map((name) => (
-                  <Chip key={`e${name}`} label={`obs ${name}`} tone="bg-muted text-muted-foreground" />
+                  <Chip
+                    key={`e${name}`}
+                    label={`obs ${name}`}
+                    tone="bg-muted text-muted-foreground"
+                  />
                 ))}
                 {entry.dataPoints.map((name) => (
-                  <Chip key={`d${name}`} label={`data ${name}`} tone="bg-muted text-muted-foreground" />
+                  <Chip
+                    key={`d${name}`}
+                    label={`data ${name}`}
+                    tone="bg-muted text-muted-foreground"
+                  />
                 ))}
                 {entry.alarms.map((name) => (
                   <Chip
@@ -234,7 +244,9 @@ function Catalogue() {
               Semantic project graph
             </h2>
             {!semanticSummary ? (
-              <p className="mt-3 text-xs text-muted-foreground">Select a project to build its semantic overlay.</p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Select a project to build its semantic overlay.
+              </p>
             ) : (
               <>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -258,7 +270,8 @@ function Catalogue() {
                     semanticSummary.errorCount > 0 ? "text-destructive" : "text-muted-foreground"
                   }`}
                 >
-                  {semanticSummary.errorCount} semantic errors · {semanticSummary.warningCount} warnings
+                  {semanticSummary.errorCount} semantic errors · {semanticSummary.warningCount}{" "}
+                  warnings
                 </p>
 
                 {projection?.diagnostics.slice(0, 4).map((diagnostic) => (

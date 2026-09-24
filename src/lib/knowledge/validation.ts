@@ -31,7 +31,8 @@ export function validateKnowledgeProjection(
       diagnostics.push({
         severity: "error",
         code: "KG_PROJECT_SCOPE_VIOLATION",
-        message: "Project projections may only contain entities owned by the active project overlay.",
+        message:
+          "Project projections may only contain entities owned by the active project overlay.",
         entityId: node.id,
         sourcePath: node.sourcePath,
       });
