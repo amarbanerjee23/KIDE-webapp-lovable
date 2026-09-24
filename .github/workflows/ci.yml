@@ -131,7 +131,12 @@ jobs:
         shell: bash
         run: |
           docker run -d --name kide-janusgraph-ci -p 8182:8182 \
+            -v "$PWD/knowledge/janusgraph/schema.json:/etc/opt/janusgraph/kide-schema.json:ro" \
             -e JANUS_PROPS_TEMPLATE=inmemory \
+            -e janusgraph.schema.default=none \
+            -e janusgraph.schema.init.strategy=json \
+            -e janusgraph.schema.init.json.file=/etc/opt/janusgraph/kide-schema.json \
+            -e janusgraph.schema.init.json.indices-activation=reindex_and_enable_non_enabled \
             -e gremlinserver.channelizer=org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer \
             janusgraph/janusgraph:1.1.0 >/dev/null
 
