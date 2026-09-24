@@ -430,12 +430,7 @@ function secondPass(builder: Builder, workspace: Workspace, projectId: string) {
       addEdge(builder, "containsControlModel", root, modelId);
 
       for (const iface of model.interfaces) {
-        const ifaceId = scopedNode(
-          builder,
-          "Interface",
-          file.path,
-          `${model.name}/${iface.name}`,
-        );
+        const ifaceId = scopedNode(builder, "Interface", file.path, `${model.name}/${iface.name}`);
         if (!ifaceId) continue;
         addEdge(builder, "hasInterface", modelId, ifaceId);
 
