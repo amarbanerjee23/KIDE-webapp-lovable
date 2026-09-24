@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "test:unit": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:ci": "bun run test:unit && bun run test:coverage"
   },
   "overrides": {
     "rolldown": "1.2.1"
