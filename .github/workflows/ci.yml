@@ -89,9 +89,16 @@ jobs:
           VITE_SUPABASE_PROJECT_ID: placeholder
 
       - name: Build production container
+        shell: bash
         run: |
+          set -o pipefail
           docker build --pull \
-            --build-arg VITE_SUPABASE_URL=https://placeholder.supabase.co \
-            --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=placeholder \
-            --build-arg VITE_SUPABASE_PROJECT_ID=placeholder \
-            -t kide-webapp:ci .
+            --build-arg KIDE_SUPABASE_URL=https://placeholder.supabase.co \
+            --build-arg KIDE_SUPABASE_PUBLISHABLE=placeholder \
+            --build-arg KIDE_SUPABASE_PROJECT=placeholder \
+            -t kide-webapp:ci . 2>&1 | tee /tmp/kide-docker-build.log
+
+          if grep -q "SecretsUsedInArgOrEnv" /tmp/kide-docker-build.log; then
+            echo "Docker build emitted a secret-like ARG/ENV warning."
+            exit 1
+          fi

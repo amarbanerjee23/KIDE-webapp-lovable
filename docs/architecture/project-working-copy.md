@@ -36,3 +36,49 @@ the active-project identifier and the in-memory workspace before returning to th
 
 This design deliberately reuses the existing `projects` and `model_checkpoints` tables. It does
 not introduce another persistence service, worker, database, or server-side KIDE computation.
+
+
+## Project-native workspace lifecycle
+
+An authenticated project workspace is never populated from demo data implicitly.
+
+- no active project -> browser workspace is empty;
+- active project with no working copy -> browser workspace is empty;
+- persisted source-map keys are the authoritative project filenames;
+- DSL kind is derived from each persisted filename extension rather than a fixed sample manifest;
+- unsupported file extensions may remain in storage but are not treated as KIDE DSL inputs;
+- the reference/sample workspace is loaded only after an explicit user action;
+- session loss clears the in-memory project workspace.
+
+The visual designer binds to the active project's actual `.activity` file. It must not assume the
+reference filename `MissionPlanning.activity`.
+
+
+## Concurrent browser protection
+
+Working-copy autosave uses optimistic concurrency based on the persisted working-copy timestamp.
+
+1. load returns the current `savedAt` version;
+2. every autosave sends that version as `expectedSavedAt`;
+3. the backend updates only when the persisted timestamp still matches;
+4. a mismatch rejects the save rather than overwriting another browser/tab;
+5. local browser edits remain intact;
+6. autosave is blocked for that project until the user reloads/reconciles.
+
+A newly empty project is a valid workspace state. Empty source maps are not treated as an error.
+
+
+## Browser model file lifecycle
+
+Project model files are created, renamed, and deleted entirely in the browser working copy.
+
+- file paths are normalized and bounded before mutation;
+- DSL extensions must match the selected language;
+- duplicate paths are rejected case-insensitively;
+- starter source is deterministic and parser-valid for the selected DSL;
+- rename preserves source text;
+- delete removes only the selected working-copy entry;
+- no file-management backend endpoint exists;
+- PR #10 working-copy autosave persists the resulting source map.
+
+This keeps project file lifecycle aligned with the client-compute architecture.

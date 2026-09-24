@@ -9,6 +9,12 @@ import type { Monaco } from "@monaco-editor/react";
 import type { editor, languages, Position } from "monaco-editor";
 import { DSL_KEYWORDS, DSL_LANGUAGES } from "./index";
 import type { Diagnostic, DslKind, RefKind } from "./ast";
+import {
+  findDefinitions,
+  findReferences,
+  type WorkspaceLanguageIndex,
+  type WorkspaceLanguageLocation,
+} from "./workspace-language-service";
 
 export const MONACO_LANGUAGE_ID: Record<DslKind, string> = {
   dml: "kide-dml",
@@ -25,9 +31,40 @@ export type SymbolTable = Record<RefKind, Set<string>>;
 const RELEVANT_SYMBOLS: Record<DslKind, RefKind[]> = {
   dml: ["dataModel"],
   op: ["dataModel", "parameter"],
-  mncspec: ["dataModel", "operation", "interface", "command", "event", "alarm", "dataPoint", "response", "operatingState", "controlNode", "parameter"],
-  cap: ["interface", "command", "event", "alarm", "dataPoint", "response", "operation", "capability"],
-  activity: ["capability", "operation", "activity", "activityDiagram", "dataModel", "outcomeItem", "parameter", "command", "event"],
+  mncspec: [
+    "dataModel",
+    "operation",
+    "interface",
+    "command",
+    "event",
+    "alarm",
+    "dataPoint",
+    "response",
+    "operatingState",
+    "controlNode",
+    "parameter",
+  ],
+  cap: [
+    "interface",
+    "command",
+    "event",
+    "alarm",
+    "dataPoint",
+    "response",
+    "operation",
+    "capability",
+  ],
+  activity: [
+    "capability",
+    "operation",
+    "activity",
+    "activityDiagram",
+    "dataModel",
+    "outcomeItem",
+    "parameter",
+    "command",
+    "event",
+  ],
 };
 
 const SYMBOL_LABEL: Record<RefKind, string> = {
@@ -59,7 +96,8 @@ const KEYWORD_DOCS: Record<string, string> = {
   execute: "The implementation class or handler that performs the work.",
   return: "The single typed value the operation produces.",
   Model: "The root of an MNC design: interfaces plus the control nodes that use them.",
-  InterfaceDescription: "Everything a device exposes: commands, events, alarms, data points, responses and operating states.",
+  InterfaceDescription:
+    "Everything a device exposes: commands, events, alarms, data points, responses and operating states.",
   ControlNode: "Control logic bound to one interface; reacts to events and issues commands.",
   implements: "Binds this control node to the component interface it controls.",
   commands: "Instructions that can be sent to the device.",
@@ -78,7 +116,8 @@ const KEYWORD_DOCS: Record<string, string> = {
   Capability: "Something a device can do, bound to concrete interface items.",
   compatible: "The component interface this capability requires.",
   Init: "Subscriptions, commands and operations run when the capability starts.",
-  providesControlCapabilities: "The commands, events, alarms and data points this capability exposes.",
+  providesControlCapabilities:
+    "The commands, events, alarms and data points this capability exposes.",
   providesOutcomes: "The results a workflow can branch on after using this capability.",
   fireable: "Commands this capability can send.",
   receivable: "Events or responses this capability can receive.",
@@ -101,24 +140,60 @@ const KEYWORD_DOCS: Record<string, string> = {
 
 const SNIPPETS: Record<DslKind, { label: string; detail: string; body: string }[]> = {
   dml: [
-    { label: "DataModel", detail: "New data model", body: "DataModel ${1:Name} {\n  primitives { ${2:int field} }\n}" },
+    {
+      label: "DataModel",
+      detail: "New data model",
+      body: "DataModel ${1:Name} {\n  primitives { ${2:int field} }\n}",
+    },
     { label: "Package", detail: "Package header", body: "Package ${1:Name}\n" },
   ],
   op: [
-    { label: "Operation", detail: "New operation", body: 'Operation ${1:Name}(${2:int input}) {\n  execute "${3:com.example.Handler}"\n  return ${4:float result}\n}' },
+    {
+      label: "Operation",
+      detail: "New operation",
+      body: 'Operation ${1:Name}(${2:int input}) {\n  execute "${3:com.example.Handler}"\n  return ${4:float result}\n}',
+    },
   ],
   mncspec: [
-    { label: "InterfaceDescription", detail: "Device interface", body: "InterfaceDescription ${1:Device} {\n  commands { ${2:Start}[] }\n  events { Publish ${3:Ready}[] }\n}" },
-    { label: "ControlNode", detail: "Control node", body: "ControlNode ${1:Controller} implements interface ${2:Device} {\n  EventBlock {\n    Event ${3:Ready} { }\n  }\n}" },
-    { label: "Validate", detail: "Validation block", body: "Validate parameters {\n  ${1:param} Max Value ${2:100}\n} onFail { }" },
+    {
+      label: "InterfaceDescription",
+      detail: "Device interface",
+      body: "InterfaceDescription ${1:Device} {\n  commands { ${2:Start}[] }\n  events { Publish ${3:Ready}[] }\n}",
+    },
+    {
+      label: "ControlNode",
+      detail: "Control node",
+      body: "ControlNode ${1:Controller} implements interface ${2:Device} {\n  EventBlock {\n    Event ${3:Ready} { }\n  }\n}",
+    },
+    {
+      label: "Validate",
+      detail: "Validation block",
+      body: "Validate parameters {\n  ${1:param} Max Value ${2:100}\n} onFail { }",
+    },
   ],
   cap: [
-    { label: "Capability", detail: "New capability", body: "Capability ${1:Name} compatible component interface ${2:Device} {\n  providesControlCapabilities {\n    fireable commands : ${3:Start}\n    receivable events : ${4:Ready}\n  }\n}" },
+    {
+      label: "Capability",
+      detail: "New capability",
+      body: "Capability ${1:Name} compatible component interface ${2:Device} {\n  providesControlCapabilities {\n    fireable commands : ${3:Start}\n    receivable events : ${4:Ready}\n  }\n}",
+    },
   ],
   activity: [
-    { label: "ActivityDiagram", detail: "New workflow", body: "ActivityDiagram ${1:Name} has activities {\n  Activity ${2:Step} {\n    requireCapability : ${3:Capability}\n  }\n}" },
-    { label: "Activity", detail: "New activity", body: "Activity ${1:Step} {\n  description : \"${2:What this step does}\"\n  requireCapability : ${3:Capability}\n  nextActivity : ${4:NextStep}\n}" },
-    { label: "conditions", detail: "Outcome branch", body: "conditions {\n  from ${1:Step} if outcome is ${2:Outcome} => nextActivity : ${3:NextStep}\n}" },
+    {
+      label: "ActivityDiagram",
+      detail: "New workflow",
+      body: "ActivityDiagram ${1:Name} has activities {\n  Activity ${2:Step} {\n    requireCapability : ${3:Capability}\n  }\n}",
+    },
+    {
+      label: "Activity",
+      detail: "New activity",
+      body: 'Activity ${1:Step} {\n  description : "${2:What this step does}"\n  requireCapability : ${3:Capability}\n  nextActivity : ${4:NextStep}\n}',
+    },
+    {
+      label: "conditions",
+      detail: "Outcome branch",
+      body: "conditions {\n  from ${1:Step} if outcome is ${2:Outcome} => nextActivity : ${3:NextStep}\n}",
+    },
   ],
 };
 
@@ -135,10 +210,7 @@ function monarchFor(kind: DslKind): languages.IMonarchLanguage {
         [/'([^'\\]|\\.)*'/, "string"],
         [/\b\d+\.\d+\b/, "number.float"],
         [/\b\d+\b/, "number"],
-        [
-          /\^?[A-Za-z_][\w]*/,
-          { cases: { "@keywords": "keyword", "@default": "identifier" } },
-        ],
+        [/\^?[A-Za-z_][\w]*/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
         [/[{}()[\]]/, "@brackets"],
         [/[=><:,.;]+/, "delimiter"],
       ],
@@ -152,6 +224,46 @@ function monarchFor(kind: DslKind): languages.IMonarchLanguage {
 }
 
 let registered = false;
+let currentSymbols: () => SymbolTable | null = () => null;
+let currentLanguageIndex: () => WorkspaceLanguageIndex | null = () => null;
+
+function modelMatchesPath(model: editor.ITextModel, path: string): boolean {
+  const uri = decodeURIComponent(model.uri.toString());
+  const uriPath = decodeURIComponent(model.uri.path).replace(/^\/+/, "");
+  return (
+    uri === path || uri.endsWith(`/${path}`) || uriPath === path || uriPath.endsWith(`/${path}`)
+  );
+}
+
+function workspacePathForModel(
+  model: editor.ITextModel,
+  index: WorkspaceLanguageIndex,
+): string | null {
+  const paths = new Set([
+    ...index.definitions.map((location) => location.path),
+    ...index.references.map((location) => location.path),
+  ]);
+  for (const path of paths) {
+    if (modelMatchesPath(model, path)) return path;
+  }
+  return null;
+}
+
+function locationRange(monaco: Monaco, location: WorkspaceLanguageLocation) {
+  return new monaco.Range(
+    location.line,
+    location.column,
+    location.line,
+    location.column + Math.max(1, location.length),
+  );
+}
+
+function locationUri(monaco: Monaco, path: string) {
+  return (
+    monaco.editor.getModels().find((model: editor.ITextModel) => modelMatchesPath(model, path))
+      ?.uri ?? monaco.Uri.parse(path)
+  );
+}
 
 /**
  * Registers all five languages, the workbench colour theme, and the
@@ -160,7 +272,11 @@ let registered = false;
 export function registerKideLanguages(
   monaco: Monaco,
   getSymbols: () => SymbolTable | null,
+  getLanguageIndex: () => WorkspaceLanguageIndex | null = () => null,
 ): void {
+  currentSymbols = getSymbols;
+  currentLanguageIndex = getLanguageIndex;
+
   if (registered) return;
   registered = true;
 
@@ -172,7 +288,11 @@ export function registerKideLanguages(
     monaco.languages.setMonarchTokensProvider(id, monarchFor(kind));
     monaco.languages.setLanguageConfiguration(id, {
       comments: { lineComment: "//", blockComment: ["/*", "*/"] },
-      brackets: [["{", "}"], ["[", "]"], ["(", ")"]],
+      brackets: [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"],
+      ],
       autoClosingPairs: [
         { open: "{", close: "}" },
         { open: "[", close: "]" },
@@ -215,7 +335,7 @@ export function registerKideLanguages(
           });
         }
 
-        const symbols = getSymbols();
+        const symbols = currentSymbols();
         if (symbols) {
           const seen = new Set<string>();
           for (const refKind of RELEVANT_SYMBOLS[kind]) {
@@ -269,7 +389,7 @@ export function registerKideLanguages(
           return { range, contents: [{ value: `**${word.word}** — ${doc}` }] };
         }
 
-        const symbols = getSymbols();
+        const symbols = currentSymbols();
         if (symbols) {
           for (const refKind of RELEVANT_SYMBOLS[kind]) {
             if (symbols[refKind].has(word.word)) {
@@ -284,6 +404,51 @@ export function registerKideLanguages(
           }
         }
         return null;
+      },
+    });
+
+    monaco.languages.registerDefinitionProvider(id, {
+      provideDefinition: (model: editor.ITextModel, position: Position) => {
+        const index = currentLanguageIndex();
+        if (!index) return null;
+
+        const path = workspacePathForModel(model, index);
+        if (!path) return null;
+
+        const definitions = findDefinitions(index, path, model.getOffsetAt(position));
+        if (definitions.length === 0) return null;
+
+        return definitions.map((location) => ({
+          uri: locationUri(monaco, location.path),
+          range: locationRange(monaco, location),
+        }));
+      },
+    });
+
+    monaco.languages.registerReferenceProvider(id, {
+      provideReferences: (
+        model: editor.ITextModel,
+        position: Position,
+        context: languages.ReferenceContext,
+      ) => {
+        const index = currentLanguageIndex();
+        if (!index) return null;
+
+        const path = workspacePathForModel(model, index);
+        if (!path) return null;
+
+        const references = findReferences(
+          index,
+          path,
+          model.getOffsetAt(position),
+          context.includeDeclaration,
+        );
+        if (references.length === 0) return null;
+
+        return references.map((location) => ({
+          uri: locationUri(monaco, location.path),
+          range: locationRange(monaco, location),
+        }));
       },
     });
   }

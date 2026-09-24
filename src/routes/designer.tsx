@@ -15,7 +15,9 @@ import { Button } from "@/components/ui/button";
 import { parseActivity } from "@/lib/dsl";
 import { printActivityFile } from "@/lib/dsl/activity-printer";
 import type { ActivityFileNode } from "@/lib/dsl/ast";
+import { useActiveProject } from "@/lib/active-project";
 import { buildCatalogue } from "@/lib/kide/catalogue";
+import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
 import {
   NODE_HEIGHT,
   NODE_WIDTH,
@@ -28,7 +30,6 @@ import {
 } from "@/lib/kide/activity-graph";
 import { linkFrom, setSource, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
-const ACTIVITY_FILE = "MissionPlanning.activity";
 const title = "Activity Designer — KIDE";
 const description =
   "Lay out the workflow on a canvas: drag steps, draw normal and failure branches, drop in capabilities, and keep the activity source in sync.";
@@ -50,11 +51,21 @@ export const Route = createFileRoute("/designer")({
 type Positions = Record<string, { x: number; y: number }>;
 
 function Designer() {
+  const activeProject = useActiveProject();
+  const workspaceAccess = useWorkspaceAccess();
   const sources = useWorkspaceSources();
-  const source = sources[ACTIVITY_FILE] ?? "";
+  const workspace = useMemo(() => linkFrom(sources), [sources]);
+  const activityFile = workspace.files.find((file) => file.kind === "activity") ?? null;
+  const activityPath = activityFile?.path ?? null;
+  const source = activityPath ? (sources[activityPath] ?? "") : "";
   const parsed = useMemo(() => parseActivity(source), [source]);
   const diagram = parsed.ast?.diagrams[0] ?? null;
-  const catalogue = useMemo(() => buildCatalogue(linkFrom(sources)), [sources]);
+  const catalogue = useMemo(() => buildCatalogue(workspace), [workspace]);
+  const accessReady =
+    Boolean(activeProject) &&
+    workspaceAccess.status === "ready" &&
+    workspaceAccess.projectId === activeProject?.projectId;
+  const canEdit = accessReady && workspaceAccess.canEdit;
 
   const [positions, setPositions] = useState<Positions>({});
   const [selectedRaw, setSelected] = useState<string | null>(null);
@@ -76,44 +87,50 @@ function Designer() {
 
   const commit = useCallback(
     (next: ActivityFileNode) => {
+      if (!activityPath || !canEdit) return;
       setUndoStack((stack) => [...stack, source]);
       setRedoStack([]);
-      setSource(ACTIVITY_FILE, printActivityFile(next));
+      setSource(activityPath, printActivityFile(next));
     },
-    [source],
+    [activityPath, canEdit, source],
   );
 
   const mutate = useCallback(
     (producer: (current: NonNullable<typeof diagram>) => NonNullable<typeof diagram>) => {
-      if (!parsed.ast || !diagram) return;
+      if (!canEdit || !parsed.ast || !diagram) return;
       const next: ActivityFileNode = {
         ...parsed.ast,
-        diagrams: parsed.ast.diagrams.map((item, index) => (index === 0 ? producer(diagram) : item)),
+        diagrams: parsed.ast.diagrams.map((item, index) =>
+          index === 0 ? producer(diagram) : item,
+        ),
       };
       commit(next);
     },
-    [commit, diagram, parsed.ast],
+    [canEdit, commit, diagram, parsed.ast],
   );
 
   const undo = () => {
+    if (!canEdit) return;
     const previous = undoStack[undoStack.length - 1];
     if (previous === undefined) return;
     setUndoStack((stack) => stack.slice(0, -1));
     setRedoStack((stack) => [...stack, source]);
-    setSource(ACTIVITY_FILE, previous);
+    if (activityPath) setSource(activityPath, previous);
   };
 
   const redo = () => {
+    if (!canEdit) return;
     const nextSource = redoStack[redoStack.length - 1];
     if (nextSource === undefined) return;
     setRedoStack((stack) => stack.slice(0, -1));
     setUndoStack((stack) => [...stack, source]);
-    setSource(ACTIVITY_FILE, nextSource);
+    if (activityPath) setSource(activityPath, nextSource);
   };
 
   const onPointerDown = (event: React.PointerEvent, id: string, x: number, y: number) => {
     event.stopPropagation();
     setSelected(id);
+    if (!canEdit) return;
     if (linking && linking !== id) {
       mutate((current) => connect(current, linking, id));
       setLinking(null);
@@ -130,6 +147,7 @@ function Designer() {
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
+    if (!canEdit) return;
     const drag = dragging.current;
     const rect = surface.current?.getBoundingClientRect();
     if (!drag || !rect) return;
@@ -143,7 +161,7 @@ function Designer() {
   };
 
   const addFromCapability = (name: string) => {
-    if (!diagram) return;
+    if (!canEdit || !diagram) return;
     let stepName = name;
     let suffix = 1;
     while (diagram.activities.some((activity) => activity.name === stepName)) {
@@ -164,11 +182,50 @@ function Designer() {
   const height = Math.max(640, ...graph.nodes.map((node) => node.y + NODE_HEIGHT + 80));
   const errors = parsed.diagnostics.filter((item) => item.severity === "error");
 
+  if (!activeProject) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background p-8 text-foreground">
+        <div className="max-w-md text-center">
+          <h1 className="text-lg font-semibold">Select a project first</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The activity designer only displays source files from the active project. KIDE does not
+            inject a demo workflow automatically.
+          </p>
+          <Button asChild className="mt-5">
+            <Link to="/projects">Choose project</Link>
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  if (!activityFile) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background p-8 text-foreground">
+        <div className="max-w-md text-center">
+          <h1 className="text-lg font-semibold">No activity workflow in this project</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Add or import an .activity model in the project workspace before opening the visual
+            designer.
+          </p>
+          <div className="mt-5 flex justify-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/projects">Projects</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/models">Open model editor</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/">
+          <Link to="/workbench">
             <ArrowLeft />
             Workbench
           </Link>
@@ -176,15 +233,31 @@ function Designer() {
         <div>
           <h1 className="text-sm font-semibold">Activity designer</h1>
           <p className="text-[10px] text-muted-foreground">
-            {diagram?.name ?? "No diagram"} · {graph.nodes.length} steps · {graph.edges.length} branches
+            {diagram?.name ?? "No diagram"} · {graph.nodes.length} steps · {graph.edges.length}{" "}
+            branches
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={undo} disabled={undoStack.length === 0}>
+          {accessReady && !canEdit && (
+            <span className="mr-1 rounded border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
+              Read-only
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={undo}
+            disabled={!canEdit || undoStack.length === 0}
+          >
             <Undo2 />
             Undo
           </Button>
-          <Button variant="ghost" size="sm" onClick={redo} disabled={redoStack.length === 0}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={redo}
+            disabled={!canEdit || redoStack.length === 0}
+          >
             <Redo2 />
             Redo
           </Button>
@@ -196,11 +269,21 @@ function Designer() {
             <LayoutGrid />
             Auto-layout
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+          >
             <ZoomOut />
           </Button>
-          <span className="w-10 text-center text-[11px] tabular-nums">{Math.round(zoom * 100)}%</span>
-          <Button variant="ghost" size="icon" onClick={() => setZoom((z) => Math.min(1.6, z + 0.1))}>
+          <span className="w-10 text-center text-[11px] tabular-nums">
+            {Math.round(zoom * 100)}%
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setZoom((z) => Math.min(1.6, z + 0.1))}
+          >
             <ZoomIn />
           </Button>
         </div>
@@ -218,9 +301,15 @@ function Designer() {
                   key={entry.name}
                   type="button"
                   onClick={() => addFromCapability(entry.name)}
-                  disabled={!entry.eligible}
+                  disabled={!canEdit || !entry.eligible}
                   className="flex w-full items-start gap-2 rounded-md border border-border bg-background p-2 text-left text-xs hover:border-primary disabled:opacity-50"
-                  title={entry.eligible ? "Add as a workflow step" : entry.reasons.join(" ")}
+                  title={
+                    !canEdit
+                      ? "Your project role is read-only."
+                      : entry.eligible
+                        ? "Add as a workflow step"
+                        : entry.reasons.join(" ")
+                  }
                 >
                   <Plus className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                   <span>
@@ -338,7 +427,9 @@ function Designer() {
                 <div className="flex items-start justify-between gap-1">
                   <span className="text-xs font-semibold">{node.id}</span>
                   {node.duration ? (
-                    <span className="font-mono text-[10px] text-muted-foreground">{node.duration}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {node.duration}
+                    </span>
                   ) : null}
                 </div>
                 <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
@@ -350,9 +441,10 @@ function Designer() {
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation();
-                    setLinking(linking === node.id ? null : node.id);
+                    if (canEdit) setLinking(linking === node.id ? null : node.id);
                   }}
-                  title="Draw a branch from this step"
+                  disabled={!canEdit}
+                  title={canEdit ? "Draw a branch from this step" : "Read-only project"}
                   className="absolute -right-2 top-1/2 size-4 -translate-y-1/2 rounded-full border border-border bg-background text-[9px] leading-none hover:border-primary"
                 >
                   →
@@ -373,6 +465,7 @@ function Designer() {
                 size="sm"
                 onClick={() => setLinking(selected)}
                 className="justify-start"
+                disabled={!canEdit}
               >
                 Draw branch from here
               </Button>
@@ -392,7 +485,8 @@ function Designer() {
                       <button
                         type="button"
                         onClick={() => mutate((current) => disconnect(current, edge.id))}
-                        className="text-muted-foreground hover:text-destructive"
+                        disabled={!canEdit}
+                        className="text-muted-foreground hover:text-destructive disabled:opacity-40"
                         aria-label={`Remove branch to ${edge.to}`}
                       >
                         <Trash2 className="size-3" />
@@ -414,6 +508,7 @@ function Designer() {
                 variant="outline"
                 size="sm"
                 className="justify-start text-destructive"
+                disabled={!canEdit}
                 onClick={() => {
                   mutate((current) => removeActivity(current, selected));
                   setSelected(null);
@@ -425,8 +520,9 @@ function Designer() {
             </>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              Drag steps to arrange them, use the arrow handle to draw a branch, and add a capability
-              from the left to create a new step. Dashed red branches are failure paths.
+              {canEdit
+                ? "Drag steps to arrange them, use the arrow handle to draw a branch, and add a capability from the left to create a new step. Dashed red branches are failure paths."
+                : "Your project role is read-only. You can inspect the workflow, problems, layout, and source without changing project content."}
             </p>
           )}
 

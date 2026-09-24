@@ -1,12 +1,28 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Check, CircleAlert, FileCode2, Play, RotateCcw, Sparkles, TriangleAlert,
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  FileCode2,
+  Play,
+  RotateCcw,
+  Sparkles,
+  TriangleAlert,
 } from "lucide-react";
 import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
+import { WorkspaceFileActions } from "@/components/kide/WorkspaceFileActions";
 import { Button } from "@/components/ui/button";
-import { DSL_LANGUAGES, SAMPLE_WORKSPACE, type Diagnostic } from "@/lib/dsl";
-import { linkFrom, resetWorkspace, setSource, useWorkspaceSources } from "@/lib/kide/workspace-store";
+import { DSL_LANGUAGES, type Diagnostic, type WorkspaceFile } from "@/lib/dsl";
+import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
+import { useActiveProject } from "@/lib/active-project";
+import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
+import {
+  linkFrom,
+  loadExampleWorkspace,
+  setSource,
+  useWorkspaceSources,
+} from "@/lib/kide/workspace-store";
 
 const title = "KIDE Model Languages — Data, Operations, MNC, Capabilities, Activities";
 const description =
@@ -28,17 +44,42 @@ export const Route = createFileRoute("/models")({
 
 function ModelLanguages() {
   const hash = useLocation({ select: (location) => location.hash });
+  const activeProject = useActiveProject();
+  const workspaceAccess = useWorkspaceAccess();
   const sources = useWorkspaceSources();
   const requestedPath = decodeURIComponent(hash.replace(/^#/, ""));
-  const initialPath = SAMPLE_WORKSPACE.some((file) => file.path === requestedPath)
-    ? requestedPath
-    : SAMPLE_WORKSPACE[0]?.path ?? "";
-  const [activePath, setActivePath] = useState(initialPath);
   const workspace = useMemo(() => linkFrom(sources), [sources]);
+  const languageIndex = useMemo(() => buildWorkspaceLanguageIndex(workspace), [workspace]);
+  const editorFiles = useMemo<WorkspaceFile[]>(
+    () =>
+      workspace.files.map((file) => ({
+        path: file.path,
+        kind: file.kind,
+        source: file.source,
+      })),
+    [workspace.files],
+  );
+  const initialPath = workspace.files.some((file) => file.path === requestedPath)
+    ? requestedPath
+    : (workspace.files[0]?.path ?? "");
+  const [activePath, setActivePath] = useState(initialPath);
+
+  useEffect(() => {
+    if (workspace.files.some((file) => file.path === activePath)) return;
+
+    const nextPath = workspace.files.some((file) => file.path === requestedPath)
+      ? requestedPath
+      : (workspace.files[0]?.path ?? "");
+    setActivePath(nextPath);
+  }, [activePath, requestedPath, workspace.files]);
 
   const activeFile = workspace.files.find((file) => file.path === activePath);
-  const activeMeta = SAMPLE_WORKSPACE.find((file) => file.path === activePath);
-  const language = DSL_LANGUAGES.find((entry) => entry.kind === activeMeta?.kind);
+  const language = DSL_LANGUAGES.find((entry) => entry.kind === activeFile?.kind);
+  const accessReady =
+    Boolean(activeProject) &&
+    workspaceAccess.status === "ready" &&
+    workspaceAccess.projectId === activeProject?.projectId;
+  const canEdit = accessReady && workspaceAccess.canEdit;
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
@@ -48,13 +89,30 @@ function ModelLanguages() {
     <main className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/projects"><ArrowLeft />Projects</Link>
+          <Link to="/projects">
+            <ArrowLeft />
+            Projects
+          </Link>
         </Button>
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold">Model languages</h1>
-          <p className="text-[10px] text-muted-foreground">Warehouse Fleet · five linked models</p>
+          <p className="text-[10px] text-muted-foreground">
+            {activeProject
+              ? `${workspace.files.length} project model${workspace.files.length === 1 ? "" : "s"}`
+              : "No active project"}
+          </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <WorkspaceFileActions
+            enabled={canEdit}
+            activeFile={activeFile ? { path: activeFile.path, kind: activeFile.kind } : null}
+            onActivePath={setActivePath}
+          />
+          {accessReady && !canEdit && (
+            <span className="rounded border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
+              Read-only
+            </span>
+          )}
           <span
             className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] ${
               workspace.errorCount > 0
@@ -62,20 +120,37 @@ function ModelLanguages() {
                 : "border-primary/30 bg-primary/10 text-primary"
             }`}
           >
-            {workspace.errorCount > 0 ? <CircleAlert className="size-3.5" /> : <Check className="size-3.5" />}
+            {workspace.errorCount > 0 ? (
+              <CircleAlert className="size-3.5" />
+            ) : (
+              <Check className="size-3.5" />
+            )}
             {workspace.errorCount > 0 ? `${workspace.errorCount} errors` : "All models consistent"}
           </span>
-          <Button variant="outline" size="sm" onClick={resetWorkspace}>
-            <RotateCcw />Reset example
+          <Button variant="outline" size="sm" onClick={loadExampleWorkspace} disabled={!canEdit}>
+            <RotateCcw />
+            Load example
           </Button>
-          <Button asChild variant="outline" size="sm"><Link to="/scenario"><Play />Run scenario</Link></Button>
-          <Button asChild size="sm"><Link to="/synthesis"><Sparkles />Synthesize</Link></Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/scenario">
+              <Play />
+              Run scenario
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/synthesis">
+              <Sparkles />
+              Synthesize
+            </Link>
+          </Button>
         </div>
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="overflow-auto border-r border-border bg-sidebar p-3">
-          <p className="mb-2 px-1 text-[10px] font-semibold text-muted-foreground uppercase">Models</p>
+          <p className="mb-2 px-1 text-[10px] font-semibold text-muted-foreground uppercase">
+            Models
+          </p>
           {workspace.files.map((file) => {
             const meta = DSL_LANGUAGES.find((entry) => entry.kind === file.kind);
             const fileErrors = file.diagnostics.filter((d) => d.severity === "error").length;
@@ -92,58 +167,114 @@ function ModelLanguages() {
                 }`}
               >
                 <span className="flex items-center gap-2 font-mono text-[11px]">
-                  <FileCode2 className="size-3.5 text-capability" />{file.path}
+                  <FileCode2 className="size-3.5 text-capability" />
+                  {file.path}
                 </span>
                 <span className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                   {meta?.label}
                   {fileErrors > 0 && <span className="text-destructive">{fileErrors} errors</span>}
-                  {fileErrors === 0 && fileWarnings > 0 && <span className="text-warning">{fileWarnings} warnings</span>}
+                  {fileErrors === 0 && fileWarnings > 0 && (
+                    <span className="text-warning">{fileWarnings} warnings</span>
+                  )}
                 </span>
               </button>
             );
           })}
           <p className="mt-5 px-1 text-[10px] leading-relaxed text-muted-foreground">
-            Press Ctrl+Space for suggestions drawn from this workspace, hover any
-            word for an explanation, and F1 for the command palette. Names that do
-            not exist anywhere in the workspace are reported below.
+            Press Ctrl+Space for workspace suggestions, F12 or Ctrl+Click for definition, Shift+F12
+            for references, and hover for documentation. Names that do not exist anywhere in the
+            workspace are reported below.
           </p>
         </aside>
 
         <section className="flex min-h-0 flex-col">
           <div className="border-b border-border bg-card/80 px-4 py-2">
-            <p className="text-xs font-semibold">{language?.label} · <span className="font-mono">{activePath}</span></p>
+            <p className="text-xs font-semibold">
+              {language?.label} · <span className="font-mono">{activePath}</span>
+            </p>
             <p className="text-[11px] text-muted-foreground">{language?.description}</p>
           </div>
 
           <div className="min-h-0 flex-1">
-            {activeFile && activeMeta && (
+            {!activeProject ? (
+              <div className="grid h-full place-items-center p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-sm font-semibold">Select a project first</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    KIDE does not create or display demo engineering data until you explicitly ask
+                    for an example workspace.
+                  </p>
+                  <Button asChild className="mt-4" size="sm">
+                    <Link to="/projects">Choose project</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : workspace.files.length === 0 ? (
+              <div className="grid h-full place-items-center p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-sm font-semibold">This project has no model files yet</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {canEdit
+                      ? "Use New model in the toolbar to create a DSL file, or load the example workspace only if you want reference starter content."
+                      : "This project is empty. Your project role is read-only, so no model files can be created here."}
+                  </p>
+                  <Button
+                    className="mt-4"
+                    size="sm"
+                    variant="outline"
+                    onClick={loadExampleWorkspace}
+                    disabled={!canEdit}
+                  >
+                    Load example workspace
+                  </Button>
+                </div>
+              </div>
+            ) : activeFile ? (
               <MonacoDslEditor
                 path={activeFile.path}
-                kind={activeMeta.kind}
+                kind={activeFile.kind}
                 value={sources[activeFile.path] ?? ""}
                 diagnostics={activeFile.diagnostics}
-                getSymbols={() => linkFrom(sources).symbols}
-                onChange={(next) => setSource(activeFile.path, next)}
+                getSymbols={() => workspace.symbols}
+                getLanguageIndex={() => languageIndex}
+                workspaceFiles={editorFiles}
+                onOpenPath={setActivePath}
+                onChange={(next) => {
+                  if (canEdit) setSource(activeFile.path, next);
+                }}
+                readOnly={!canEdit}
               />
-            )}
+            ) : null}
           </div>
 
           <div className="h-48 shrink-0 overflow-auto border-t border-border bg-card px-4 py-3">
             <div className="flex items-center gap-3 text-[11px]">
               <span className="font-semibold">Problems</span>
-              <span className={workspace.errorCount ? "text-destructive" : "text-muted-foreground"}>{workspace.errorCount} errors</span>
-              <span className={workspace.warningCount ? "text-warning" : "text-muted-foreground"}>{workspace.warningCount} warnings</span>
-              <span className="ml-auto text-muted-foreground">Grammar check + cross-model resolution</span>
+              <span className={workspace.errorCount ? "text-destructive" : "text-muted-foreground"}>
+                {workspace.errorCount} errors
+              </span>
+              <span className={workspace.warningCount ? "text-warning" : "text-muted-foreground"}>
+                {workspace.warningCount} warnings
+              </span>
+              <span className="ml-auto text-muted-foreground">
+                Grammar check + cross-model resolution
+              </span>
             </div>
 
             {allProblems.length === 0 ? (
               <p className="mt-2 flex items-center gap-2 text-xs text-primary">
-                <Check className="size-3.5" />Every model parses and every reference resolves.
+                <Check className="size-3.5" />
+                Every model parses and every reference resolves.
               </p>
             ) : (
               <ul className="mt-2 space-y-1.5">
                 {allProblems.map(({ path, diagnostic }, index) => (
-                  <ProblemRow key={`${path}-${index}`} path={path} diagnostic={diagnostic} onSelect={() => setActivePath(path)} />
+                  <ProblemRow
+                    key={`${path}-${index}`}
+                    path={path}
+                    diagnostic={diagnostic}
+                    onSelect={() => setActivePath(path)}
+                  />
                 ))}
               </ul>
             )}
@@ -154,7 +285,15 @@ function ModelLanguages() {
   );
 }
 
-function ProblemRow({ path, diagnostic, onSelect }: { path: string; diagnostic: Diagnostic; onSelect: () => void }) {
+function ProblemRow({
+  path,
+  diagnostic,
+  onSelect,
+}: {
+  path: string;
+  diagnostic: Diagnostic;
+  onSelect: () => void;
+}) {
   return (
     <li>
       <button
@@ -167,7 +306,9 @@ function ProblemRow({ path, diagnostic, onSelect }: { path: string; diagnostic: 
         ) : (
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-warning" />
         )}
-        <span className="font-mono text-[10px] text-muted-foreground">{path}:{diagnostic.line}:{diagnostic.column}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {path}:{diagnostic.line}:{diagnostic.column}
+        </span>
         <span className="min-w-0 flex-1">{diagnostic.message}</span>
         <span className="font-mono text-[10px] text-muted-foreground">{diagnostic.code}</span>
       </button>
