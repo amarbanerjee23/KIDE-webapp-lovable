@@ -43,6 +43,15 @@ jobs:
           test ! -e src/integrations/supabase
           ! grep -q '"@supabase/supabase-js"' package.json
 
+          stale_baas_refs="$(
+            git grep -niE 'supabase|@lovable\.dev/cloud-auth-js' -- src Dockerfile cloudbuild.yaml package.json || true
+          )"
+          if [[ -n "$stale_baas_refs" ]]; then
+            echo "Hosted-BaaS runtime references are forbidden after PR24."
+            printf '%s\n' "$stale_baas_refs"
+            exit 1
+          fi
+
           forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' || true)"
           if [[ -n "$forbidden_runtime" ]]; then
             echo "Tracked non-TypeScript application runtimes are not allowed."
