@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -21,8 +21,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -30,42 +29,7 @@ jobs:
           bun-version: 1.4.2
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          if [[ "${GITHUB_HEAD_REF:-}" == "auth/pr24-better-auth-postgres" ]]; then
-            bun install
-          else
-            bun install --frozen-lockfile
-          fi
-
-      - name: Normalize PR24 dependency and formatting state
-        if: github.head_ref == 'auth/pr24-better-auth-postgres'
-        shell: bash
-        run: |
-          mapfile -t format_files < <(
-            git diff --name-only --diff-filter=ACMR origin/main...HEAD -- \
-              '*.js' '*.jsx' '*.ts' '*.tsx' '*.json' '*.md' '*.yaml' '*.yml'
-          )
-          if (( ${#format_files[@]} > 0 )); then
-            bunx prettier --write "${format_files[@]}"
-          fi
-
-          # Loading Vite runs TanStack Router's file-route generator. The build
-          # may still expose later migration errors; route generation itself is
-          # needed before the strict TypeScript check sees newly added routes.
-          bun run build >/tmp/pr24-route-generation.log 2>&1 || true
-
-          git add bun.lock src/routeTree.gen.ts
-          if (( ${#format_files[@]} > 0 )); then
-            git add "${format_files[@]}"
-          fi
-
-          if ! git diff --cached --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore(pr24): refresh lockfile and formatting"
-            git push origin "HEAD:${GITHUB_HEAD_REF}"
-          fi
+        run: bun install --frozen-lockfile
 
       - name: Enforce client-compute architecture
         shell: bash
@@ -76,6 +40,8 @@ jobs:
           test ! -e deploy/helm/kide-platform
           test ! -e src/lib/kide/standalone-synthesis.functions.ts
           test ! -e src/lib/kide/standalone-synthesis.server.ts
+          test ! -e src/integrations/supabase
+          ! grep -q '"@supabase/supabase-js"' package.json
 
           forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' || true)"
           if [[ -n "$forbidden_runtime" ]]; then
