@@ -1,0 +1,42 @@
+name: PR27 format normalization
+
+on:
+  push:
+    branches:
+      - knowledge/pr27-knowledge-fabric-core
+    paths:
+      - "src/lib/knowledge/**"
+      - "src/routes/catalogue.tsx"
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: knowledge/pr27-knowledge-fabric-core
+          fetch-depth: 1
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Normalize changed TypeScript
+        run: bunx prettier --write src/lib/knowledge src/routes/catalogue.tsx
+
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            echo "Formatting already clean."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/knowledge src/routes/catalogue.tsx
+          git commit -m "style(pr27): normalize knowledge fabric formatting"
+          git push origin HEAD:knowledge/pr27-knowledge-fabric-core
