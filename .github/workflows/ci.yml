@@ -44,7 +44,7 @@ jobs:
           ! grep -q '"@supabase/supabase-js"' package.json
 
           stale_baas_refs="$(
-            git grep -niE 'supabase|@lovable\.dev/cloud-auth-js' -- src Dockerfile cloudbuild.yaml package.json || true
+            git grep -nE '@supabase/supabase-js|integrations/supabase|VITE_SUPABASE_|SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_PUBLISHABLE_KEY|@lovable\.dev/cloud-auth-js' -- src Dockerfile cloudbuild.yaml package.json || true
           )"
           if [[ -n "$stale_baas_refs" ]]; then
             echo "Hosted-BaaS runtime references are forbidden after PR24."
