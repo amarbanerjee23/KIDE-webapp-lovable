@@ -153,11 +153,22 @@ jobs:
             -e POSTGRES_PASSWORD=kide-e2e-password \
             postgres:17-alpine >/dev/null
 
-          for _ in $(seq 1 40); do
-            if docker exec kide-e2e-db pg_isready -U kide -d kide >/dev/null 2>&1; then break; fi
+          db_ready=0
+          for _ in $(seq 1 60); do
+            if docker exec kide-e2e-db psql -At -U kide -d kide -c 'select 1' 2>/dev/null | grep -qx 1; then
+              sleep 2
+              if docker exec kide-e2e-db psql -At -U kide -d kide -c 'select 1' 2>/dev/null | grep -qx 1; then
+                db_ready=1
+                break
+              fi
+            fi
             sleep 1
           done
-          docker exec kide-e2e-db pg_isready -U kide -d kide >/dev/null
+          [[ "$db_ready" == "1" ]] || {
+            echo "PostgreSQL did not reach stable readiness."
+            docker logs kide-e2e-db || true
+            exit 1
+          }
 
           docker run -d --name kide-e2e-app --network kide-pr26 -p 8080:8080 \
             -e PORT=8080 \
