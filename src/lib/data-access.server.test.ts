@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { KideDatabase } from "./database.server";
-import type { KideDatabase } from "./database.server";
 import {
   ADMIN_ROLES,
   EDIT_ROLES,
