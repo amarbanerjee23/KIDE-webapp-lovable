@@ -7,7 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient, notifyAuthChanged } from "@/lib/auth-client";
 import { getAuthReadiness } from "@/lib/auth.functions";
-import { authReadinessIssues, authReadinessSummary, type AuthReadiness } from "@/lib/auth/readiness";
+import {
+  authReadinessIssues,
+  authReadinessSummary,
+  type AuthReadiness,
+} from "@/lib/auth/readiness";
 import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
