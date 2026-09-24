@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const configuredBase = process.env["KIDE_E2E_URL"] ?? "http://127.0.0.1:8080";
 const unconfiguredBase = process.env["KIDE_E2E_UNCONFIGURED_URL"] ?? "http://127.0.0.1:8081";
+const missingDatabaseBase =
+  process.env["KIDE_E2E_MISSING_DATABASE_URL"] ?? "http://127.0.0.1:8082";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -26,6 +28,11 @@ export default defineConfig({
       name: "unconfigured-auth",
       testMatch: "**/unconfigured-auth.spec.ts",
       use: { ...devices["Desktop Chrome"], baseURL: unconfiguredBase },
+    },
+    {
+      name: "missing-database-auth",
+      testMatch: "**/missing-database-auth.spec.ts",
+      use: { ...devices["Desktop Chrome"], baseURL: missingDatabaseBase },
     },
     {
       name: "compat-chromium",
