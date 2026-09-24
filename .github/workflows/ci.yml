@@ -187,7 +187,20 @@ jobs:
               if curl --fail --silent "http://127.0.0.1:${port}/" >/dev/null; then ready=1; break; fi
               sleep 1
             done
-            [[ "$ready" == "1" ]] || { echo "KIDE container on port $port did not become ready"; exit 1; }
+            if [[ "$ready" != "1" ]]; then
+              echo "KIDE container on port $port did not become ready."
+              echo "=== compiled auth bundle around runtime failure ==="
+              docker run --rm --entrypoint sh kide-webapp:e2e -c '
+                auth_file="$(ls /app/.output/server/_ssr/auth.server-*.mjs 2>/dev/null | head -1)"
+                if [ -n "$auth_file" ]; then
+                  echo "bundle: $auth_file"
+                  nl -ba "$auth_file" | sed -n "420,445p"
+                else
+                  echo "auth bundle not found"
+                fi
+              ' || true
+              exit 1
+            fi
           done
 
       - name: Run browser critical-path and accessibility E2E
