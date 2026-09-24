@@ -123,6 +123,41 @@ describe("project knowledge projection", () => {
     ).toBe(true);
   });
 
+  it("keeps same-named nested device entities distinct by parent semantic identity", () => {
+    const workspace = linkWorkspace([
+      {
+        path: "DuplicateNames.mncspec",
+        kind: "mncspec",
+        source: `Model DuplicateNames
+
+InterfaceDescription DeviceA {
+  commands { Start[] }
+}
+
+InterfaceDescription DeviceB {
+  commands { Start[] }
+}
+`,
+      },
+    ]);
+
+    const projection = projectWorkspaceToKnowledgeGraph(
+      "project-identity-test",
+      workspace,
+      GENERATED_AT,
+    );
+
+    const commands = projection.nodes.filter(
+      (node) => node.kind === "Command" && node.label === "Start",
+    );
+    expect(commands).toHaveLength(2);
+    expect(new Set(commands.map((node) => node.id)).size).toBe(2);
+    expect(commands.map((node) => node.properties.interface).sort()).toEqual([
+      "DeviceA",
+      "DeviceB",
+    ]);
+  });
+
   it("summarizes graph content for the web catalogue", () => {
     const summary = summarizeKnowledgeGraph(sampleProjection());
     expect(summary.nodeCount).toBeGreaterThan(0);
