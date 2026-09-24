@@ -86,8 +86,7 @@
     {
       "name": "edgeBySemanticId",
       "typeClass": "org.apache.tinkerpop.gremlin.structure.Edge",
-      "unique": true,
-      "consistency": "LOCK",
+      "unique": false,
       "keys": [
         {
           "propertyKey": "semanticId"
