@@ -32,7 +32,13 @@ services:
       JANUS_STORAGE_TIMEOUT: "120"
       janusgraph.storage.hostname: cassandra
       janusgraph.storage.cql.keyspace: kide_knowledge
+      janusgraph.schema.default: none
+      janusgraph.schema.init.strategy: json
+      janusgraph.schema.init.json.file: /etc/opt/janusgraph/kide-schema.json
+      janusgraph.schema.init.json.indices-activation: reindex_and_enable_non_enabled
       gremlinserver.channelizer: org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer
+    volumes:
+      - ./knowledge/janusgraph/schema.json:/etc/opt/janusgraph/kide-schema.json:ro
     ports:
       - "8182:8182"
 
