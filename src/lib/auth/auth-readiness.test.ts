@@ -79,6 +79,23 @@ describe("production auth readiness", () => {
     expect(authReadinessSummary(shortReadiness)).toContain("too short");
   });
 
+  it("never exposes configured connection strings or secret values in readiness metadata", () => {
+    const databaseUrl = "postgres://sensitive-user:sensitive-password@example.test/kide";
+    const authUrl = "https://private-deployment.example.test";
+    const authSecret = "01234567890123456789012345678901-sensitive";
+
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("DATABASE_URL", databaseUrl);
+    vi.stubEnv("BETTER_AUTH_URL", authUrl);
+    vi.stubEnv("BETTER_AUTH_SECRET", authSecret);
+
+    const serialized = JSON.stringify(authReadiness());
+    expect(serialized).not.toContain(databaseUrl);
+    expect(serialized).not.toContain(authUrl);
+    expect(serialized).not.toContain(authSecret);
+    expect(serialized).not.toContain("sensitive-password");
+  });
+
   it("becomes configured only when all production requirements are present", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("DATABASE_URL", "postgres://example");
