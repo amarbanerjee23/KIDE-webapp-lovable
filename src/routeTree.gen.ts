@@ -31,6 +31,7 @@ import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedReviewsRouteImport } from './routes/_authenticated/reviews'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedInviteTokenRouteImport } from './routes/_authenticated/invite.$token'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiPublicHyperswitchWebhookRouteImport } from './routes/api/public/hyperswitch-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -145,6 +146,11 @@ const AuthenticatedInviteTokenRoute =
     path: '/invite/$token',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHyperswitchWebhookRoute =
   ApiPublicHyperswitchWebhookRouteImport.update({
     id: '/api/public/hyperswitch-webhook',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/reviews': typeof AuthenticatedReviewsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/invite/$token': typeof AuthenticatedInviteTokenRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/public/hyperswitch-webhook': typeof ApiPublicHyperswitchWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/reviews': typeof AuthenticatedReviewsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/invite/$token': typeof AuthenticatedInviteTokenRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/public/hyperswitch-webhook': typeof ApiPublicHyperswitchWebhookRoute
 }
 export interface FileRoutesById {
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/_authenticated/reviews': typeof AuthenticatedReviewsRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/invite/$token': typeof AuthenticatedInviteTokenRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/public/hyperswitch-webhook': typeof ApiPublicHyperswitchWebhookRoute
 }
 export interface FileRouteTypes {
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/team'
     | '/invite/$token'
+    | '/api/auth/$'
     | '/api/public/hyperswitch-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/team'
     | '/invite/$token'
+    | '/api/auth/$'
     | '/api/public/hyperswitch-webhook'
   id:
     | '__root__'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reviews'
     | '/_authenticated/team'
     | '/_authenticated/invite/$token'
+    | '/api/auth/$'
     | '/api/public/hyperswitch-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   SynthesisRoute: typeof SynthesisRoute
   TrustRoute: typeof TrustRoute
   WorkbenchRoute: typeof WorkbenchRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiPublicHyperswitchWebhookRoute: typeof ApiPublicHyperswitchWebhookRoute
 }
 
@@ -474,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInviteTokenRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hyperswitch-webhook': {
       id: '/api/public/hyperswitch-webhook'
       path: '/api/public/hyperswitch-webhook'
@@ -526,6 +546,7 @@ const rootRouteChildren: RootRouteChildren = {
   SynthesisRoute: SynthesisRoute,
   TrustRoute: TrustRoute,
   WorkbenchRoute: WorkbenchRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiPublicHyperswitchWebhookRoute: ApiPublicHyperswitchWebhookRoute,
 }
 export const routeTree = rootRouteImport
