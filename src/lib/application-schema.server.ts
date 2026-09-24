@@ -1,4 +1,4 @@
-import schemaSql from "../../drizzle/migrations/0004_self_hosted_postgres_cutover.sql?raw";
+import schemaSql from "../../db/kide-application-schema.sql?raw";
 import { getDatabase } from "@/lib/database.server";
 
 let applicationMigration: Promise<void> | undefined;
