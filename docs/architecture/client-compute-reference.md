@@ -33,8 +33,8 @@ repeat or replace that computation.
 
 The Node/TanStack backend is an I/O boundary only. It MAY:
 
-- verify authentication/authorization before data access;
-- query and mutate Supabase/Postgres;
+- verify Better Auth sessions and server-side authorization before data access;
+- query and mutate PostgreSQL;
 - persist workspace source, checkpoints, approvals, reviews, audit records, and generated
   artifacts;
 - access object/file storage;
@@ -51,17 +51,18 @@ scenarios, perform qualification/assurance calculations, or generate control mod
 Browser
   React + Monaco + TypeScript KIDE engine
        |
-       | authenticated data / infrastructure I/O only
+       | signed cookie + authenticated data / infrastructure I/O only
        v
 TanStack Start / Node.js
        |
-       +--> Supabase/Postgres
+       +--> Better Auth
+       +--> PostgreSQL
        +--> object storage
        +--> payment / webhook / secret-backed infrastructure
 ```
 
-There is one web application and one Node runtime. No application microservice is required for
-KIDE computation.
+KIDE has no hosted-BaaS runtime dependency. Better Auth and PostgreSQL are self-hostable
+open-source components.
 
 ## 3. Source of truth
 
@@ -84,44 +85,38 @@ without moving KIDE computation out of the browser.
 
 Session lifecycle is centralized at the application root.
 
-- Supabase persists and refreshes the standalone browser session in local storage.
+- Better Auth owns sign-up, sign-in, sign-out, OAuth callbacks, session cookies and session validation.
+- Session credentials remain in secure HTTP cookies rather than browser-managed service tokens.
 - KIDE does not broker authentication from the Lovable/editor preview frame.
-- The root session coordinator performs initial reconciliation.
-- `SIGNED_OUT` or any session-loss event immediately clears authenticated query cache and routes
-  every protected client page to the public home route `/`.
-- Visiting `/auth` never auto-enters a protected route, even if cached auth state exists.
-- Only a successful, validated sign-in or an OAuth callback initiated by KIDE may leave `/auth` for a protected destination.
-- Direct Sign In / Start Engineering actions from `/` clear any stale remembered protected destination before opening `/auth`.
+- The root session coordinator performs initial reconciliation and re-checks on focus, visibility
+  changes and explicit authentication changes.
+- Session loss immediately clears authenticated query cache, active project state and browser
+  workspace state, then removes protected routes from the address bar.
+- Visiting `/auth` never auto-enters a protected route.
+- Only a successful, validated sign-in or an OAuth callback initiated by KIDE may leave `/auth`
+  for a protected destination.
+- Direct Sign In / Start Engineering actions from `/` clear any stale remembered protected
+  destination before opening `/auth`.
 - Restored sessions never force the public home route `/` to navigate away.
 - A safe same-origin destination may be remembered in tab-scoped `sessionStorage`.
-- An active session means both a cached Supabase session and a successfully validated current user.
-  A cached/stale token by itself is never sufficient.
-- Every protected pathname is re-checked against the validated browser session on navigation.
-- A protected page renders only after that exact pathname has been verified; verification from one
-  route never authorizes another route.
+- Every protected pathname is re-checked against the validated session on navigation.
 - Protected route guards provide navigation defense-in-depth.
-- Server data functions independently enforce authentication/authorization; client guards are
-  never treated as a data-security boundary.
-- Missing Supabase configuration leaves the user on the stable public home page; `/auth` remains
-  available to display configuration guidance without making placeholder network calls.
+- Server data functions independently enforce authentication and organization/project role checks.
+- Production authentication fails closed if `DATABASE_URL`, `BETTER_AUTH_URL` or a sufficiently
+  strong `BETTER_AUTH_SECRET` is missing.
 
 ## 5. Landing/root behavior
 
 `/` is the stable public landing page. It performs no domain computation and owns no competing
-session logic. The root session coordinator decides navigation:
+session logic.
 
 - valid session on `/` -> remain on the public landing page;
-- valid session on `/auth` -> `/projects` or the remembered safe internal destination;
 - no session on `/` -> remain on the public landing page;
 - no session on `/auth` -> remain on the sign-in page;
-- no session on any other client route, including `/projects`, `/designer`, and engineering
-  tools -> perform a browser-level `window.location.replace("/")` so the protected pathname is
-  removed from the address bar and its client state is discarded;
+- no session on any protected client route -> perform a browser-level `window.location.replace("/")`;
 - session becomes invalid at any time on a protected route -> redirect immediately to `/`.
 
-Protected content is withheld while the initial browser session is being resolved, preventing a
-brief flash of authenticated UI before redirect. This avoids duplicated redirect effects and
-redirect races.
+Protected content is withheld while the initial browser session is being resolved.
 
 ## 6. Maintainability rules
 
@@ -131,8 +126,10 @@ redirect races.
 4. Avoid background workers until there is an infrastructure-only requirement that cannot run in
    the browser.
 5. Do not add a new runtime language to the product without an explicit architecture decision.
-6. Every PR must preserve strict TypeScript, tests, production build, and the architecture CI
-   guard.
+6. Every PR must preserve strict TypeScript, tests, production build, container build and the
+   architecture CI guard.
+7. Authentication and application persistence must remain portable across self-hosted PostgreSQL
+   deployments; do not reintroduce hosted-BaaS-specific SDKs.
 
 ## 7. CI architecture guard
 
@@ -141,6 +138,7 @@ CI rejects:
 - tracked Python/Java application runtime files;
 - the removed Jena/Celery/Helm microservice architecture;
 - `createServerFn` inside `src/lib/kide`;
-- server function imports of `src/lib/dsl` or KIDE computational modules.
+- server function imports of KIDE computational modules;
+- a Supabase integration directory or `@supabase/supabase-js` dependency.
 
 This document and `AGENTS.md` are the reference for future implementation decisions.
