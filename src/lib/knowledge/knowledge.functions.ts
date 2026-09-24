@@ -15,7 +15,11 @@ function validateProjectionEnvelope(input: KnowledgeProjection): KnowledgeProjec
   if (!input.projectId || !Array.isArray(input.nodes) || !Array.isArray(input.edges)) {
     throw new Error("Malformed knowledge projection.");
   }
-  if (input.nodes.length === 0 || input.nodes.length > 100_000 || input.edges.length > 500_000) {
+  if (
+    input.nodes.length === 0 ||
+    input.nodes.length > 100_000 ||
+    input.edges.length > 500_000
+  ) {
     throw new Error("Project knowledge projection exceeds the PR27 safety envelope.");
   }
 
