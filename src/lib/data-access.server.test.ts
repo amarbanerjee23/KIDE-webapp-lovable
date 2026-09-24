@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { KideDatabase } from "./database.server";
 import {
   ADMIN_ROLES,
   EDIT_ROLES,
@@ -17,12 +18,15 @@ function mockDb(rowsByCall: Row[][]) {
   const calls: Array<{ sql: string; values: unknown[] }> = [];
   const queue = [...rowsByCall];
 
-  const db = (async (strings: TemplateStringsArray, ...values: unknown[]) => {
+  const query = async (strings: TemplateStringsArray, ...values: unknown[]) => {
     calls.push({ sql: strings.join("?"), values });
     return queue.shift() ?? [];
-  }) as any;
+  };
 
-  db.json = (value: unknown) => value;
+  const db = Object.assign(query, {
+    json: (value: unknown) => value,
+  }) as unknown as KideDatabase;
+
   return { db, calls };
 }
 
@@ -49,9 +53,9 @@ describe("server-side organization/project authorization", () => {
     );
 
     const { db: adminDb } = mockDb([[{ role: "engineer" }]]);
-    await expect(requireOrganizationAccess(adminDb, "user-1", "org-1", ADMIN_ROLES)).rejects.toThrow(
-      "does not allow",
-    );
+    await expect(
+      requireOrganizationAccess(adminDb, "user-1", "org-1", ADMIN_ROLES),
+    ).rejects.toThrow("does not allow");
 
     const { db: reviewDb } = mockDb([[{ role: "engineer" }]]);
     await expect(
