@@ -1,13 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireKideAuth } from "@/lib/auth-middleware";
+import { ADMIN_ROLES, requireOrganizationAccess, type Role } from "@/lib/data-access.server";
 
-type Role = "owner" | "administrator" | "engineer" | "reviewer" | "viewer";
-const ADMIN_ROLES: Role[] = ["owner", "administrator"];
-
-/**
- * Paid plans purchasable through the open-source Hyperswitch checkout.
- * Amounts are minor units (cents) — keep in sync with src/routes/_authenticated/billing.tsx.
- */
 export const PLAN_CATALOG = {
   professional: {
     id: "professional",
@@ -20,41 +14,45 @@ export const PLAN_CATALOG = {
 
 export type PlanId = keyof typeof PLAN_CATALOG;
 
-/** Subscription + payment history for every organization the user belongs to. */
 export const getBillingStatus = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireKideAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId } = context;
+    const organizations = await context.db<
+      { id: string; name: string; slug: string; role: Role }[]
+    >\`
+      SELECT o.id, o.name, o.slug, r.role
+      FROM public.organizations o
+      JOIN public.organization_roles r ON r.organization_id = o.id
+      WHERE r.user_id = \${context.userId}::uuid
+      ORDER BY o.name
+    \`;
 
-    const { data: roles } = await supabase
-      .from("organization_roles")
-      .select("organization_id, role")
-      .eq("user_id", userId);
-    const orgIds = (roles ?? []).map((r) => r.organization_id);
+    const subscriptions = await context.db<any[]>\`
+      SELECT s.*
+      FROM public.subscriptions s
+      JOIN public.organization_roles r ON r.organization_id = s.organization_id
+      WHERE r.user_id = \${context.userId}::uuid
+    \`;
 
-    const { data: organizations } = orgIds.length
-      ? await supabase.from("organizations").select("id, name, slug").in("id", orgIds)
-      : { data: [] as Array<{ id: string; name: string; slug: string }> };
-
-    const { data: subscriptions } = orgIds.length
-      ? await supabase.from("subscriptions").select("*").in("organization_id", orgIds)
-      : { data: [] as never[] };
-
-    const { data: payments } = orgIds.length
-      ? await supabase
-          .from("payments")
-          .select("*")
-          .in("organization_id", orgIds)
-          .order("created_at", { ascending: false })
-          .limit(50)
-      : { data: [] as never[] };
+    const payments = await context.db<any[]>\`
+      SELECT p.*
+      FROM public.payments p
+      JOIN public.organization_roles r ON r.organization_id = p.organization_id
+      WHERE r.user_id = \${context.userId}::uuid
+      ORDER BY p.created_at DESC
+      LIMIT 50
+    \`;
 
     return {
-      organizations: (organizations ?? []).map((org) => ({
-        ...org,
-        role: (roles ?? []).find((r) => r.organization_id === org.id)?.role as Role,
-        subscription: (subscriptions ?? []).find((s) => s.organization_id === org.id) ?? null,
-        payments: (payments ?? []).filter((p) => p.organization_id === org.id),
+      organizations: organizations.map((organization) => ({
+        ...organization,
+        subscription:
+          subscriptions.find(
+            (subscription) => subscription.organization_id === organization.id,
+          ) ?? null,
+        payments: payments.filter(
+          (payment) => payment.organization_id === organization.id,
+        ),
       })),
     };
   });
@@ -72,13 +70,8 @@ export type CreateCheckoutResult =
       planName: string;
     };
 
-/**
- * Starts a Hyperswitch payment for a plan upgrade. Only organization
- * owners/administrators may check out. Returns configured:false when the
- * Hyperswitch instance is not wired up yet, so the UI can explain the setup.
- */
 export const createCheckout = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireKideAuth])
   .inputValidator((input: { organizationId: string; plan: PlanId }) => {
     if (!input || typeof input.organizationId !== "string") {
       throw new Error("Missing organization.");
@@ -87,17 +80,12 @@ export const createCheckout = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }): Promise<CreateCheckoutResult> => {
-    const { supabase, userId, claims } = context;
-
-    const { data: membership } = await supabase
-      .from("organization_roles")
-      .select("role")
-      .eq("organization_id", data.organizationId)
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (!membership || !ADMIN_ROLES.includes(membership.role as Role)) {
-      throw new Error("Only organization owners and administrators can change the plan.");
-    }
+    await requireOrganizationAccess(
+      context.db,
+      context.userId,
+      data.organizationId,
+      ADMIN_ROLES,
+    );
 
     const baseUrl = process.env["HYPERSWITCH_BASE_URL"]?.replace(/\/+$/, "");
     const apiKey = process.env["HYPERSWITCH_API_KEY"];
@@ -107,23 +95,25 @@ export const createCheckout = createServerFn({ method: "POST" })
     }
 
     const plan = PLAN_CATALOG[data.plan];
+    const rows = await context.db<{ id: string }[]>\`
+      INSERT INTO public.payments (
+        organization_id, plan, amount, currency, status, processor, created_by
+      )
+      VALUES (
+        \${data.organizationId}::uuid,
+        \${plan.id},
+        \${plan.amount},
+        \${plan.currency},
+        'pending',
+        'hyperswitch',
+        \${context.userId}::uuid
+      )
+      RETURNING id
+    \`;
+    const row = rows[0];
+    if (!row) throw new Error("Could not start checkout.");
 
-    const { data: row, error: insertError } = await supabase
-      .from("payments")
-      .insert({
-        organization_id: data.organizationId,
-        plan: plan.id,
-        amount: plan.amount,
-        currency: plan.currency,
-        status: "pending",
-        processor: "hyperswitch",
-        created_by: userId,
-      })
-      .select("id")
-      .single();
-    if (insertError || !row) throw new Error(insertError?.message ?? "Could not start checkout.");
-
-    const response = await fetch(`${baseUrl}/payments`, {
+    const response = await fetch(\`\${baseUrl}/payments\`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": apiKey },
       body: JSON.stringify({
@@ -132,8 +122,8 @@ export const createCheckout = createServerFn({ method: "POST" })
         confirm: false,
         capture_method: "automatic",
         authentication_type: "no_three_ds",
-        description: `KIDE ${plan.name} plan — monthly`,
-        email: (claims as { email?: string } | null)?.email,
+        description: \`KIDE \${plan.name} plan — monthly\`,
+        email: context.user.email,
         metadata: {
           kide_payment_id: row.id,
           organization_id: data.organizationId,
@@ -149,16 +139,21 @@ export const createCheckout = createServerFn({ method: "POST" })
     };
 
     if (!response.ok || !payload.client_secret || !payload.payment_id) {
-      await supabase.from("payments").update({ status: "failed" }).eq("id", row.id);
+      await context.db\`
+        UPDATE public.payments
+        SET status = 'failed', updated_at = now()
+        WHERE id = \${row.id}::uuid
+      \`;
       throw new Error(
         payload.error?.message ?? "The payment service could not start the checkout.",
       );
     }
 
-    await supabase
-      .from("payments")
-      .update({ processor_payment_id: payload.payment_id })
-      .eq("id", row.id);
+    await context.db\`
+      UPDATE public.payments
+      SET processor_payment_id = \${payload.payment_id}, updated_at = now()
+      WHERE id = \${row.id}::uuid
+    \`;
 
     return {
       configured: true,
