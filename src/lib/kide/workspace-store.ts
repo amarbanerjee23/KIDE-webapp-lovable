@@ -21,6 +21,11 @@ export function setSource(path: string, value: string) {
   emit();
 }
 
+export function replaceWorkspaceSources(nextSources: WorkspaceSources) {
+  sources = { ...nextSources };
+  emit();
+}
+
 export function resetWorkspace() {
   sources = initialWorkspaceSources();
   emit();

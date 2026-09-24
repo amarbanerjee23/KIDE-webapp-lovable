@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Code2, GitBranch, Network, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { clearPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "KIDE — Knowledge-integrated systems engineering";
 const description =
@@ -30,10 +31,12 @@ function LandingPage() {
         </Link>
         <div className="ml-auto flex items-center gap-2">
           <Button asChild variant="ghost">
-            <Link to="/auth">Sign in</Link>
+            <Link to="/auth" onClick={clearPostAuthRedirect}>
+              Sign in
+            </Link>
           </Button>
           <Button asChild>
-            <Link to="/auth">
+            <Link to="/auth" onClick={clearPostAuthRedirect}>
               Start engineering
               <ArrowRight />
             </Link>
@@ -55,13 +58,15 @@ function LandingPage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link to="/auth">
+              <Link to="/auth" onClick={clearPostAuthRedirect}>
                 Open your workspace
                 <ArrowRight />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link to="/auth">Create account</Link>
+              <Link to="/auth" onClick={clearPostAuthRedirect}>
+                Create account
+              </Link>
             </Button>
           </div>
           <div className="mt-10 grid gap-3 sm:grid-cols-3">

@@ -7,6 +7,7 @@ import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { useProjectSelection } from "@/components/kide/useProjectSelection";
 import { Button } from "@/components/ui/button";
 import { createProject, listCheckpoints, saveCheckpoint } from "@/lib/projects.functions";
+import { WORKING_COPY_LABEL } from "@/lib/project-working-copy";
 import { linkFrom, setSource, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { exportModelSet, importModelSet } from "@/lib/kide/model-exchange";
 
@@ -55,7 +56,10 @@ function CheckpointsPage() {
   }, [sources]);
 
   const refresh = useCallback(
-    async (projectId: string) => setCheckpoints(await list({ data: { projectId } })),
+    async (projectId: string) => {
+      const rows = await list({ data: { projectId } });
+      setCheckpoints(rows.filter((checkpoint) => checkpoint.label !== WORKING_COPY_LABEL));
+    },
     [list],
   );
 
@@ -194,7 +198,7 @@ function CheckpointsPage() {
                   await save({
                     data: {
                       projectId: selection.projectId!,
-                      label,
+                      label: label.trim() === WORKING_COPY_LABEL ? "Checkpoint" : label,
                       sources,
                       errorCount: counts.errors,
                       warningCount: counts.warnings,
@@ -247,8 +251,8 @@ function CheckpointsPage() {
                     <p className="text-sm font-medium">{checkpoint.label}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(checkpoint.created_at).toLocaleString()} ·{" "}
-                      {Object.keys(checkpoint.sources ?? {}).length} models · {checkpoint.error_count}{" "}
-                      errors · {checkpoint.warning_count} warnings
+                      {Object.keys(checkpoint.sources ?? {}).length} models ·{" "}
+                      {checkpoint.error_count} errors · {checkpoint.warning_count} warnings
                     </p>
                   </div>
                   <Button size="sm" variant="secondary" onClick={() => restore(checkpoint)}>

@@ -2,17 +2,18 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import { clearActiveProject } from "@/lib/active-project";
 import { getActiveBrowserSession } from "@/lib/auth/active-session";
-import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
+import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import {
   isPublicSessionPath,
   requiresActiveSession,
   type BrowserSessionState,
 } from "@/lib/auth/session-policy";
+import { resetWorkspace } from "@/lib/kide/workspace-store";
 
 const ROOT_PATH = "/";
 const AUTH_PATH = "/auth";
-const DEFAULT_AUTHENTICATED_PATH = "/projects";
 
 function currentBrowserTarget(): string {
   if (typeof window === "undefined") return ROOT_PATH;
@@ -36,6 +37,8 @@ export function useAuthSessionCoordinator(
       if (!active || typeof window === "undefined") return;
 
       setState({ status: "anonymous", verifiedPath: null });
+      clearActiveProject();
+      resetWorkspace();
       queryClient.clear();
 
       if (isPublicSessionPath(pathname)) return;
@@ -44,28 +47,15 @@ export function useAuthSessionCoordinator(
       window.location.replace(ROOT_PATH);
     };
 
-    const markAuthenticated = async () => {
+    const markAuthenticated = () => {
       if (!active || typeof window === "undefined") return;
 
       setState({ status: "authenticated", verifiedPath: pathname });
       void queryClient.invalidateQueries();
 
-      if (pathname === ROOT_PATH) {
-        return;
-      }
-
-      if (pathname !== AUTH_PATH) {
+      if (pathname !== ROOT_PATH && pathname !== AUTH_PATH) {
         router.invalidate();
-        return;
       }
-
-      const target = consumePostAuthRedirect();
-      if (target === DEFAULT_AUTHENTICATED_PATH) {
-        await router.navigate({ to: DEFAULT_AUTHENTICATED_PATH, replace: true });
-        return;
-      }
-
-      window.location.replace(target);
     };
 
     const reconcile = async () => {
@@ -89,16 +79,16 @@ export function useAuthSessionCoordinator(
       if (!activeSession) {
         await goHome();
       } else {
-        await markAuthenticated();
+        markAuthenticated();
       }
     };
 
     void reconcile();
 
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, authSession) => {
       if (!active) return;
 
-      if (event === "SIGNED_OUT" || !session) {
+      if (event === "SIGNED_OUT" || !authSession) {
         void goHome();
         return;
       }

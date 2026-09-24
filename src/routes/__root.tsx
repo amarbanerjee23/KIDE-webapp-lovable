@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useAuthSessionCoordinator } from "@/lib/auth/session-coordinator";
 import { isPathSessionVerified, requiresActiveSession } from "@/lib/auth/session-policy";
+import { useWorkspacePersistence } from "@/lib/kide/useWorkspacePersistence";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -137,7 +138,10 @@ function RootComponent() {
   const router = useRouter();
   const location = useLocation();
   const sessionState = useAuthSessionCoordinator(router, queryClient, location.pathname);
-  const gated = !isPathSessionVerified(location.pathname, sessionState);
+  const pathVerified = isPathSessionVerified(location.pathname, sessionState);
+  const protectedRoute = requiresActiveSession(location.pathname);
+  useWorkspacePersistence(pathVerified && protectedRoute);
+  const gated = !pathVerified;
 
   useEffect(() => {
     if (

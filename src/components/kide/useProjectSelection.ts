@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { getActiveProject, setActiveProject } from "@/lib/active-project";
 import { getOrganization, getWorkspace } from "@/lib/teams.functions";
 
 export interface ProjectOption {
@@ -10,18 +11,18 @@ export interface ProjectOption {
 }
 
 /**
- * Shared organization + project picker state used by the checkpoint and
- * review pages, so both always act on the same project.
+ * Shared organization + project picker state used by checkpoint and review
+ * pages. The selected project is also the global browser working project.
  */
 export function useProjectSelection() {
   const loadWorkspace = useServerFn(getWorkspace);
   const loadOrg = useServerFn(getOrganization);
 
   const [orgs, setOrgs] = useState<Array<{ id: string; name: string; role: string }>>([]);
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgId, setOrgIdState] = useState<string | null>(null);
   const [myRole, setMyRole] = useState<string>("viewer");
   const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshProjects = useCallback(
@@ -30,7 +31,19 @@ export function useProjectSelection() {
       setMyRole(org.myRole ?? "viewer");
       const list = org.projects as ProjectOption[];
       setProjects(list);
-      setProjectId((current) => (current && list.some((p) => p.id === current) ? current : list[0]?.id ?? null));
+
+      const active = getActiveProject();
+      const preferred =
+        active?.organizationId === id && list.some((project) => project.id === active.projectId)
+          ? active.projectId
+          : (list[0]?.id ?? null);
+
+      setProjectIdState(preferred);
+      if (preferred) {
+        setActiveProject({ projectId: preferred, organizationId: id });
+      } else if (active?.organizationId === id) {
+        setActiveProject(null);
+      }
     },
     [loadOrg],
   );
@@ -39,8 +52,19 @@ export function useProjectSelection() {
     void (async () => {
       try {
         const data = await loadWorkspace();
-        setOrgs(data.organizations.map((o) => ({ id: o.id, name: o.name, role: o.role })));
-        if (data.organizations[0]) setOrgId(data.organizations[0].id);
+        const organizations = data.organizations.map((org) => ({
+          id: org.id,
+          name: org.name,
+          role: org.role,
+        }));
+        setOrgs(organizations);
+
+        const active = getActiveProject();
+        const preferredOrg =
+          active && organizations.some((org) => org.id === active.organizationId)
+            ? active.organizationId
+            : (organizations[0]?.id ?? null);
+        setOrgIdState(preferredOrg);
       } finally {
         setLoading(false);
       }
@@ -48,8 +72,39 @@ export function useProjectSelection() {
   }, [loadWorkspace]);
 
   useEffect(() => {
-    if (orgId) void refreshProjects(orgId);
+    if (orgId) {
+      void refreshProjects(orgId);
+    } else {
+      setProjects([]);
+      setProjectIdState(null);
+    }
   }, [orgId, refreshProjects]);
 
-  return { orgs, orgId, setOrgId, myRole, projects, projectId, setProjectId, refreshProjects, loading };
+  const setOrgId = (nextOrgId: string | null) => {
+    setOrgIdState(nextOrgId);
+  };
+
+  const setProjectId = (nextProjectId: string | null) => {
+    setProjectIdState(nextProjectId);
+    if (nextProjectId && orgId) {
+      setActiveProject({
+        projectId: nextProjectId,
+        organizationId: orgId,
+      });
+    } else if (!nextProjectId) {
+      setActiveProject(null);
+    }
+  };
+
+  return {
+    orgs,
+    orgId,
+    setOrgId,
+    myRole,
+    projects,
+    projectId,
+    setProjectId,
+    refreshProjects,
+    loading,
+  };
 }

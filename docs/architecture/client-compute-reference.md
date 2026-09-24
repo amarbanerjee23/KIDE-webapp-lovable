@@ -89,7 +89,10 @@ Session lifecycle is centralized at the application root.
 - The root session coordinator performs initial reconciliation.
 - `SIGNED_OUT` or any session-loss event immediately clears authenticated query cache and routes
   every protected client page to the public home route `/`.
-- `SIGNED_IN` and restored sessions may route `/auth` into the application, but never force the public home route `/` to navigate away.
+- Visiting `/auth` never auto-enters a protected route, even if cached auth state exists.
+- Only a successful, validated sign-in or an OAuth callback initiated by KIDE may leave `/auth` for a protected destination.
+- Direct Sign In / Start Engineering actions from `/` clear any stale remembered protected destination before opening `/auth`.
+- Restored sessions never force the public home route `/` to navigate away.
 - A safe same-origin destination may be remembered in tab-scoped `sessionStorage`.
 - An active session means both a cached Supabase session and a successfully validated current user.
   A cached/stale token by itself is never sufficient.
