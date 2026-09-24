@@ -46,4 +46,22 @@ describe("workspace edit access", () => {
       canEdit: false,
     });
   });
+
+  it("clears prior authorization before another project can be trusted", () => {
+    setWorkspaceAccess("project-1", true);
+    setWorkspaceAccessLoading("project-2");
+
+    expect(getWorkspaceAccess()).toEqual({
+      projectId: "project-2",
+      status: "loading",
+      canEdit: false,
+    });
+
+    clearWorkspaceAccess();
+    expect(getWorkspaceAccess()).toEqual({
+      projectId: null,
+      status: "idle",
+      canEdit: false,
+    });
+  });
 });
