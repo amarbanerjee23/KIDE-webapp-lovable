@@ -8,9 +8,9 @@ test("auth page identifies DATABASE_URL as the only missing production dependenc
 
   await expect(page.getByText("The PostgreSQL database is not configured.")).toBeVisible();
   await expect(page.getByText("The public authentication URL is not configured.")).toHaveCount(0);
-  await expect(
-    page.getByText("The authentication signing secret is not configured."),
-  ).toHaveCount(0);
+  await expect(page.getByText("The authentication signing secret is not configured.")).toHaveCount(
+    0,
+  );
   await expect(page.getByText(/signing secret is configured but too short/i)).toHaveCount(0);
 
   await expect(
