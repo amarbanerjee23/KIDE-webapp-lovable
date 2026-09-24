@@ -71,3 +71,54 @@ test("explicit sign-out invalidates server session and protected navigation", as
   await page.goto("/models");
   await expect(page).toHaveURL("/");
 });
+
+
+test("authenticated user can traverse every protected product surface without page exceptions", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  const email = `navigation-${Date.now()}@example.com`;
+  await page.goto("/auth");
+  await page.getByRole("button", { name: "Create account" }).last().click();
+  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Password").fill("Pr26-Navigation-Password!");
+  await page.getByRole("button", { name: "Create account" }).first().click();
+  await expect(page).toHaveURL("/projects");
+
+  await page.getByPlaceholder("Acme Robotics").fill("Navigation Robotics");
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.getByPlaceholder("New project name").fill("Navigation Controller");
+  await page.getByRole("button", { name: /project/i }).click();
+  await page.getByRole("link", { name: "Open overview" }).click();
+  await expect(page).toHaveURL("/overview");
+
+  const routes = [
+    "/projects",
+    "/overview",
+    "/designer",
+    "/models",
+    "/workbench",
+    "/synthesis",
+    "/scenario",
+    "/trust",
+    "/release",
+    "/qualification",
+    "/catalogue",
+    "/billing",
+    "/team",
+    "/profile",
+    "/reviews",
+    "/notifications",
+    "/checkpoints",
+  ];
+
+  for (const route of routes) {
+    await page.goto(route);
+    await expect(page).toHaveURL(route);
+    await expect(page.locator("main")).toBeVisible();
+  }
+
+  expect(errors).toEqual([]);
+});
