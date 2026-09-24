@@ -25,14 +25,14 @@ export default defineConfig({
         "src/lib/kide/catalogue.ts",
         "src/lib/kide/scenario.ts",
         "src/lib/kide/activity-graph.ts",
-        "src/lib/kide/sha256.ts"
+        "src/lib/kide/sha256.ts",
       ],
       thresholds: {
         statements: 65,
         branches: 55,
         functions: 65,
-        lines: 65
-      }
-    }
-  }
+        lines: 65,
+      },
+    },
+  },
 });

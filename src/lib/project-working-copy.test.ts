@@ -49,13 +49,13 @@ describe("project working-copy storage contract", () => {
       ),
     ).toThrow("at most 100 files");
 
-    expect(() =>
-      validateWorkingCopySources({ [`${"a".repeat(509)}.dml`]: "x" }),
-    ).toThrow("invalid file");
+    expect(() => validateWorkingCopySources({ [`${"a".repeat(509)}.dml`]: "x" })).toThrow(
+      "invalid file",
+    );
 
-    expect(() =>
-      validateWorkingCopySources({ "large.dml": "x".repeat(1_000_001) }),
-    ).toThrow("storage limit");
+    expect(() => validateWorkingCopySources({ "large.dml": "x".repeat(1_000_001) })).toThrow(
+      "storage limit",
+    );
 
     expect(() =>
       validateWorkingCopySources({

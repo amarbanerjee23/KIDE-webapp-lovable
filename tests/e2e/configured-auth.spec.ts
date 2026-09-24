@@ -28,7 +28,9 @@ test("anonymous users cannot land on protected application routes", async ({ pag
   }
 });
 
-test("new user can sign up, create organization/project, open it, and sign out", async ({ page }) => {
+test("new user can sign up, create organization/project, open it, and sign out", async ({
+  page,
+}) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
@@ -69,9 +71,13 @@ test("new user can sign up, create organization/project, open it, and sign out",
 test("public surfaces have no serious WCAG A/AA violations", async ({ page }) => {
   await page.goto("/");
   const home = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
-  expect(home.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? ""))).toEqual([]);
+  expect(
+    home.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
+  ).toEqual([]);
 
   await page.goto("/auth");
   const auth = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
-  expect(auth.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? ""))).toEqual([]);
+  expect(
+    auth.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
+  ).toEqual([]);
 });

@@ -1,9 +1,11 @@
 # PR26 — Exhaustive CI/CD assurance
 
 ## Objective
+
 Turn CI into a layered release gate rather than a single unit-test/build job.
 
 ## Mandatory layers
+
 1. full repository lint and strict TypeScript;
 2. full Vitest unit/domain suite plus critical-library coverage thresholds;
 3. authentication/session and redirect boundary tests;

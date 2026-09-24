@@ -11,18 +11,18 @@ export default defineConfig({
   use: {
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure"
+    video: "retain-on-failure",
   },
   projects: [
     {
       name: "configured-auth",
       testMatch: /configured-auth\.spec\.ts/,
-      use: { baseURL: process.env.KIDE_E2E_URL ?? "http://127.0.0.1:8080" }
+      use: { baseURL: process.env.KIDE_E2E_URL ?? "http://127.0.0.1:8080" },
     },
     {
       name: "unconfigured-auth",
       testMatch: /unconfigured-auth\.spec\.ts/,
-      use: { baseURL: process.env.KIDE_E2E_UNCONFIGURED_URL ?? "http://127.0.0.1:8081" }
-    }
-  ]
+      use: { baseURL: process.env.KIDE_E2E_UNCONFIGURED_URL ?? "http://127.0.0.1:8081" },
+    },
+  ],
 });
