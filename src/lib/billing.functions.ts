@@ -19,29 +19,29 @@ export const getBillingStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const organizations = await context.db<
       { id: string; name: string; slug: string; role: Role }[]
-    >\`
+    >`
       SELECT o.id, o.name, o.slug, r.role
       FROM public.organizations o
       JOIN public.organization_roles r ON r.organization_id = o.id
-      WHERE r.user_id = \${context.userId}::uuid
+      WHERE r.user_id = ${context.userId}::uuid
       ORDER BY o.name
-    \`;
+    `;
 
-    const subscriptions = await context.db<any[]>\`
+    const subscriptions = await context.db<any[]>`
       SELECT s.*
       FROM public.subscriptions s
       JOIN public.organization_roles r ON r.organization_id = s.organization_id
-      WHERE r.user_id = \${context.userId}::uuid
-    \`;
+      WHERE r.user_id = ${context.userId}::uuid
+    `;
 
-    const payments = await context.db<any[]>\`
+    const payments = await context.db<any[]>`
       SELECT p.*
       FROM public.payments p
       JOIN public.organization_roles r ON r.organization_id = p.organization_id
-      WHERE r.user_id = \${context.userId}::uuid
+      WHERE r.user_id = ${context.userId}::uuid
       ORDER BY p.created_at DESC
       LIMIT 50
-    \`;
+    `;
 
     return {
       organizations: organizations.map((organization) => ({
@@ -95,25 +95,25 @@ export const createCheckout = createServerFn({ method: "POST" })
     }
 
     const plan = PLAN_CATALOG[data.plan];
-    const rows = await context.db<{ id: string }[]>\`
+    const rows = await context.db<{ id: string }[]>`
       INSERT INTO public.payments (
         organization_id, plan, amount, currency, status, processor, created_by
       )
       VALUES (
-        \${data.organizationId}::uuid,
-        \${plan.id},
-        \${plan.amount},
-        \${plan.currency},
+        ${data.organizationId}::uuid,
+        ${plan.id},
+        ${plan.amount},
+        ${plan.currency},
         'pending',
         'hyperswitch',
-        \${context.userId}::uuid
+        ${context.userId}::uuid
       )
       RETURNING id
-    \`;
+    `;
     const row = rows[0];
     if (!row) throw new Error("Could not start checkout.");
 
-    const response = await fetch(\`\${baseUrl}/payments\`, {
+    const response = await fetch(`${baseUrl}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "api-key": apiKey },
       body: JSON.stringify({
@@ -122,7 +122,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         confirm: false,
         capture_method: "automatic",
         authentication_type: "no_three_ds",
-        description: \`KIDE \${plan.name} plan — monthly\`,
+        description: `KIDE ${plan.name} plan — monthly`,
         email: context.user.email,
         metadata: {
           kide_payment_id: row.id,
@@ -139,21 +139,21 @@ export const createCheckout = createServerFn({ method: "POST" })
     };
 
     if (!response.ok || !payload.client_secret || !payload.payment_id) {
-      await context.db\`
+      await context.db`
         UPDATE public.payments
         SET status = 'failed', updated_at = now()
-        WHERE id = \${row.id}::uuid
-      \`;
+        WHERE id = ${row.id}::uuid
+      `;
       throw new Error(
         payload.error?.message ?? "The payment service could not start the checkout.",
       );
     }
 
-    await context.db\`
+    await context.db`
       UPDATE public.payments
-      SET processor_payment_id = \${payload.payment_id}, updated_at = now()
-      WHERE id = \${row.id}::uuid
-    \`;
+      SET processor_payment_id = ${payload.payment_id}, updated_at = now()
+      WHERE id = ${row.id}::uuid
+    `;
 
     return {
       configured: true,
