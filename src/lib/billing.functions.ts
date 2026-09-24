@@ -14,6 +14,30 @@ export const PLAN_CATALOG = {
 
 export type PlanId = keyof typeof PLAN_CATALOG;
 
+type SubscriptionRow = {
+  id: string;
+  organization_id: string;
+  plan: string;
+  status: string;
+  current_period_end: string | Date | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
+type PaymentRow = {
+  id: string;
+  organization_id: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  status: string;
+  processor: string;
+  processor_payment_id: string | null;
+  created_by: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
 export const getBillingStatus = createServerFn({ method: "GET" })
   .middleware([requireKideAuth])
   .handler(async ({ context }) => {
@@ -27,14 +51,14 @@ export const getBillingStatus = createServerFn({ method: "GET" })
       ORDER BY o.name
     `;
 
-    const subscriptions = await context.db<any[]>`
+    const subscriptions = await context.db<SubscriptionRow[]>`
       SELECT s.*
       FROM public.subscriptions s
       JOIN public.organization_roles r ON r.organization_id = s.organization_id
       WHERE r.user_id = ${context.userId}::uuid
     `;
 
-    const payments = await context.db<any[]>`
+    const payments = await context.db<PaymentRow[]>`
       SELECT p.*
       FROM public.payments p
       JOIN public.organization_roles r ON r.organization_id = p.organization_id
@@ -49,7 +73,19 @@ export const getBillingStatus = createServerFn({ method: "GET" })
         subscription:
           subscriptions.find((subscription) => subscription.organization_id === organization.id) ??
           null,
-        payments: payments.filter((payment) => payment.organization_id === organization.id),
+        payments: payments
+          .filter((payment) => payment.organization_id === organization.id)
+          .map((payment) => ({
+            ...payment,
+            created_at:
+              payment.created_at instanceof Date
+                ? payment.created_at.toISOString()
+                : String(payment.created_at),
+            updated_at:
+              payment.updated_at instanceof Date
+                ? payment.updated_at.toISOString()
+                : String(payment.updated_at),
+          })),
       })),
     };
   });
