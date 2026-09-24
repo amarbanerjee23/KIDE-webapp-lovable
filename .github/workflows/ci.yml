@@ -241,6 +241,19 @@ jobs:
           KIDE_E2E_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
+
+          email="restart-${KIDE_E2E_RUN_ID}@example.com"
+          password="Pr26-Restart-Persistence-Password!"
+
+          signup="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            --data "{\"name\":\"Restart Test\",\"email\":\"${email}\",\"password\":\"${password}\"}" \
+            http://127.0.0.1:8080/api/auth/sign-up/email)"
+          printf '%s' "$signup" | grep -Fq "$email" || {
+            echo "Could not seed the restart-durability user"
+            exit 1
+          }
+
           docker restart kide-e2e-app >/dev/null
 
           ready=0
@@ -253,15 +266,20 @@ jobs:
           done
           [[ "$ready" == "1" ]] || { echo "KIDE did not recover after restart"; exit 1; }
 
-          email="persistence-${KIDE_E2E_RUN_ID}@example.com"
-          response="$(curl --fail-with-body --silent             -H 'content-type: application/json'             -c /tmp/kide-restart.cookies             --data "{\"email\":\"${email}\",\"password\":\"Pr26-Lifecycle-Password!\"}"             http://127.0.0.1:8080/api/auth/sign-in/email)"
+          response="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            -c /tmp/kide-restart.cookies \
+            --data "{\"email\":\"${email}\",\"password\":\"${password}\"}" \
+            http://127.0.0.1:8080/api/auth/sign-in/email)"
 
           printf '%s' "$response" | grep -Fq "$email" || {
             echo "Persisted Better Auth user could not sign in after application restart"
             exit 1
           }
 
-          session="$(curl --fail-with-body --silent             -b /tmp/kide-restart.cookies             http://127.0.0.1:8080/api/auth/get-session)"
+          session="$(curl --fail-with-body --silent \
+            -b /tmp/kide-restart.cookies \
+            http://127.0.0.1:8080/api/auth/get-session)"
           printf '%s' "$session" | grep -Fq "$email" || {
             echo "Session recovery failed after application restart"
             exit 1
