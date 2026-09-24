@@ -70,7 +70,7 @@ export interface KnowledgeNode {
   label: string;
   scope: KnowledgeScope;
   projectId?: string;
-  sourcePath?: string;
+  sourcePath?: string | undefined;
   properties: Record<string, KnowledgePropertyValue>;
 }
 
