@@ -5,7 +5,7 @@
 #   2. creates/generates kide-better-auth-secret when necessary;
 #   3. grants the Cloud Run runtime identity access to both secrets;
 #   4. deploys the revision and sets BETTER_AUTH_URL from the Cloud Run URL;
-#   5. requires /api/public/auth-health to report an operational Better Auth runtime.
+#   5. requires /api/auth/health to report an operational Better Auth runtime.
 #
 # Set _REQUIRE_AUTH=false only for an intentional public/demo deployment.
 
@@ -177,7 +177,7 @@ steps:
               --output /workspace/auth-health.json \
               --write-out '%{http_code}' \
               --max-time 10 \
-              "$$SERVICE_URL/api/public/auth-health" || true)"
+              "$$SERVICE_URL/api/auth/health" || true)"
 
             if [[ "$$http_code" == "200" ]] && \
                grep -Eq '"operational"[[:space:]]*:[[:space:]]*true' /workspace/auth-health.json; then
