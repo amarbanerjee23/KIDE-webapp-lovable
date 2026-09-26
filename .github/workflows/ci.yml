@@ -254,7 +254,15 @@ jobs:
             -e BETTER_AUTH_SECRET=pr28-database-missing-secret-012345678901234567890123 \
             kide-webapp:e2e >/dev/null
 
-          for port in 8080 8081 8082; do
+          docker run -d --name kide-e2e-baddb -p 8083:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://kide:invalid@127.0.0.1:59999/kide \
+            -e BETTER_AUTH_URL=http://127.0.0.1:8083 \
+            -e BETTER_AUTH_SECRET=pr29-unreachable-database-secret-012345678901234567890123 \
+            -e KIDE_AUTH_DB_CONNECT_TIMEOUT_MS=1500 \
+            kide-webapp:e2e >/dev/null
+
+          for port in 8080 8081 8082 8083; do
             ready=0
             for _ in $(seq 1 60); do
               if curl --fail --silent "http://127.0.0.1:${port}/" >/dev/null; then ready=1; break; fi
@@ -281,6 +289,7 @@ jobs:
           KIDE_E2E_URL: http://127.0.0.1:8080
           KIDE_E2E_UNCONFIGURED_URL: http://127.0.0.1:8081
           KIDE_E2E_MISSING_DATABASE_URL: http://127.0.0.1:8082
+          KIDE_E2E_UNREACHABLE_DATABASE_URL: http://127.0.0.1:8083
           KIDE_E2E_RUN_ID: ${{ github.run_id }}
         run: bun run test:e2e
 
@@ -366,6 +375,8 @@ jobs:
           docker logs kide-e2e-noauth || true
           echo '=== database-missing KIDE ==='
           docker logs kide-e2e-nodb || true
+          echo '=== database-unreachable KIDE ==='
+          docker logs kide-e2e-baddb || true
           echo '=== postgres ==='
           docker logs kide-e2e-db || true
 
@@ -383,5 +394,5 @@ jobs:
       - name: Stop test containers
         if: always()
         run: |
-          docker rm -f kide-e2e-app kide-e2e-noauth kide-e2e-nodb kide-e2e-db >/dev/null 2>&1 || true
+          docker rm -f kide-e2e-app kide-e2e-noauth kide-e2e-nodb kide-e2e-baddb kide-e2e-db >/dev/null 2>&1 || true
           docker network rm kide-pr26 >/dev/null 2>&1 || true
