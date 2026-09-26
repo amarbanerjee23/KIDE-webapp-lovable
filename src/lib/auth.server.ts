@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { Pool } from "pg";
-import { databaseUrl } from "@/lib/database.server";
+import { databaseCredentials, databaseSocketPath, databaseUrl } from "@/lib/database.server";
 import type { AuthReadiness, AuthRuntimeReadiness } from "@/lib/auth/readiness";
 
 const LOCAL_AUTH_URL = "http://localhost:3000";
@@ -10,11 +10,25 @@ const LOCAL_AUTH_SECRET = "kide-local-development-secret-change-before-productio
 let authDatabasePool: Pool | undefined;
 
 function getAuthDatabasePool(): Pool {
-  authDatabasePool ??= new Pool({
-    connectionString: databaseUrl(),
-    connectionTimeoutMillis: Number(process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000"),
-    max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
-  });
+  const socketPath = databaseSocketPath();
+  authDatabasePool ??= new Pool(
+    socketPath
+      ? {
+          ...databaseCredentials(),
+          host: socketPath,
+          connectionTimeoutMillis: Number(
+            process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000",
+          ),
+          max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
+        }
+      : {
+          connectionString: databaseUrl(),
+          connectionTimeoutMillis: Number(
+            process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000",
+          ),
+          max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
+        },
+  );
   return authDatabasePool;
 }
 
