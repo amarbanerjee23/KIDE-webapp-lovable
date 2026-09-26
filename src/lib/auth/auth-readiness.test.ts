@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { authReadiness } from "@/lib/auth.server";
-import { authReadinessIssues, authReadinessSummary } from "@/lib/auth/readiness";
+import {
+  authReadinessIssues,
+  authReadinessSummary,
+  type AuthRuntimeReadiness,
+} from "@/lib/auth/readiness";
 
 describe("production auth readiness", () => {
   afterEach(() => {
@@ -94,6 +98,30 @@ describe("production auth readiness", () => {
     expect(serialized).not.toContain(authUrl);
     expect(serialized).not.toContain(authSecret);
     expect(serialized).not.toContain("sensitive-password");
+  });
+
+  it("reports configured-but-unreachable PostgreSQL as a runtime failure", () => {
+    const readiness: AuthRuntimeReadiness = {
+      configured: true,
+      operational: false,
+      runtimeIssue: "database_unavailable",
+      googleConfigured: false,
+      requirements: {
+        databaseUrl: "ready",
+        betterAuthUrl: "ready",
+        betterAuthSecret: "ready",
+      },
+    };
+
+    expect(authReadinessIssues(readiness)).toEqual([
+      {
+        code: "AUTH_DATABASE_UNAVAILABLE",
+        message: "The authentication database is configured but cannot be reached.",
+        operatorHint:
+          "Verify PostgreSQL availability, TLS settings, network access and the DATABASE_URL credentials.",
+      },
+    ]);
+    expect(authReadinessSummary(readiness)).toContain("cannot be reached");
   });
 
   it("becomes configured only when all production requirements are present", () => {
