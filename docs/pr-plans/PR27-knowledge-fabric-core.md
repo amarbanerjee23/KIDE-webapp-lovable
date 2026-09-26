@@ -22,6 +22,6 @@ capability, activity and control models without moving KIDE domain computation o
 - No server-side duplicate KIDE parser/synthesis implementation is introduced.
 
 ## Follow-on
-- PR29: global device knowledge ingestion and provenance
-- PR30: horizontally scalable hybrid semantic search
-- PR31: Knowledge Explorer / solution-creation UX and project binding
+- PR30: global device knowledge ingestion and provenance
+- PR31: horizontally scalable hybrid semantic search
+- PR32: Knowledge Explorer / solution-creation UX and project binding
