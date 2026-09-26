@@ -53,7 +53,7 @@ Required runtime variables:
 The supplied `cloudbuild.yaml` discovers the deployed Cloud Run URL for `BETTER_AUTH_URL`.
 Production authentication is required by default. Cloud Build automatically creates the Better Auth
 signing secret when absent, requires the PostgreSQL Secret Manager value, deploys the revision and
-then verifies `/api/public/auth-health`. A build stops rather than publishing a production revision
+then verifies `/api/auth/health`. A build stops rather than publishing a production revision
 whose sign-in cannot reach PostgreSQL. Set `_REQUIRE_AUTH=false` only for an intentional public/demo
 deployment.
 
