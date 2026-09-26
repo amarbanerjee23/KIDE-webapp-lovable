@@ -10,7 +10,7 @@ test -f cloudbuild.yaml || fail "cloudbuild.yaml missing"
 test -f Dockerfile || fail "Dockerfile missing"
 test -f compose.yaml || fail "compose.yaml missing"
 test -f deploy/gcp/bootstrap-auth-secrets.sh || fail "GCP auth bootstrap script missing"
-test -f src/routes/api/public/auth-health.ts || fail "auth runtime health endpoint missing"
+test -f src/routes/api/auth/health.ts || fail "auth runtime health endpoint missing"
 
 bash -n deploy/gcp/bootstrap-auth-secrets.sh
 docker compose -f compose.yaml config --quiet
@@ -24,7 +24,7 @@ grep -q 'secret_version_exists' cloudbuild.yaml || fail "Cloud Build must prefli
 grep -q '_REQUIRE_AUTH: "true"' cloudbuild.yaml || fail "Production Cloud Build must require auth by default"
 grep -q 'openssl rand -base64 48' cloudbuild.yaml || fail "Cloud Build must generate the Better Auth secret when absent"
 grep -q 'roles/secretmanager.secretAccessor' cloudbuild.yaml || fail "Cloud Build must bind runtime secret access"
-grep -q '/api/public/auth-health' cloudbuild.yaml || fail "Cloud Build must verify live Better Auth health"
+grep -q '/api/auth/health' cloudbuild.yaml || fail "Cloud Build must verify live Better Auth health"
 grep -q 'KIDE_AUTH_DEPLOYMENT_STATE=unconfigured' cloudbuild.yaml || fail "Cloud Build must support explicit auth-unconfigured deployment"
 grep -q 'KIDE_AUTH_DEPLOYMENT_STATE=configured' cloudbuild.yaml || fail "Cloud Build must mark configured auth deployments"
 grep -q 'The deployment is stopping instead of publishing a revision with nonfunctional sign-in' cloudbuild.yaml ||
