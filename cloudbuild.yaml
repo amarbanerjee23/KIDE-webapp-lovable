@@ -1,13 +1,13 @@
 # Google Cloud Build: build and deploy the self-hosted KIDE web application.
 #
-# Authentication is optional at deployment time. When both Secret Manager
-# versions below exist, Cloud Run receives them and Better Auth is enabled:
-#   kide-database-url        -> PostgreSQL DATABASE_URL
-#   kide-better-auth-secret  -> random Better Auth secret, at least 32 chars
+# Production authentication is required by default. Cloud Build:
+#   1. verifies that kide-database-url:latest exists;
+#   2. creates/generates kide-better-auth-secret when necessary;
+#   3. grants the Cloud Run runtime identity access to both secrets;
+#   4. deploys the revision and sets BETTER_AUTH_URL from the Cloud Run URL;
+#   5. requires /api/public/auth-health to report an operational Better Auth runtime.
 #
-# A new GCP project MUST still be deployable before those secrets are created.
-# In that case KIDE deploys with authentication explicitly unconfigured; the
-# public landing page remains available and /auth explains the missing setup.
+# Set _REQUIRE_AUTH=false only for an intentional public/demo deployment.
 
 substitutions:
   _REGION: us-central1
@@ -16,6 +16,7 @@ substitutions:
   _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/kide/kide-webapp
   _DATABASE_SECRET: kide-database-url
   _AUTH_SECRET: kide-better-auth-secret
+  _REQUIRE_AUTH: "true"
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -46,6 +47,13 @@ steps:
         READY_FILE=/workspace/.kide-auth-secrets-ready
         rm -f "$$READY_FILE"
 
+        gcloud services enable secretmanager.googleapis.com --project="${PROJECT_ID}" >/dev/null
+
+        secret_exists() {
+          gcloud secrets describe "$$1" \
+            --project="${PROJECT_ID}" >/dev/null 2>&1
+        }
+
         secret_version_exists() {
           gcloud secrets versions describe latest \
             --project="${PROJECT_ID}" \
@@ -53,26 +61,63 @@ steps:
             --format='value(name)' >/dev/null 2>&1
         }
 
+        ensure_secret() {
+          local name="$$1"
+          if ! secret_exists "$$name"; then
+            gcloud secrets create "$$name" \
+              --project="${PROJECT_ID}" \
+              --replication-policy=automatic >/dev/null
+            echo "Created Secret Manager secret $$name."
+          fi
+        }
+
+        runtime_service_account="$$(gcloud run services describe "${_SERVICE}" \
+          --region "${_REGION}" \
+          --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
+        if [[ -z "$$runtime_service_account" ]]; then
+          project_number="$$(gcloud projects describe "${PROJECT_ID}" \
+            --format='value(projectNumber)')
+          runtime_service_account="$${project_number}-compute@developer.gserviceaccount.com"
+        fi
+
+        ensure_secret "${_AUTH_SECRET}"
+        if ! secret_version_exists "${_AUTH_SECRET}"; then
+          auth_value="$$(openssl rand -base64 48 | tr -d '\n')"
+          printf '%s' "$$auth_value" | gcloud secrets versions add "${_AUTH_SECRET}" \
+            --project="${PROJECT_ID}" \
+            --data-file=- >/dev/null
+          unset auth_value
+          echo "Generated the initial Better Auth signing secret."
+        else
+          echo "Better Auth signing secret already has a version."
+        fi
+
+        gcloud secrets add-iam-policy-binding "${_AUTH_SECRET}" \
+          --project="${PROJECT_ID}" \
+          --member="serviceAccount:$$runtime_service_account" \
+          --role=roles/secretmanager.secretAccessor \
+          --quiet >/dev/null
+
         if secret_version_exists "${_DATABASE_SECRET}"; then
           echo "Database secret version is present."
-        else
-          echo "NOTICE: Secret ${_DATABASE_SECRET}:latest is not available."
-        fi
+          gcloud secrets add-iam-policy-binding "${_DATABASE_SECRET}" \
+            --project="${PROJECT_ID}" \
+            --member="serviceAccount:$$runtime_service_account" \
+            --role=roles/secretmanager.secretAccessor \
+            --quiet >/dev/null
 
-        if secret_version_exists "${_AUTH_SECRET}"; then
-          echo "Better Auth secret version is present."
-        else
-          echo "NOTICE: Secret ${_AUTH_SECRET}:latest is not available."
-        fi
-
-        if secret_version_exists "${_DATABASE_SECRET}" &&
-           secret_version_exists "${_AUTH_SECRET}"; then
           touch "$$READY_FILE"
           echo "Authentication secrets are ready for Cloud Run."
+        elif [[ "${_REQUIRE_AUTH}" == "true" ]]; then
+          echo "ERROR: Required Secret Manager version ${_DATABASE_SECRET}:latest is missing." >&2
+          echo "KIDE production authentication requires persistent PostgreSQL." >&2
+          echo "Provision a reachable PostgreSQL database, then run:" >&2
+          echo "  PROJECT_ID=${PROJECT_ID} DATABASE_URL='<postgres-url>' bash deploy/gcp/bootstrap-auth-secrets.sh" >&2
+          echo "The deployment is stopping instead of publishing a revision with nonfunctional sign-in." >&2
+          exit 2
         else
-          echo "NOTICE: Authentication remains unconfigured for this deployment."
-          echo "KIDE will deploy without the missing auth secrets instead of failing."
-          echo "Run deploy/gcp/bootstrap-auth-secrets.sh once a PostgreSQL DATABASE_URL is available."
+          echo "NOTICE: ${_REQUIRE_AUTH}=false; deploying intentionally without authentication."
+          echo "No database secret will be attached to this demo/public revision."
         fi
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -109,14 +154,14 @@ steps:
         gcloud "$${DEPLOY_ARGS[@]}"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    id: configure-auth-url
+    id: configure-and-verify-auth
     entrypoint: bash
     args:
       - -ceu
       - |
         SERVICE_URL="$$(gcloud run services describe "${_SERVICE}" \
           --region "${_REGION}" \
-          --format='value(status.url)')"
+          --format='value(status.url)')
         test -n "$$SERVICE_URL"
 
         gcloud run services update "${_SERVICE}" \
@@ -124,8 +169,36 @@ steps:
           --update-env-vars "BETTER_AUTH_URL=$$SERVICE_URL"
 
         echo "KIDE deployed at $$SERVICE_URL"
-        if [[ ! -f /workspace/.kide-auth-secrets-ready ]]; then
-          echo "Authentication is currently disabled because the PostgreSQL/auth secrets are not configured."
+
+        if [[ -f /workspace/.kide-auth-secrets-ready ]]; then
+          ready=0
+          for attempt in $$(seq 1 60); do
+            http_code="$$(curl --silent --show-error \
+              --output /workspace/auth-health.json \
+              --write-out '%{http_code}' \
+              --max-time 10 \
+              "$$SERVICE_URL/api/public/auth-health" || true)"
+
+            if [[ "$$http_code" == "200" ]] && \
+               grep -Eq '"operational"[[:space:]]*:[[:space:]]*true' /workspace/auth-health.json; then
+              ready=1
+              break
+            fi
+
+            echo "Waiting for operational Better Auth runtime (attempt $$attempt/60, HTTP $$http_code)..."
+            sleep 2
+          done
+
+          if [[ "$$ready" != "1" ]]; then
+            echo "ERROR: Cloud Run deployed, but Better Auth did not become operational." >&2
+            echo "Safe readiness response:" >&2
+            cat /workspace/auth-health.json >&2 || true
+            exit 1
+          fi
+
+          echo "Better Auth runtime and PostgreSQL schema are operational."
+        else
+          echo "Authentication intentionally disabled for this deployment."
         fi
 
 images:
