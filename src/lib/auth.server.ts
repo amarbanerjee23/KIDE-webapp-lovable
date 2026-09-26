@@ -125,7 +125,6 @@ export async function ensureAuthSchema(): Promise<void> {
   await authMigration;
 }
 
-
 export async function authRuntimeReadiness(): Promise<AuthRuntimeReadiness> {
   const readiness = authReadiness();
   if (!readiness.configured) {
