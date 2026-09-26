@@ -14,6 +14,6 @@ Make production authentication failures actionable without exposing credentials.
 
 ## Roadmap impact
 The Knowledge Fabric follow-on PRs move forward by one slot:
-- PR29 — global device knowledge ingestion and provenance
-- PR30 — horizontally scalable hybrid semantic search
-- PR31 — Knowledge Explorer / solution-creation UX and project binding
+- PR30 — global device knowledge ingestion and provenance
+- PR31 — horizontally scalable hybrid semantic search
+- PR32 — Knowledge Explorer / solution-creation UX and project binding
