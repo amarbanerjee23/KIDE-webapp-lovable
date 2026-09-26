@@ -20,8 +20,8 @@ set -euo pipefail
 
 log_arg() {
   case "$1" in
-    --password=*) printf '%q ' '--password=[REDACTED]' ;;
-    *) printf '%q ' "$1" ;;
+    --password=*) printf '%s ' '--password=[REDACTED]' ;;
+    *) printf '%s ' "$1" ;;
   esac
 }
 
