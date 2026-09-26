@@ -1,8 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ensureAuthSchema, getAuth } from "@/lib/auth.server";
+import { authRuntimeReadiness, ensureAuthSchema, getAuth } from "@/lib/auth.server";
+
+async function authHealthResponse() {
+  const readiness = await authRuntimeReadiness();
+  return Response.json(
+    {
+      status: readiness.operational ? "ready" : "unavailable",
+      configured: readiness.configured,
+      operational: readiness.operational,
+      runtimeIssue: readiness.runtimeIssue,
+      requirements: readiness.requirements,
+      googleConfigured: readiness.googleConfigured,
+    },
+    {
+      status: readiness.operational ? 200 : 503,
+      headers: {
+        "cache-control": "no-store",
+      },
+    },
+  );
+}
 
 async function handle(request: Request) {
   try {
+    const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/api/auth/health") {
+      return authHealthResponse();
+    }
+
     await ensureAuthSchema();
     return await getAuth().handler(request);
   } catch (error) {
