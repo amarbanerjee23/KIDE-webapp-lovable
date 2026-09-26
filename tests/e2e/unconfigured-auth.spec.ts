@@ -9,8 +9,10 @@ test("public landing still works when auth infrastructure is absent", async ({ p
 test("auth page fails closed with actionable configuration guidance", async ({ page }) => {
   await page.goto("/auth");
   await expect(page).toHaveURL("/auth");
+  await expect(page.getByText("The PostgreSQL database is not configured.")).toBeVisible();
+  await expect(page.getByText("The public authentication URL is not configured.")).toBeVisible();
   await expect(
-    page.getByText(/DATABASE_URL, BETTER_AUTH_URL and a 32\+ character BETTER_AUTH_SECRET/i),
+    page.getByText("The authentication signing secret is not configured."),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" }).first()).toBeDisabled();
 });

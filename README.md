@@ -38,7 +38,8 @@ For Google sign-in, optionally add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 authentication works without a social provider.
 
 In non-production development, KIDE supplies localhost defaults for the database URL, auth URL and
-development-only auth secret. Production always fails closed unless explicit values are configured.
+development-only auth secret. Production always fails closed unless explicit values are configured. The `/auth` page reports
+which requirement is missing without exposing connection strings, secret values, or secret lengths.
 
 ## Production
 

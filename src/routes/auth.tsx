@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient, notifyAuthChanged } from "@/lib/auth-client";
 import { getAuthReadiness } from "@/lib/auth.functions";
+import {
+  authReadinessIssues,
+  authReadinessSummary,
+  type AuthReadiness,
+} from "@/lib/auth/readiness";
 import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
@@ -36,10 +41,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [readiness, setReadiness] = useState<{
-    configured: boolean;
-    googleConfigured: boolean;
-  } | null>(null);
+  const [readiness, setReadiness] = useState<AuthReadiness | null>(null);
 
   const completeAuthentication = useCallback(async (showValidationError: boolean) => {
     const activeSession = await getActiveBrowserSession();
@@ -65,14 +67,20 @@ function AuthPage() {
         if (!active) return;
         setReadiness(value);
         if (!value.configured) {
-          setMessage(
-            "Authentication is not configured on this deployment. Configure DATABASE_URL, BETTER_AUTH_URL and BETTER_AUTH_SECRET.",
-          );
+          setMessage("");
         }
       })
       .catch(() => {
         if (active) {
-          setReadiness({ configured: false, googleConfigured: false });
+          setReadiness({
+            configured: false,
+            googleConfigured: false,
+            requirements: {
+              databaseUrl: "missing",
+              betterAuthUrl: "missing",
+              betterAuthSecret: "missing",
+            },
+          });
           setMessage("Authentication configuration could not be loaded.");
         }
       });
@@ -94,9 +102,7 @@ function AuthPage() {
     event.preventDefault();
 
     if (!readiness?.configured) {
-      setMessage(
-        "Authentication is not configured on this deployment. Configure DATABASE_URL, BETTER_AUTH_URL and BETTER_AUTH_SECRET.",
-      );
+      setMessage(readiness ? authReadinessSummary(readiness) : "Authentication is unavailable.");
       return;
     }
 
@@ -130,7 +136,9 @@ function AuthPage() {
       setMessage(
         readiness?.configured
           ? "Google sign-in is not configured. Use email and password, or configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
-          : "Authentication is not configured on this deployment.",
+          : readiness
+            ? authReadinessSummary(readiness)
+            : "Authentication is unavailable on this deployment.",
       );
       return;
     }
@@ -155,6 +163,7 @@ function AuthPage() {
   }
 
   const authReady = readiness?.configured === true;
+  const readinessIssues = readiness ? authReadinessIssues(readiness) : [];
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
@@ -217,8 +226,18 @@ function AuthPage() {
               role="alert"
               className="mt-5 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
             >
-              This deployment needs DATABASE_URL, BETTER_AUTH_URL and a 32+ character
-              BETTER_AUTH_SECRET. No Supabase account or key is required.
+              <p className="font-semibold">Authentication is unavailable on this deployment.</p>
+              <ul className="mt-2 space-y-2">
+                {readinessIssues.map((issue) => (
+                  <li key={issue.code}>
+                    <span>{issue.message}</span>{" "}
+                    <span className="font-mono text-[11px]">{issue.operatorHint}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                No Supabase account or key is required.
+              </p>
             </div>
           )}
 
