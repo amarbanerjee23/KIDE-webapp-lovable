@@ -1,4 +1,5 @@
 export type AuthRequirementState = "ready" | "missing" | "too_short";
+export type AuthRuntimeIssue = "configuration" | "database_unavailable" | null;
 
 export interface AuthReadiness {
   configured: boolean;
@@ -10,17 +11,25 @@ export interface AuthReadiness {
   };
 }
 
+export interface AuthRuntimeReadiness extends AuthReadiness {
+  operational: boolean;
+  runtimeIssue: AuthRuntimeIssue;
+}
+
 export interface AuthReadinessIssue {
   code:
     | "DATABASE_URL_MISSING"
     | "BETTER_AUTH_URL_MISSING"
     | "BETTER_AUTH_SECRET_MISSING"
-    | "BETTER_AUTH_SECRET_TOO_SHORT";
+    | "BETTER_AUTH_SECRET_TOO_SHORT"
+    | "AUTH_DATABASE_UNAVAILABLE";
   message: string;
   operatorHint: string;
 }
 
-export function authReadinessIssues(readiness: AuthReadiness): AuthReadinessIssue[] {
+export function authReadinessIssues(
+  readiness: AuthReadiness | AuthRuntimeReadiness,
+): AuthReadinessIssue[] {
   const issues: AuthReadinessIssue[] = [];
 
   if (readiness.requirements.databaseUrl === "missing") {
@@ -53,11 +62,26 @@ export function authReadinessIssues(readiness: AuthReadiness): AuthReadinessIssu
     });
   }
 
+  if (
+    "runtimeIssue" in readiness &&
+    readiness.configured &&
+    readiness.runtimeIssue === "database_unavailable"
+  ) {
+    issues.push({
+      code: "AUTH_DATABASE_UNAVAILABLE",
+      message: "The authentication database is configured but cannot be reached.",
+      operatorHint:
+        "Verify PostgreSQL availability, TLS settings, network access and the DATABASE_URL credentials.",
+    });
+  }
+
   return issues;
 }
 
-export function authReadinessSummary(readiness: AuthReadiness): string {
+export function authReadinessSummary(
+  readiness: AuthReadiness | AuthRuntimeReadiness,
+): string {
   const issues = authReadinessIssues(readiness);
-  if (issues.length === 0) return "Authentication is configured.";
+  if (issues.length === 0) return "Authentication is ready.";
   return issues.map((issue) => issue.message).join(" ");
 }
