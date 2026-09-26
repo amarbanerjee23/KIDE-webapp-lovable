@@ -78,9 +78,7 @@ export function authReadinessIssues(
   return issues;
 }
 
-export function authReadinessSummary(
-  readiness: AuthReadiness | AuthRuntimeReadiness,
-): string {
+export function authReadinessSummary(readiness: AuthReadiness | AuthRuntimeReadiness): string {
   const issues = authReadinessIssues(readiness);
   if (issues.length === 0) return "Authentication is ready.";
   return issues.map((issue) => issue.message).join(" ");
