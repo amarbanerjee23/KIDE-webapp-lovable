@@ -16,16 +16,12 @@ function getAuthDatabasePool(): Pool {
       ? {
           ...databaseCredentials(),
           host: socketPath,
-          connectionTimeoutMillis: Number(
-            process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000",
-          ),
+          connectionTimeoutMillis: Number(process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000"),
           max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
         }
       : {
           connectionString: databaseUrl(),
-          connectionTimeoutMillis: Number(
-            process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000",
-          ),
+          connectionTimeoutMillis: Number(process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000"),
           max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
         },
   );
