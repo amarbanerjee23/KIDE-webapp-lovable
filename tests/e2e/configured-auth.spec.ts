@@ -22,7 +22,7 @@ const protectedRoutes = [
 ];
 
 test("configured production auth health is operational", async ({ page }) => {
-  const health = await page.request.get("/api/public/auth-health");
+  const health = await page.request.get("/api/auth/health");
   expect(health.ok()).toBe(true);
   await expect(health.json()).resolves.toMatchObject({
     status: "ready",
