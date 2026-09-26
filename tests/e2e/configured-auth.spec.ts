@@ -21,6 +21,22 @@ const protectedRoutes = [
   "/checkpoints",
 ];
 
+test("configured production auth health is operational", async ({ page }) => {
+  const health = await page.request.get("/api/public/auth-health");
+  expect(health.ok()).toBe(true);
+  await expect(health.json()).resolves.toMatchObject({
+    status: "ready",
+    configured: true,
+    operational: true,
+    runtimeIssue: null,
+    requirements: {
+      databaseUrl: "ready",
+      betterAuthUrl: "ready",
+      betterAuthSecret: "ready",
+    },
+  });
+});
+
 test("anonymous users cannot land on protected application routes", async ({ page }) => {
   for (const route of protectedRoutes) {
     await page.goto(route);
