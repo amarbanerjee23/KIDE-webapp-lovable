@@ -16,6 +16,7 @@ substitutions:
   _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/kide/kide-webapp
   _DATABASE_SECRET: kide-database-url
   _AUTH_SECRET: kide-better-auth-secret
+  _CLOUD_SQL_INSTANCE: kide-web-app
   _REQUIRE_AUTH: "true"
 
 steps:
@@ -45,9 +46,16 @@ steps:
       - -ceu
       - |
         READY_FILE=/workspace/.kide-auth-secrets-ready
-        rm -f "$$READY_FILE"
+        CLOUD_SQL_FILE=/workspace/.kide-cloud-sql-connection
+        rm -f "$READY_FILE" "$CLOUD_SQL_FILE"
 
-        gcloud services enable secretmanager.googleapis.com --project="${PROJECT_ID}" >/dev/null
+        gcloud services enable secretmanager.googleapis.com sqladmin.googleapis.com \
+          --project="${PROJECT_ID}" >/dev/null
+
+        if [[ -n "${_CLOUD_SQL_INSTANCE}" ]]; then
+          printf '%s' "${PROJECT_ID}:${_REGION}:${_CLOUD_SQL_INSTANCE}" > "$CLOUD_SQL_FILE"
+          echo "Cloud SQL connection configured for the hosted KIDE runtime."
+        fi
 
         secret_exists() {
           gcloud secrets describe "$$1" \
@@ -111,8 +119,8 @@ steps:
         elif [[ "${_REQUIRE_AUTH}" == "true" ]]; then
           echo "ERROR: Required Secret Manager version ${_DATABASE_SECRET}:latest is missing." >&2
           echo "KIDE production authentication requires persistent PostgreSQL." >&2
-          echo "Provision a reachable PostgreSQL database, then run:" >&2
-          echo "  PROJECT_ID=${PROJECT_ID} DATABASE_URL='<postgres-url>' bash deploy/gcp/bootstrap-auth-secrets.sh" >&2
+          echo "Provision the PostgreSQL secret, then run the bootstrap:" >&2
+          echo "  PROJECT_ID=${PROJECT_ID} CLOUD_SQL_INSTANCE=${_CLOUD_SQL_INSTANCE} CLOUD_SQL_REGION=${_REGION} bash deploy/gcp/bootstrap-auth-secrets.sh" >&2
           echo "The deployment is stopping instead of publishing a revision with nonfunctional sign-in." >&2
           exit 2
         else
@@ -142,8 +150,20 @@ steps:
         if [[ -f /workspace/.kide-auth-secrets-ready ]]; then
           DEPLOY_ARGS+=(
             "--update-secrets=DATABASE_URL=${_DATABASE_SECRET}:latest,BETTER_AUTH_SECRET=${_AUTH_SECRET}:latest"
-            "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured"
           )
+
+          if [[ -s /workspace/.kide-cloud-sql-connection ]]; then
+            CLOUD_SQL_CONNECTION="$(cat /workspace/.kide-cloud-sql-connection)"
+            DEPLOY_ARGS+=(
+              "--add-cloudsql-instances=$CLOUD_SQL_CONNECTION"
+              "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured,INSTANCE_UNIX_SOCKET=/cloudsql/$CLOUD_SQL_CONNECTION"
+            )
+          else
+            DEPLOY_ARGS+=(
+              "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured"
+              "--remove-env-vars=INSTANCE_UNIX_SOCKET"
+            )
+          fi
         else
           DEPLOY_ARGS+=(
             "--remove-secrets=DATABASE_URL,BETTER_AUTH_SECRET"
@@ -191,6 +211,8 @@ steps:
 
           if [[ "$$ready" != "1" ]]; then
             echo "ERROR: Cloud Run deployed, but Better Auth did not become operational." >&2
+            echo "If this deployment uses Cloud SQL, verify the runtime service account has roles/cloudsql.client" >&2
+            echo "and re-run deploy/gcp/bootstrap-auth-secrets.sh before retrying the build." >&2
             echo "Safe readiness response:" >&2
             cat /workspace/auth-health.json >&2 || true
             exit 1
