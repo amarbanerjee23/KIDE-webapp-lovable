@@ -57,23 +57,57 @@ then verifies `/api/auth/health`. A build stops rather than publishing a product
 whose sign-in cannot reach PostgreSQL. Set `_REQUIRE_AUTH=false` only for an intentional public/demo
 deployment.
 
-To enable authentication on GCP, point KIDE at any reachable PostgreSQL database and bootstrap the
-two Secret Manager values:
+### Hosted Google Cloud deployment
+
+The current hosted KIDE deployment uses the existing Cloud SQL instance rather than its public IP:
+
+```text
+project: project-b2a69875-a9ec-40fe-b15
+instance: kide-web-app
+region: us-central1
+connection: project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app
+```
+
+Run the one-time bootstrap from Google Cloud Shell:
+
+```sh
+PROJECT_ID=project-b2a69875-a9ec-40fe-b15 \
+bash deploy/gcp/bootstrap-auth-secrets.sh
+```
+
+If `kide-database-url` does not already have a version, the bootstrap validates the existing
+`kide-web-app` Cloud SQL instance, creates the `kide` database and dedicated `kide_app` user
+when needed, generates a random database password, stores the connection credential only in Secret
+Manager, generates/reuses the Better Auth signing secret, and grants the Cloud Run runtime identity
+both Secret Manager access and `roles/cloudsql.client`.
+
+The next Cloud Build deployment attaches the instance with Cloud Run's managed Cloud SQL
+integration and supplies:
+
+```text
+DATABASE_URL          <- Secret Manager: kide-database-url
+BETTER_AUTH_SECRET    <- Secret Manager: kide-better-auth-secret
+BETTER_AUTH_URL       <- deployed Cloud Run service URL
+INSTANCE_UNIX_SOCKET  <- /cloudsql/project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app
+```
+
+The application never needs the Cloud SQL public IP. The build succeeds only after
+`/api/auth/health` confirms PostgreSQL connectivity and successful Better Auth schema
+initialization.
+
+An external PostgreSQL server remains supported for self-hosted deployments. Disable the default
+Cloud SQL binding explicitly and provide its URL:
 
 ```sh
 PROJECT_ID=your-project-id \
+CLOUD_SQL_INSTANCE='' \
 DATABASE_URL='postgres://user:password@host:5432/kide?sslmode=require' \
 bash deploy/gcp/bootstrap-auth-secrets.sh
 ```
 
-The script creates/versions `kide-database-url` and `kide-better-auth-secret`, generates the
-Better Auth secret when necessary, and grants the Cloud Run runtime service account Secret Manager
-access. Re-run the Cloud Build trigger afterward. The build succeeds only after the deployed service
-can initialize the Better Auth schema and answer its runtime health check.
-
-A PostgreSQL server itself is not fabricated by Cloud Build. This is intentional: silently creating
-a Cloud SQL instance could incur GCP charges. Local development can continue to use the included
-Docker Compose PostgreSQL service at no software-license cost.
+Cloud Build does not create a Cloud SQL instance; it only attaches the configured existing instance.
+Local development can continue to use the included Docker Compose PostgreSQL service at no
+software-license cost.
 
 ## Quality gates
 
