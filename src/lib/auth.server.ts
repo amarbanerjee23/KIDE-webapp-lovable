@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { Pool } from "pg";
 import { databaseUrl } from "@/lib/database.server";
-import type { AuthReadiness } from "@/lib/auth/readiness";
+import type { AuthReadiness, AuthRuntimeReadiness } from "@/lib/auth/readiness";
 
 const LOCAL_AUTH_URL = "http://localhost:3000";
 const LOCAL_AUTH_SECRET = "kide-local-development-secret-change-before-production-2026";
@@ -15,7 +15,11 @@ function createAuth() {
     appName: "KIDE",
     baseURL: authUrl(),
     secret: authSecret(),
-    database: new Pool({ connectionString: databaseUrl() }),
+    database: new Pool({
+      connectionString: databaseUrl(),
+      connectionTimeoutMillis: Number(process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000"),
+      max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
+    }),
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
@@ -112,4 +116,35 @@ export async function ensureAuthSchema(): Promise<void> {
     });
   }
   await authMigration;
+}
+
+
+export async function authRuntimeReadiness(): Promise<AuthRuntimeReadiness> {
+  const readiness = authReadiness();
+  if (!readiness.configured) {
+    return {
+      ...readiness,
+      operational: false,
+      runtimeIssue: "configuration",
+    };
+  }
+
+  try {
+    await ensureAuthSchema();
+    return {
+      ...readiness,
+      operational: true,
+      runtimeIssue: null,
+    };
+  } catch (error) {
+    console.error(
+      "[KIDE Auth Readiness] Better Auth database/schema check failed.",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return {
+      ...readiness,
+      operational: false,
+      runtimeIssue: "database_unavailable",
+    };
+  }
 }
