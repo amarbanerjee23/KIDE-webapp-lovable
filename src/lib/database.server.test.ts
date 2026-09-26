@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  databaseCredentials,
-  databaseSocketPath,
-  databaseUrl,
-} from "@/lib/database.server";
+import { databaseCredentials, databaseSocketPath, databaseUrl } from "@/lib/database.server";
 
 describe("database runtime configuration", () => {
   afterEach(() => {
@@ -39,10 +35,7 @@ describe("database runtime configuration", () => {
 
   it("parses URL-safe credentials for the pg Cloud SQL socket path", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv(
-      "DATABASE_URL",
-      "postgresql://kide_app:p%40ss%3Aword@localhost:5432/kide",
-    );
+    vi.stubEnv("DATABASE_URL", "postgresql://kide_app:p%40ss%3Aword@localhost:5432/kide");
 
     expect(databaseCredentials()).toEqual({
       user: "kide_app",
