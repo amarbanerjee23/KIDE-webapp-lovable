@@ -10,7 +10,7 @@ import { getAuthReadiness } from "@/lib/auth.functions";
 import {
   authReadinessIssues,
   authReadinessSummary,
-  type AuthReadiness,
+  type AuthRuntimeReadiness,
 } from "@/lib/auth/readiness";
 import { getActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
@@ -41,7 +41,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [readiness, setReadiness] = useState<AuthReadiness | null>(null);
+  const [readiness, setReadiness] = useState<AuthRuntimeReadiness | null>(null);
 
   const completeAuthentication = useCallback(async (showValidationError: boolean) => {
     const activeSession = await getActiveBrowserSession();
@@ -74,6 +74,8 @@ function AuthPage() {
         if (active) {
           setReadiness({
             configured: false,
+            operational: false,
+            runtimeIssue: "configuration",
             googleConfigured: false,
             requirements: {
               databaseUrl: "missing",
@@ -101,7 +103,7 @@ function AuthPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
 
-    if (!readiness?.configured) {
+    if (!readiness?.operational) {
       setMessage(readiness ? authReadinessSummary(readiness) : "Authentication is unavailable.");
       return;
     }
@@ -132,9 +134,9 @@ function AuthPage() {
   }
 
   async function google() {
-    if (!readiness?.configured || !readiness.googleConfigured) {
+    if (!readiness?.operational || !readiness.googleConfigured) {
       setMessage(
-        readiness?.configured
+        readiness?.operational
           ? "Google sign-in is not configured. Use email and password, or configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
           : readiness
             ? authReadinessSummary(readiness)
@@ -162,7 +164,7 @@ function AuthPage() {
     }
   }
 
-  const authReady = readiness?.configured === true;
+  const authReady = readiness?.operational === true;
   const readinessIssues = readiness ? authReadinessIssues(readiness) : [];
 
   return (
@@ -221,7 +223,7 @@ function AuthPage() {
               : "Start a governed KIDE workspace for your team."}
           </p>
 
-          {readiness && !readiness.configured && (
+          {readiness && !readiness.operational && (
             <div
               role="alert"
               className="mt-5 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
