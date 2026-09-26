@@ -9,9 +9,9 @@ test("configured but unreachable PostgreSQL keeps authentication fail-closed", a
   ).toBeVisible();
   await expect(page.getByText("The PostgreSQL database is not configured.")).toHaveCount(0);
   await expect(page.getByText("The public authentication URL is not configured.")).toHaveCount(0);
-  await expect(
-    page.getByText("The authentication signing secret is not configured."),
-  ).toHaveCount(0);
+  await expect(page.getByText("The authentication signing secret is not configured.")).toHaveCount(
+    0,
+  );
 
   await expect(
     page.getByText(
