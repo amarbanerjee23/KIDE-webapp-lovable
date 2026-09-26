@@ -21,7 +21,7 @@ test("configured but unreachable PostgreSQL keeps authentication fail-closed", a
 
   await expect(page.getByRole("button", { name: "Sign in" }).first()).toBeDisabled();
 
-  const health = await page.request.get("/api/public/auth-health");
+  const health = await page.request.get("/api/auth/health");
   expect(health.status()).toBe(503);
   await expect(health.json()).resolves.toMatchObject({
     status: "unavailable",
