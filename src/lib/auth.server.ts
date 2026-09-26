@@ -7,6 +7,17 @@ import type { AuthReadiness, AuthRuntimeReadiness } from "@/lib/auth/readiness";
 const LOCAL_AUTH_URL = "http://localhost:3000";
 const LOCAL_AUTH_SECRET = "kide-local-development-secret-change-before-production-2026";
 
+let authDatabasePool: Pool | undefined;
+
+function getAuthDatabasePool(): Pool {
+  authDatabasePool ??= new Pool({
+    connectionString: databaseUrl(),
+    connectionTimeoutMillis: Number(process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000"),
+    max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
+  });
+  return authDatabasePool;
+}
+
 function createAuth() {
   const googleClientId = process.env["GOOGLE_CLIENT_ID"]?.trim();
   const googleClientSecret = process.env["GOOGLE_CLIENT_SECRET"]?.trim();
@@ -15,11 +26,7 @@ function createAuth() {
     appName: "KIDE",
     baseURL: authUrl(),
     secret: authSecret(),
-    database: new Pool({
-      connectionString: databaseUrl(),
-      connectionTimeoutMillis: Number(process.env["KIDE_AUTH_DB_CONNECT_TIMEOUT_MS"] ?? "5000"),
-      max: Number(process.env["KIDE_AUTH_DB_POOL_SIZE"] ?? "10"),
-    }),
+    database: getAuthDatabasePool(),
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
@@ -130,6 +137,7 @@ export async function authRuntimeReadiness(): Promise<AuthRuntimeReadiness> {
   }
 
   try {
+    await getAuthDatabasePool().query("SELECT 1");
     await ensureAuthSchema();
     return {
       ...readiness,
