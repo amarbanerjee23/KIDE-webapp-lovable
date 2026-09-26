@@ -10,7 +10,8 @@ test -f cloudbuild.yaml || fail "cloudbuild.yaml missing"
 test -f Dockerfile || fail "Dockerfile missing"
 test -f compose.yaml || fail "compose.yaml missing"
 test -f deploy/gcp/bootstrap-auth-secrets.sh || fail "GCP auth bootstrap script missing"
-test -f src/routes/api/auth/health.ts || fail "auth runtime health endpoint missing"
+test -f 'src/routes/api/auth/$.ts' || fail "auth catch-all route missing"
+grep -q '/api/auth/health' 'src/routes/api/auth/$.ts' || fail "auth runtime health endpoint missing"
 
 bash -n deploy/gcp/bootstrap-auth-secrets.sh
 docker compose -f compose.yaml config --quiet
