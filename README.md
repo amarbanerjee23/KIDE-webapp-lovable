@@ -38,8 +38,9 @@ For Google sign-in, optionally add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
 authentication works without a social provider.
 
 In non-production development, KIDE supplies localhost defaults for the database URL, auth URL and
-development-only auth secret. Production always fails closed unless explicit values are configured. The `/auth` page reports
-which requirement is missing without exposing connection strings, secret values, or secret lengths.
+development-only auth secret. Production always fails closed unless explicit values are configured.
+The `/auth` page verifies both configuration and live PostgreSQL reachability before enabling the
+form, without exposing connection strings, secret values, or secret lengths.
 
 ## Production
 
@@ -50,8 +51,11 @@ Required runtime variables:
 - `BETTER_AUTH_SECRET` (minimum 32 characters)
 
 The supplied `cloudbuild.yaml` discovers the deployed Cloud Run URL for `BETTER_AUTH_URL`.
-It no longer fails a first deployment when authentication secrets have not been provisioned:
-KIDE deploys with its public surface available and authentication explicitly unconfigured.
+Production authentication is required by default. Cloud Build automatically creates the Better Auth
+signing secret when absent, requires the PostgreSQL Secret Manager value, deploys the revision and
+then verifies `/api/public/auth-health`. A build stops rather than publishing a production revision
+whose sign-in cannot reach PostgreSQL. Set `_REQUIRE_AUTH=false` only for an intentional public/demo
+deployment.
 
 To enable authentication on GCP, point KIDE at any reachable PostgreSQL database and bootstrap the
 two Secret Manager values:
@@ -64,7 +68,8 @@ bash deploy/gcp/bootstrap-auth-secrets.sh
 
 The script creates/versions `kide-database-url` and `kide-better-auth-secret`, generates the
 Better Auth secret when necessary, and grants the Cloud Run runtime service account Secret Manager
-access. Re-run the Cloud Build trigger afterward.
+access. Re-run the Cloud Build trigger afterward. The build succeeds only after the deployed service
+can initialize the Better Auth schema and answer its runtime health check.
 
 A PostgreSQL server itself is not fabricated by Cloud Build. This is intentional: silently creating
 a Cloud SQL instance could incur GCP charges. Local development can continue to use the included
