@@ -71,10 +71,15 @@ connection: project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app
 The hosted Cloud Build pipeline bootstraps this persistence layer automatically before building
 the image. `_BOOTSTRAP_CLOUD_SQL` defaults to `true`. If `kide-database-url` does not already
 have a version, the build validates the existing `kide-web-app` Cloud SQL instance, creates the
-`kide` database and dedicated `kide_app` user when needed, generates a random database password,
-stores the connection credential only in Secret Manager, generates/reuses the Better Auth signing
-secret, and grants the Cloud Run runtime identity both Secret Manager access and
-`roles/cloudsql.client`.
+`kide` database and dedicated `kide_app` user when needed, generates a Cloud-SQL-compliant
+database password, URL-encodes it for `DATABASE_URL`, stores the connection credential only in
+Secret Manager, generates/reuses the Better Auth signing secret, and grants the Cloud Run runtime
+identity both Secret Manager access and `roles/cloudsql.client`.
+
+If an operator wants a fixed database password, store it in Secret Manager as
+`kide-database-password`. Cloud Build reads that secret only during bootstrap and never commits or
+prints its value. The password must contain lowercase, uppercase, a number and a non-alphanumeric
+character. If the secret is absent, the bootstrap generates a compliant random password instead.
 
 The Cloud Build service account therefore needs permission to administer this existing Cloud SQL
 instance and the two KIDE Secret Manager secrets, plus permission to update the project IAM policy
