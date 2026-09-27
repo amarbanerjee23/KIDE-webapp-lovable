@@ -18,7 +18,9 @@ export function exampleWorkspaceSources(
   exampleId: string = DEFAULT_EXAMPLE_WORKSPACE_ID,
 ): WorkspaceSources {
   const files =
-    exampleId === DEFAULT_EXAMPLE_WORKSPACE_ID ? SAMPLE_WORKSPACE : getExampleWorkspace(exampleId).files;
+    exampleId === DEFAULT_EXAMPLE_WORKSPACE_ID
+      ? SAMPLE_WORKSPACE
+      : getExampleWorkspace(exampleId).files;
   return Object.fromEntries(files.map((file) => [file.path, file.source]));
 }
 
