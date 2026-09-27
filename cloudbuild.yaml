@@ -236,8 +236,9 @@ steps:
       - -ceu
       - |
         SERVICE_URL="$$(gcloud run services describe "${_SERVICE}" \
-          --region "${_REGION}" \
-          --format='value(status.url)')
+          --project="${PROJECT_ID}" \
+          --region="${_REGION}" \
+          --format='value(status.url)')"
         test -n "$$SERVICE_URL"
 
         gcloud run services update "${_SERVICE}" \
