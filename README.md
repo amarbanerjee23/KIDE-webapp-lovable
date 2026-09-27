@@ -49,8 +49,11 @@ Required runtime variables:
 - `DATABASE_URL`
 - `BETTER_AUTH_URL`
 - `BETTER_AUTH_SECRET` (minimum 32 characters)
+- `BETTER_AUTH_TRUSTED_ORIGINS` when the same deployment is reachable through additional approved origins
 
-The supplied `cloudbuild.yaml` discovers the deployed Cloud Run URL for `BETTER_AUTH_URL`.
+The supplied `cloudbuild.yaml` discovers the deployed Cloud Run URL for `BETTER_AUTH_URL` and
+configures the approved Cloud Run aliases in `BETTER_AUTH_TRUSTED_ORIGINS`. Origins are exact
+HTTP(S) origins; the application does not disable Better Auth's CSRF or origin validation.
 Production authentication is required by default. Cloud Build automatically creates the Better Auth
 signing secret when absent, requires the PostgreSQL Secret Manager value, deploys the revision and
 then verifies `/api/auth/health`. A build stops rather than publishing a production revision
@@ -92,8 +95,9 @@ integration and supplies:
 ```text
 DATABASE_URL          <- Secret Manager: kide-database-url
 BETTER_AUTH_SECRET    <- Secret Manager: kide-better-auth-secret
-BETTER_AUTH_URL       <- deployed Cloud Run service URL
-INSTANCE_UNIX_SOCKET  <- /cloudsql/project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app
+BETTER_AUTH_URL             <- deployed Cloud Run service URL
+BETTER_AUTH_TRUSTED_ORIGINS <- deployed service URL + project-number Cloud Run URL
+INSTANCE_UNIX_SOCKET        <- /cloudsql/project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app
 ```
 
 The application never needs the Cloud SQL public IP. The build succeeds only after
