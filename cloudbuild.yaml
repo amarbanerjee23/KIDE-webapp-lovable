@@ -35,6 +35,9 @@ steps:
           exit 0
         fi
 
+        gcloud services enable secretmanager.googleapis.com \
+          --project="${PROJECT_ID}" >/dev/null
+
         database_password=""
         if gcloud secrets versions describe latest \
           --project="${PROJECT_ID}" \
