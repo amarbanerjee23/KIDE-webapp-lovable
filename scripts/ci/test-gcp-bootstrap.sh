@@ -107,6 +107,7 @@ grep -q "secrets versions add kide-database-url" "$log" || fail "database secret
 grep -q "secrets versions add kide-better-auth-secret" "$log" || fail "auth secret version was not generated"
 grep -q "roles/secretmanager.secretAccessor" "$log" || fail "runtime secret accessor role was not granted"
 grep -q "roles/cloudsql.client" "$log" || fail "runtime Cloud SQL Client role was not granted"
+grep -q -- "--condition=None" "$log" || fail "Cloud SQL Client IAM grant was not explicitly unconditional"
 grep -q "Cloud SQL connection: test-project:us-central1:kide-web-app" "$tmp/cloud-sql.out" ||
   fail "Cloud SQL completion evidence absent"
 grep -q "Generated a Cloud-SQL-compliant database password." "$tmp/cloud-sql.out" ||

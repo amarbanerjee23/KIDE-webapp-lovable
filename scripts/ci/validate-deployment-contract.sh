@@ -40,6 +40,7 @@ grep -q 'sqladmin.googleapis.com' cloudbuild.yaml || fail "Cloud Build must enab
 grep -q -- '--add-cloudsql-instances=' cloudbuild.yaml || fail "Cloud Run must attach the configured Cloud SQL instance"
 grep -q 'INSTANCE_UNIX_SOCKET=/cloudsql/' cloudbuild.yaml || fail "Cloud Run must receive the Cloud SQL Unix socket path"
 grep -q 'roles/cloudsql.client' deploy/gcp/bootstrap-auth-secrets.sh || fail "bootstrap must grant Cloud SQL Client to the runtime identity"
+grep -Fq -- '--condition=None' deploy/gcp/bootstrap-auth-secrets.sh || fail "Cloud SQL Client project IAM grant must be explicitly unconditional"
 grep -q 'gcloud sql instances describe' deploy/gcp/bootstrap-auth-secrets.sh || fail "bootstrap must validate the existing Cloud SQL instance"
 grep -q 'gcloud sql databases create' deploy/gcp/bootstrap-auth-secrets.sh || fail "bootstrap must provision the KIDE database when absent"
 grep -q 'gcloud sql users create' deploy/gcp/bootstrap-auth-secrets.sh || fail "bootstrap must provision a dedicated database user when absent"
