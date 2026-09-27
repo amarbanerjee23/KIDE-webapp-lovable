@@ -87,8 +87,8 @@ export function clearWorkspace() {
   emit();
 }
 
-export function loadExampleWorkspace() {
-  sources = exampleWorkspaceSources();
+export function loadExampleWorkspace(exampleId?: string) {
+  sources = exampleWorkspaceSources(exampleId);
   emit();
 }
 

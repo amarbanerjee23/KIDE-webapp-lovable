@@ -23,6 +23,15 @@ describe("workspace source serialization", () => {
     expect(linkSources(sources).errorCount).toBe(0);
   });
 
+  it("loads a chosen non-default example without affecting the empty default", () => {
+    const agriculture = exampleWorkspaceSources("precision-irrigation");
+
+    expect(Object.keys(agriculture)).toContain("Agri.dml");
+    expect(Object.keys(agriculture)).toContain("IrrigationCycle.activity");
+    expect(Object.keys(emptyWorkspaceSources())).toHaveLength(0);
+    expect(linkSources(agriculture).errorCount).toBe(0);
+  });
+
   it("derives file kinds from persisted paths instead of the demo manifest", () => {
     const sources = {
       "custom/plant.mncspec": "Model Plant",

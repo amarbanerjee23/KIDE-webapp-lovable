@@ -1,5 +1,7 @@
 import {
   dslKindForPath,
+  DEFAULT_EXAMPLE_WORKSPACE_ID,
+  getExampleWorkspace,
   linkWorkspace,
   SAMPLE_WORKSPACE,
   type Workspace,
@@ -12,8 +14,14 @@ export function emptyWorkspaceSources(): WorkspaceSources {
   return {};
 }
 
-export function exampleWorkspaceSources(): WorkspaceSources {
-  return Object.fromEntries(SAMPLE_WORKSPACE.map((file) => [file.path, file.source]));
+export function exampleWorkspaceSources(
+  exampleId: string = DEFAULT_EXAMPLE_WORKSPACE_ID,
+): WorkspaceSources {
+  const files =
+    exampleId === DEFAULT_EXAMPLE_WORKSPACE_ID
+      ? SAMPLE_WORKSPACE
+      : getExampleWorkspace(exampleId).files;
+  return Object.fromEntries(files.map((file) => [file.path, file.source]));
 }
 
 export function workspaceFilesFromSources(current: WorkspaceSources): WorkspaceFile[] {

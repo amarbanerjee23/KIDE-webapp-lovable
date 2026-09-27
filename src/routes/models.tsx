@@ -13,7 +13,13 @@ import {
 import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
 import { WorkspaceFileActions } from "@/components/kide/WorkspaceFileActions";
 import { Button } from "@/components/ui/button";
-import { DSL_LANGUAGES, type Diagnostic, type WorkspaceFile } from "@/lib/dsl";
+import {
+  DEFAULT_EXAMPLE_WORKSPACE_ID,
+  DSL_LANGUAGES,
+  EXAMPLE_WORKSPACES,
+  type Diagnostic,
+  type WorkspaceFile,
+} from "@/lib/dsl";
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
 import { useActiveProject } from "@/lib/active-project";
 import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
@@ -63,6 +69,14 @@ function ModelLanguages() {
     ? requestedPath
     : (workspace.files[0]?.path ?? "");
   const [activePath, setActivePath] = useState(initialPath);
+  const [selectedExampleId, setSelectedExampleId] = useState(DEFAULT_EXAMPLE_WORKSPACE_ID);
+  const selectedExample =
+    EXAMPLE_WORKSPACES.find((example) => example.id === selectedExampleId) ?? EXAMPLE_WORKSPACES[0];
+
+  const loadSelectedExample = () => {
+    loadExampleWorkspace(selectedExampleId);
+    setActivePath("");
+  };
 
   useEffect(() => {
     if (workspace.files.some((file) => file.path === activePath)) return;
@@ -127,9 +141,22 @@ function ModelLanguages() {
             )}
             {workspace.errorCount > 0 ? `${workspace.errorCount} errors` : "All models consistent"}
           </span>
-          <Button variant="outline" size="sm" onClick={loadExampleWorkspace} disabled={!canEdit}>
+          <select
+            value={selectedExampleId}
+            onChange={(event) => setSelectedExampleId(event.target.value)}
+            disabled={!canEdit}
+            aria-label="Reference example workspace"
+            className="h-8 max-w-64 rounded-md border border-input bg-background px-2 text-xs disabled:opacity-50"
+          >
+            {EXAMPLE_WORKSPACES.map((example) => (
+              <option key={example.id} value={example.id}>
+                {example.domain} — {example.title}
+              </option>
+            ))}
+          </select>
+          <Button variant="outline" size="sm" onClick={loadSelectedExample} disabled={!canEdit}>
             <RotateCcw />
-            Load example
+            Load selected
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/scenario">
@@ -185,6 +212,32 @@ function ModelLanguages() {
             for references, and hover for documentation. Names that do not exist anywhere in the
             workspace are reported below.
           </p>
+          {selectedExample ? (
+            <div className="mt-5 rounded-md border border-border bg-card/60 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Reference example
+              </p>
+              <p className="mt-1 text-xs font-semibold">{selectedExample.title}</p>
+              <p className="mt-0.5 text-[10px] text-primary">{selectedExample.domain}</p>
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                {selectedExample.summary}
+              </p>
+              <p className="mt-2 text-[10px] font-medium">Engineering challenge</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                {selectedExample.engineeringChallenge}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {selectedExample.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded border border-border bg-background px-1.5 py-0.5 text-[9px] text-muted-foreground"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </aside>
 
         <section className="flex min-h-0 flex-col">
@@ -222,10 +275,10 @@ function ModelLanguages() {
                     className="mt-4"
                     size="sm"
                     variant="outline"
-                    onClick={loadExampleWorkspace}
+                    onClick={loadSelectedExample}
                     disabled={!canEdit}
                   >
-                    Load example workspace
+                    Load {selectedExample?.title ?? "selected example"}
                   </Button>
                 </div>
               </div>
