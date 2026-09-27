@@ -16,6 +16,40 @@ grep -q '/api/auth/health' 'src/routes/api/auth/$.ts' || fail "auth runtime heal
 bash -n deploy/gcp/bootstrap-auth-secrets.sh
 docker compose -f compose.yaml config --quiet
 
+python3 - <<'PY'
+from pathlib import Path
+import subprocess
+import sys
+
+lines = Path("cloudbuild.yaml").read_text().splitlines()
+scripts = []
+i = 0
+while i < len(lines):
+    if lines[i] == "      - |":
+        i += 1
+        block = []
+        while i < len(lines) and (lines[i].startswith("        ") or lines[i] == ""):
+            line = lines[i]
+            block.append(line[8:] if line.startswith("        ") else "")
+            i += 1
+        scripts.append("\n".join(block).replace("$", "$"))
+        continue
+    i += 1
+
+if not scripts:
+    print("No Cloud Build shell blocks found.", file=sys.stderr)
+    raise SystemExit(1)
+
+for index, script in enumerate(scripts, start=1):
+    result = subprocess.run(["bash", "-n"], input=script, text=True, capture_output=True)
+    if result.returncode != 0:
+        print(f"Cloud Build shell block {index} has invalid Bash syntax:", file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        raise SystemExit(result.returncode)
+
+print(f"Validated Bash syntax for {len(scripts)} Cloud Build shell blocks.")
+PY
+
 grep -q -- '--update-secrets=DATABASE_URL=' cloudbuild.yaml || fail "Cloud Build must use targeted secret updates"
 grep -q -- '--remove-secrets=DATABASE_URL,BETTER_AUTH_SECRET' cloudbuild.yaml || fail "Cloud Build must remove only KIDE auth secrets when unavailable"
 ! grep -q -- '--set-secrets=' cloudbuild.yaml || fail "Cloud Build must not replace unrelated Cloud Run secret bindings"
@@ -55,7 +89,7 @@ grep -Fq 'CLOUD_SQL_CONNECTION="$$(cat /workspace/.kide-cloud-sql-connection)"' 
 grep -Fq '"--add-cloudsql-instances=$$CLOUD_SQL_CONNECTION"' cloudbuild.yaml || fail "Cloud SQL deploy arg must preserve the runtime variable"
 grep -Fq 'INSTANCE_UNIX_SOCKET=/cloudsql/$$CLOUD_SQL_CONNECTION' cloudbuild.yaml || fail "Cloud SQL socket env must preserve the runtime variable"
 grep -q '/api/auth/health' cloudbuild.yaml || fail "Cloud Build must verify live Better Auth health"
-grep -Fq 'SERVICE_URL="$(gcloud run services describe' cloudbuild.yaml || fail "Cloud Build must discover the deployed service URL at runtime"
+grep -Fq 'SERVICE_URL="$$(gcloud run services describe' cloudbuild.yaml || fail "Cloud Build must discover the deployed service URL at runtime"
 grep -Fq -- '--project="${PROJECT_ID}"' cloudbuild.yaml || fail "Cloud Build runtime service lookups must be project-scoped"
 grep -Fq -- "--format='value(status.url)')\"" cloudbuild.yaml || fail "Cloud Build service URL command substitution must be correctly closed"
 grep -q 'KIDE_AUTH_DEPLOYMENT_STATE=unconfigured' cloudbuild.yaml || fail "Cloud Build must support explicit auth-unconfigured deployment"
