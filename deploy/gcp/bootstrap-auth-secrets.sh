@@ -20,6 +20,7 @@ set -euo pipefail
 #   DATABASE_NAME=kide
 #   DATABASE_USER=kide_app
 #   DATABASE_SECRET=kide-database-url
+#   DATABASE_PASSWORD='operator-managed-secret'
 #   AUTH_SECRET=kide-better-auth-secret
 
 PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}"
@@ -123,7 +124,46 @@ elif [[ -n "${CLOUD_SQL_CONNECTION}" ]]; then
     echo "PostgreSQL database ${DATABASE_NAME} already exists."
   fi
 
-  DATABASE_PASSWORD="$(openssl rand -hex 32)"
+  validate_database_password() {
+    local value="$1"
+    [[ "${#value}" -ge 12 ]] || return 1
+    [[ "$value" =~ [a-z] ]] || return 1
+    [[ "$value" =~ [A-Z] ]] || return 1
+    [[ "$value" =~ [0-9] ]] || return 1
+    [[ "$value" =~ [^a-zA-Z0-9] ]] || return 1
+  }
+
+  if [[ -n "${DATABASE_PASSWORD:-}" ]]; then
+    if ! validate_database_password "${DATABASE_PASSWORD}"; then
+      echo "ERROR: DATABASE_PASSWORD does not satisfy the Cloud SQL password policy." >&2
+      echo "Use at least 12 characters including lowercase, uppercase, number and non-alphanumeric." >&2
+      exit 2
+    fi
+    echo "Using the operator-managed database password supplied through the environment."
+  else
+    DATABASE_PASSWORD="Kide!A1$(openssl rand -hex 24)"
+    echo "Generated a Cloud-SQL-compliant database password."
+  fi
+
+  url_encode() {
+    local value="$1"
+    local out=""
+    local i char hex
+    LC_ALL=C
+    for ((i = 0; i < ${#value}; i++)); do
+      char="${value:i:1}"
+      case "$char" in
+        [a-zA-Z0-9.~_-])
+          out+="$char"
+          ;;
+        *)
+          printf -v hex '%%%02X' "'$char"
+          out+="$hex"
+          ;;
+      esac
+    done
+    printf '%s' "$out"
+  }
 
   if gcloud sql users list \
       --project="${PROJECT_ID}" \
@@ -142,12 +182,13 @@ elif [[ -n "${CLOUD_SQL_CONNECTION}" ]]; then
     echo "Created dedicated PostgreSQL user ${DATABASE_USER}."
   fi
 
-  GENERATED_DATABASE_URL="postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5432/${DATABASE_NAME}"
+  ENCODED_DATABASE_PASSWORD="$(url_encode "${DATABASE_PASSWORD}")"
+  GENERATED_DATABASE_URL="postgresql://${DATABASE_USER}:${ENCODED_DATABASE_PASSWORD}@localhost:5432/${DATABASE_NAME}"
   printf '%s' "${GENERATED_DATABASE_URL}" | gcloud secrets versions add "${DATABASE_SECRET}" \
     --project="${PROJECT_ID}" \
     --data-file=- >/dev/null
 
-  unset DATABASE_PASSWORD GENERATED_DATABASE_URL
+  unset DATABASE_PASSWORD ENCODED_DATABASE_PASSWORD GENERATED_DATABASE_URL
   echo "Generated and stored the Cloud SQL database credential in ${DATABASE_SECRET}."
 else
   echo "ERROR: DATABASE_URL is required when CLOUD_SQL_INSTANCE is empty." >&2
