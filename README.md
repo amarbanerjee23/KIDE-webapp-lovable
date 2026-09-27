@@ -68,20 +68,20 @@ region: us-central1
 connection: project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app
 ```
 
-Run the one-time bootstrap from Google Cloud Shell:
+The hosted Cloud Build pipeline bootstraps this persistence layer automatically before building
+the image. `_BOOTSTRAP_CLOUD_SQL` defaults to `true`. If `kide-database-url` does not already
+have a version, the build validates the existing `kide-web-app` Cloud SQL instance, creates the
+`kide` database and dedicated `kide_app` user when needed, generates a random database password,
+stores the connection credential only in Secret Manager, generates/reuses the Better Auth signing
+secret, and grants the Cloud Run runtime identity both Secret Manager access and
+`roles/cloudsql.client`.
 
-```sh
-PROJECT_ID=project-b2a69875-a9ec-40fe-b15 \
-bash deploy/gcp/bootstrap-auth-secrets.sh
-```
+The Cloud Build service account therefore needs permission to administer this existing Cloud SQL
+instance and the two KIDE Secret Manager secrets, plus permission to update the project IAM policy
+for the runtime `roles/cloudsql.client` grant. The bootstrap step fails before image build if those
+permissions are missing; it never falls back to a partially configured production deployment.
 
-If `kide-database-url` does not already have a version, the bootstrap validates the existing
-`kide-web-app` Cloud SQL instance, creates the `kide` database and dedicated `kide_app` user
-when needed, generates a random database password, stores the connection credential only in Secret
-Manager, generates/reuses the Better Auth signing secret, and grants the Cloud Run runtime identity
-both Secret Manager access and `roles/cloudsql.client`.
-
-The next Cloud Build deployment attaches the instance with Cloud Run's managed Cloud SQL
+After bootstrap, the same Cloud Build attaches the instance with Cloud Run's managed Cloud SQL
 integration and supplies:
 
 ```text
@@ -95,8 +95,10 @@ The application never needs the Cloud SQL public IP. The build succeeds only aft
 `/api/auth/health` confirms PostgreSQL connectivity and successful Better Auth schema
 initialization.
 
-An external PostgreSQL server remains supported for self-hosted deployments. Disable the default
-Cloud SQL binding explicitly and provide its URL:
+An external PostgreSQL server remains supported for self-hosted deployments. Set
+`_BOOTSTRAP_CLOUD_SQL=false` and `_CLOUD_SQL_INSTANCE=` in that deployment's Cloud Build
+substitutions, and provision `kide-database-url` out of band. The standalone bootstrap script
+remains available for operators that do not want Cloud Build to manage persistence:
 
 ```sh
 PROJECT_ID=your-project-id \
@@ -105,7 +107,8 @@ DATABASE_URL='postgres://user:password@host:5432/kide?sslmode=require' \
 bash deploy/gcp/bootstrap-auth-secrets.sh
 ```
 
-Cloud Build does not create a Cloud SQL instance; it only attaches the configured existing instance.
+Cloud Build never creates a Cloud SQL instance; it only bootstraps the database/user/secrets inside
+the configured existing instance and then attaches that instance to Cloud Run.
 Local development can continue to use the included Docker Compose PostgreSQL service at no
 software-license cost.
 
