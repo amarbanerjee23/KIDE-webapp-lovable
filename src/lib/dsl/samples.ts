@@ -28,6 +28,7 @@ interface ExampleConfig {
   fileStem: string;
   activityFile: string;
   packageName: string;
+  controlModelName?: string;
   telemetryModel: string;
   planModel: string;
   contextModel: string;
@@ -94,7 +95,7 @@ Operation ${config.checkOperation}(int ${config.primaryMetric}) {
 }
 `;
 
-  const mnc = `Model ${config.packageName}System
+  const mnc = `Model ${config.controlModelName ?? `${config.packageName}System`}
 
 InterfaceDescription ${config.interfaceName} {
   port control = 8443
@@ -240,6 +241,7 @@ const EXAMPLE_CONFIGS: ExampleConfig[] = [
     fileStem: "Ecre",
     activityFile: "MissionPlanning.activity",
     packageName: "Ecre",
+    controlModelName: "EcreFleet",
     telemetryModel: "Telemetry",
     planModel: "RoutePlan",
     contextModel: "MissionContext",
