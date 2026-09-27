@@ -241,9 +241,16 @@ steps:
           --format='value(status.url)')"
         test -n "$$SERVICE_URL"
 
+        PROJECT_NUMBER="$$(gcloud projects describe "${PROJECT_ID}" \
+          --format='value(projectNumber)')"
+        test -n "$$PROJECT_NUMBER"
+        PROJECT_RUN_ORIGIN="https://${_SERVICE}-$${PROJECT_NUMBER}.${_REGION}.run.app"
+        TRUSTED_AUTH_ORIGINS="$$SERVICE_URL;$$PROJECT_RUN_ORIGIN"
+
         gcloud run services update "${_SERVICE}" \
-          --region "${_REGION}" \
-          --update-env-vars "BETTER_AUTH_URL=$$SERVICE_URL"
+          --project="${PROJECT_ID}" \
+          --region="${_REGION}" \
+          --update-env-vars "BETTER_AUTH_URL=$$SERVICE_URL,BETTER_AUTH_TRUSTED_ORIGINS=$$TRUSTED_AUTH_ORIGINS"
 
         echo "KIDE deployed at $$SERVICE_URL"
 
