@@ -126,13 +126,22 @@ steps:
           fi
         }
 
-        runtime_service_account="$$(gcloud run services describe "${_SERVICE}" \
-          --region "${_REGION}" \
-          --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)
-        if [[ -z "$$runtime_service_account" ]]; then
+        runtime_service_account=""
+        discovered_runtime_service_account="$$(gcloud run services describe "${_SERVICE}" \
+          --project="${PROJECT_ID}" \
+          --region="${_REGION}" \
+          --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)"
+        if [[ -n "$$discovered_runtime_service_account" ]]; then
+          runtime_service_account="$$discovered_runtime_service_account"
+        else
           project_number="$$(gcloud projects describe "${PROJECT_ID}" \
-            --format='value(projectNumber)')
+            --format='value(projectNumber)')"
           runtime_service_account="$${project_number}-compute@developer.gserviceaccount.com"
+        fi
+
+        if [[ -z "$$runtime_service_account" ]]; then
+          echo "ERROR: Could not determine the Cloud Run runtime service account." >&2
+          exit 2
         fi
 
         ensure_secret "${_AUTH_SECRET}"
