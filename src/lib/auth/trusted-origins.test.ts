@@ -45,11 +45,7 @@ describe("resolveTrustedAuthOrigins", () => {
 
   it("rejects non-http trusted origins", () => {
     expect(() =>
-      resolveTrustedAuthOrigins(
-        "https://kide.example.com",
-        "javascript:alert(1)",
-        true,
-      ),
+      resolveTrustedAuthOrigins("https://kide.example.com", "javascript:alert(1)", true),
     ).toThrow("Unsupported authentication origin protocol");
   });
 });
