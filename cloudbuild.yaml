@@ -17,6 +17,7 @@ substitutions:
   _SERVICE: kide-webapp
   _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/kide/kide-webapp
   _DATABASE_SECRET: kide-database-url
+  _DATABASE_PASSWORD_SECRET: kide-database-password
   _AUTH_SECRET: kide-better-auth-secret
   _CLOUD_SQL_INSTANCE: kide-web-app
   _BOOTSTRAP_CLOUD_SQL: "true"
@@ -34,8 +35,25 @@ steps:
           exit 0
         fi
 
+        gcloud services enable secretmanager.googleapis.com \
+          --project="${PROJECT_ID}" >/dev/null
+
+        database_password=""
+        if gcloud secrets versions describe latest \
+          --project="${PROJECT_ID}" \
+          --secret="${_DATABASE_PASSWORD_SECRET}" \
+          --format='value(name)' >/dev/null 2>&1; then
+          database_password="$(gcloud secrets versions access latest \
+            --project="${PROJECT_ID}" \
+            --secret="${_DATABASE_PASSWORD_SECRET}")"
+          echo "Using operator-managed Cloud SQL database password from Secret Manager."
+        else
+          echo "No operator-managed database password secret found; bootstrap will generate a compliant password."
+        fi
+
         echo "Bootstrapping KIDE authentication persistence before image build..."
-        if ! PROJECT_ID="${PROJECT_ID}" \
+        if ! DATABASE_PASSWORD="$database_password" \
+          PROJECT_ID="${PROJECT_ID}" \
           SERVICE_NAME="${_SERVICE}" \
           CLOUD_SQL_INSTANCE="${_CLOUD_SQL_INSTANCE}" \
           CLOUD_SQL_REGION="${_REGION}" \

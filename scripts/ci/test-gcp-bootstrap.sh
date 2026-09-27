@@ -66,7 +66,11 @@ if [[ "$1 $2 $3" == "sql users list" ]]; then
 fi
 
 if [[ "$1 $2 $3" == "secrets versions add" ]]; then
-  cat >/dev/null
+  if [[ "$*" == *"secrets versions add kide-database-url"* && -n "${KIDE_FAKE_DATABASE_SECRET_PAYLOAD:-}" ]]; then
+    cat > "${KIDE_FAKE_DATABASE_SECRET_PAYLOAD}"
+  else
+    cat >/dev/null
+  fi
   exit 0
 fi
 
@@ -105,6 +109,8 @@ grep -q "roles/secretmanager.secretAccessor" "$log" || fail "runtime secret acce
 grep -q "roles/cloudsql.client" "$log" || fail "runtime Cloud SQL Client role was not granted"
 grep -q "Cloud SQL connection: test-project:us-central1:kide-web-app" "$tmp/cloud-sql.out" ||
   fail "Cloud SQL completion evidence absent"
+grep -q "Generated a Cloud-SQL-compliant database password." "$tmp/cloud-sql.out" ||
+  fail "bootstrap did not generate a Cloud-SQL-compliant fallback password"
 grep -q "Cloud Build bootstrap complete; deployment will continue" "$tmp/cloud-sql.out" ||
   fail "Cloud Build completion guidance absent"
 ! grep -q "Re-run the Cloud Build trigger" "$tmp/cloud-sql.out" ||
@@ -113,6 +119,36 @@ grep -q "Cloud Build bootstrap complete; deployment will continue" "$tmp/cloud-s
 if grep -Eq 'postgres(ql)?://[^[:space:]]+:[^[:space:]]+@' "$tmp/cloud-sql.out" "$log"; then
   fail "generated DATABASE_URL leaked into command output"
 fi
+
+: > "$log"
+password_payload="$tmp/operator-password-url"
+PATH="$tmp/bin:$PATH" \
+KIDE_FAKE_GCLOUD_LOG="$log" \
+KIDE_FAKE_DATABASE_SECRET_PAYLOAD="$password_payload" \
+PROJECT_ID=test-project \
+RUNTIME_SERVICE_ACCOUNT=runtime@test-project.iam.gserviceaccount.com \
+DATABASE_PASSWORD='Operator@1234' \
+bash "$script" >"$tmp/operator-password.out"
+
+grep -q "Using the operator-managed database password supplied through the environment." "$tmp/operator-password.out" ||
+  fail "operator-managed database password was not used"
+grep -Fq 'Operator%401234' "$password_payload" ||
+  fail "database password was not URL-encoded before DATABASE_URL storage"
+if grep -Fq 'Operator@1234' "$tmp/operator-password.out" "$log"; then
+  fail "operator-managed database password leaked into output"
+fi
+
+: > "$log"
+if PATH="$tmp/bin:$PATH" \
+   KIDE_FAKE_GCLOUD_LOG="$log" \
+   PROJECT_ID=test-project \
+   RUNTIME_SERVICE_ACCOUNT=runtime@test-project.iam.gserviceaccount.com \
+   DATABASE_PASSWORD='weakpassword' \
+   bash "$script" >"$tmp/weak-password.out" 2>&1; then
+  fail "bootstrap accepted a database password that violates Cloud SQL policy"
+fi
+grep -q "does not satisfy the Cloud SQL password policy" "$tmp/weak-password.out" ||
+  fail "weak password guidance absent"
 
 : > "$log"
 database_url='postgres://ci-user:super-secret-password@db.example.test:5432/kide?sslmode=require'
