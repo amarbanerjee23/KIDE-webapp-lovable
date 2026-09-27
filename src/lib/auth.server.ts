@@ -3,6 +3,7 @@ import { getMigrations } from "better-auth/db/migration";
 import { Pool } from "pg";
 import { databaseCredentials, databaseSocketPath, databaseUrl } from "@/lib/database.server";
 import type { AuthReadiness, AuthRuntimeReadiness } from "@/lib/auth/readiness";
+import { resolveTrustedAuthOrigins } from "@/lib/auth/trusted-origins";
 
 const LOCAL_AUTH_URL = "http://localhost:3000";
 const LOCAL_AUTH_SECRET = "kide-local-development-secret-change-before-production-2026";
@@ -35,6 +36,11 @@ function createAuth() {
   return betterAuth({
     appName: "KIDE",
     baseURL: authUrl(),
+    trustedOrigins: resolveTrustedAuthOrigins(
+      authUrl(),
+      process.env["BETTER_AUTH_TRUSTED_ORIGINS"],
+      process.env["NODE_ENV"] === "production",
+    ),
     secret: authSecret(),
     database: getAuthDatabasePool(),
     emailAndPassword: {
