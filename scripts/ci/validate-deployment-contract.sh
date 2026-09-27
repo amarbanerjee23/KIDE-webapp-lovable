@@ -55,6 +55,9 @@ grep -Fq 'CLOUD_SQL_CONNECTION="$$(cat /workspace/.kide-cloud-sql-connection)"' 
 grep -Fq '"--add-cloudsql-instances=$$CLOUD_SQL_CONNECTION"' cloudbuild.yaml || fail "Cloud SQL deploy arg must preserve the runtime variable"
 grep -Fq 'INSTANCE_UNIX_SOCKET=/cloudsql/$$CLOUD_SQL_CONNECTION' cloudbuild.yaml || fail "Cloud SQL socket env must preserve the runtime variable"
 grep -q '/api/auth/health' cloudbuild.yaml || fail "Cloud Build must verify live Better Auth health"
+grep -Fq 'SERVICE_URL="$(gcloud run services describe' cloudbuild.yaml || fail "Cloud Build must discover the deployed service URL at runtime"
+grep -Fq -- '--project="${PROJECT_ID}"' cloudbuild.yaml || fail "Cloud Build runtime service lookups must be project-scoped"
+grep -Fq -- "--format='value(status.url)')\"" cloudbuild.yaml || fail "Cloud Build service URL command substitution must be correctly closed"
 grep -q 'KIDE_AUTH_DEPLOYMENT_STATE=unconfigured' cloudbuild.yaml || fail "Cloud Build must support explicit auth-unconfigured deployment"
 grep -q 'KIDE_AUTH_DEPLOYMENT_STATE=configured' cloudbuild.yaml || fail "Cloud Build must mark configured auth deployments"
 grep -q 'The deployment is stopping instead of publishing a revision with nonfunctional sign-in' cloudbuild.yaml ||
