@@ -30,6 +30,7 @@ DATABASE_NAME="${DATABASE_NAME:-kide}"
 DATABASE_USER="${DATABASE_USER:-kide_app}"
 DATABASE_SECRET="${DATABASE_SECRET:-kide-database-url}"
 AUTH_SECRET="${AUTH_SECRET:-kide-better-auth-secret}"
+KIDE_BOOTSTRAP_CONTEXT="${KIDE_BOOTSTRAP_CONTEXT:-operator}"
 
 if [[ -z "${PROJECT_ID}" || "${PROJECT_ID}" == "(unset)" ]]; then
   echo "ERROR: Set PROJECT_ID or configure a gcloud project." >&2
@@ -190,4 +191,8 @@ if [[ -n "${CLOUD_SQL_CONNECTION}" ]]; then
 fi
 echo "Database secret: ${DATABASE_SECRET}"
 echo "Better Auth secret: ${AUTH_SECRET}"
-echo "Re-run the Cloud Build trigger; the next revision will verify /api/auth/health."
+if [[ "${KIDE_BOOTSTRAP_CONTEXT}" == "cloud-build" ]]; then
+  echo "Cloud Build bootstrap complete; deployment will continue and verify /api/auth/health."
+else
+  echo "Re-run the Cloud Build trigger; the next revision will verify /api/auth/health."
+fi
