@@ -90,6 +90,7 @@ PATH="$tmp/bin:$PATH" \
 KIDE_FAKE_GCLOUD_LOG="$log" \
 PROJECT_ID=test-project \
 RUNTIME_SERVICE_ACCOUNT=runtime@test-project.iam.gserviceaccount.com \
+KIDE_BOOTSTRAP_CONTEXT=cloud-build \
 bash "$script" >"$tmp/cloud-sql.out"
 
 grep -q "sql instances describe kide-web-app" "$log" || fail "Cloud SQL instance was not validated"
@@ -104,6 +105,10 @@ grep -q "roles/secretmanager.secretAccessor" "$log" || fail "runtime secret acce
 grep -q "roles/cloudsql.client" "$log" || fail "runtime Cloud SQL Client role was not granted"
 grep -q "Cloud SQL connection: test-project:us-central1:kide-web-app" "$tmp/cloud-sql.out" ||
   fail "Cloud SQL completion evidence absent"
+grep -q "Cloud Build bootstrap complete; deployment will continue" "$tmp/cloud-sql.out" ||
+  fail "Cloud Build completion guidance absent"
+! grep -q "Re-run the Cloud Build trigger" "$tmp/cloud-sql.out" ||
+  fail "Cloud Build mode must not ask the operator to rerun the build"
 
 if grep -Eq 'postgres(ql)?://[^[:space:]]+:[^[:space:]]+@' "$tmp/cloud-sql.out" "$log"; then
   fail "generated DATABASE_URL leaked into command output"
@@ -124,6 +129,6 @@ if grep -Fq "$database_url" "$tmp/external.out" || grep -Fq "$database_url" "$lo
   fail "supplied DATABASE_URL leaked into command output"
 fi
 
-grep -q "Re-run the Cloud Build trigger" "$tmp/cloud-sql.out" || fail "operator completion guidance absent"
+grep -q "Re-run the Cloud Build trigger" "$tmp/external.out" || fail "operator completion guidance absent"
 
 echo "GCP bootstrap behavior validated without exposing credentials."
