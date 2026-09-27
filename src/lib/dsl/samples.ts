@@ -227,7 +227,7 @@ has activities {
   };
 }
 
-// prettier-ignore -- keep each domain example compact and reviewable as structured data.\nconst EXAMPLE_CONFIGS: ExampleConfig[] = [
+// prettier-ignore\nconst EXAMPLE_CONFIGS: ExampleConfig[] = [
   {
     id: "warehouse-fleet",
     title: "Autonomous warehouse fleet",
