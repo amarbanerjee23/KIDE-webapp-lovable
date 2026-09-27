@@ -220,6 +220,7 @@ if [[ -n "${CLOUD_SQL_CONNECTION}" ]]; then
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
     --role="roles/cloudsql.client" \
+    --condition=None \
     --quiet >/dev/null
 fi
 
