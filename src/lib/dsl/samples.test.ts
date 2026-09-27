@@ -35,8 +35,6 @@ describe("KIDE reference example library", () => {
   });
 
   it("rejects unknown example identifiers", () => {
-    expect(() => getExampleWorkspace("does-not-exist")).toThrow(
-      "Unknown KIDE example workspace",
-    );
+    expect(() => getExampleWorkspace("does-not-exist")).toThrow("Unknown KIDE example workspace");
   });
 });
