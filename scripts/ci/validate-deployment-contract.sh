@@ -32,7 +32,7 @@ while i < len(lines):
             line = lines[i]
             block.append(line[8:] if line.startswith("        ") else "")
             i += 1
-        scripts.append("\n".join(block).replace("$", "$"))
+        scripts.append("\n".join(block).replace(chr(36) * 2, chr(36)))
         continue
     i += 1
 
