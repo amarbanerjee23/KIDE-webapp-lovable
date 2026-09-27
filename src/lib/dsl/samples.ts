@@ -227,7 +227,7 @@ has activities {
   };
 }
 
-const EXAMPLE_CONFIGS: ExampleConfig[] = [
+// prettier-ignore -- keep each domain example compact and reviewable as structured data.\nconst EXAMPLE_CONFIGS: ExampleConfig[] = [
   {
     id: "warehouse-fleet",
     title: "Autonomous warehouse fleet",
@@ -732,4 +732,4 @@ export function getExampleWorkspace(id: string): ExampleWorkspace {
 }
 
 /** Backward-compatible alias for the original explicit warehouse example. */
-export const SAMPLE_WORKSPACE: SampleFile[] = getExampleWorkspace(DEFAULT_EXAMPLE_WORKSPACE_ID).files;
+export const SAMPLE_WORKSPACE: SampleFile[] = getExampleWorkspace(\n  DEFAULT_EXAMPLE_WORKSPACE_ID,\n).files;
