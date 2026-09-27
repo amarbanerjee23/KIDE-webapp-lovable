@@ -101,8 +101,8 @@ INSTANCE_UNIX_SOCKET        <- /cloudsql/project-b2a69875-a9ec-40fe-b15:us-centr
 ```
 
 The application never needs the Cloud SQL public IP. The build succeeds only after
-`/api/auth/health` confirms PostgreSQL connectivity and successful Better Auth schema
-initialization.
+`/api/auth/health` confirms PostgreSQL connectivity through both Better Auth's `pg` pool and
+KIDE's `postgres.js` application client, plus successful Better Auth schema initialization.
 
 An external PostgreSQL server remains supported for self-hosted deployments. Set
 `_BOOTSTRAP_CLOUD_SQL=false` and `_CLOUD_SQL_INSTANCE=` in that deployment's Cloud Build

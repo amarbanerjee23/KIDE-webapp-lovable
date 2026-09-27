@@ -8,6 +8,13 @@ export interface DatabaseCredentials {
   database: string;
 }
 
+export interface DatabaseClientOptions {
+  host?: string;
+  max: number;
+  idle_timeout: number;
+  connect_timeout: number;
+}
+
 const LOCAL_DATABASE_URL = "postgres://kide:kide@127.0.0.1:5432/kide";
 
 let database: KideDatabase | undefined;
@@ -51,15 +58,21 @@ export function databaseCredentials(): DatabaseCredentials {
   };
 }
 
+export function databaseClientOptions(): DatabaseClientOptions {
+  const socketPath = databaseSocketPath();
+  return {
+    ...(socketPath ? { host: socketPath } : {}),
+    max: Number(process.env["KIDE_DB_POOL_SIZE"] ?? "10"),
+    idle_timeout: 20,
+    connect_timeout: 10,
+  };
+}
+
 export function getDatabase(): KideDatabase {
-  if (!database) {
-    const socketPath = databaseSocketPath();
-    database = postgres(databaseUrl(), {
-      ...(socketPath ? { path: socketPath } : {}),
-      max: Number(process.env["KIDE_DB_POOL_SIZE"] ?? "10"),
-      idle_timeout: 20,
-      connect_timeout: 10,
-    });
-  }
+  database ??= postgres(databaseUrl(), databaseClientOptions());
   return database;
+}
+
+export async function verifyApplicationDatabaseConnection(): Promise<void> {
+  await getDatabase().unsafe("SELECT 1");
 }

@@ -1,7 +1,12 @@
 import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { Pool } from "pg";
-import { databaseCredentials, databaseSocketPath, databaseUrl } from "@/lib/database.server";
+import {
+  databaseCredentials,
+  databaseSocketPath,
+  databaseUrl,
+  verifyApplicationDatabaseConnection,
+} from "@/lib/database.server";
 import type { AuthReadiness, AuthRuntimeReadiness } from "@/lib/auth/readiness";
 import { resolveTrustedAuthOrigins } from "@/lib/auth/trusted-origins";
 
@@ -154,6 +159,7 @@ export async function authRuntimeReadiness(): Promise<AuthRuntimeReadiness> {
   try {
     await getAuthDatabasePool().query("SELECT 1");
     await ensureAuthSchema();
+    await verifyApplicationDatabaseConnection();
     return {
       ...readiness,
       operational: true,
@@ -161,7 +167,7 @@ export async function authRuntimeReadiness(): Promise<AuthRuntimeReadiness> {
     };
   } catch (error) {
     console.error(
-      "[KIDE Auth Readiness] Better Auth database/schema check failed.",
+      "[KIDE Auth Readiness] PostgreSQL runtime check failed.",
       error instanceof Error ? error.message : "Unknown error",
     );
     return {
