@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { databaseCredentials, databaseSocketPath, databaseUrl } from "@/lib/database.server";
+import {
+  databaseClientOptions,
+  databaseCredentials,
+  databaseSocketPath,
+  databaseUrl,
+} from "@/lib/database.server";
 
 describe("database runtime configuration", () => {
   afterEach(() => {
@@ -31,6 +36,21 @@ describe("database runtime configuration", () => {
 
     vi.stubEnv("INSTANCE_UNIX_SOCKET", "");
     expect(databaseSocketPath()).toBeUndefined();
+  });
+
+  it("configures postgres.js with the Cloud SQL socket directory as host", () => {
+    vi.stubEnv(
+      "INSTANCE_UNIX_SOCKET",
+      "/cloudsql/project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app",
+    );
+
+    expect(databaseClientOptions()).toEqual({
+      host: "/cloudsql/project-b2a69875-a9ec-40fe-b15:us-central1:kide-web-app",
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+    expect(databaseClientOptions()).not.toHaveProperty("path");
   });
 
   it("parses URL-safe credentials for the pg Cloud SQL socket path", () => {
