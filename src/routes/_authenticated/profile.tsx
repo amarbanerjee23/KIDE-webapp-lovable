@@ -82,7 +82,9 @@ function ProfilePage() {
               className="mt-3"
               onClick={() =>
                 void loadProfile().catch((error) =>
-                  toast.error(error instanceof Error ? error.message : "Could not load your profile."),
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not load your profile.",
+                  ),
                 )
               }
             >
