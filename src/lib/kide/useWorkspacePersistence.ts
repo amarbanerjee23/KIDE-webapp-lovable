@@ -12,10 +12,7 @@ import {
   setWorkspaceAccess,
   setWorkspaceAccessLoading,
 } from "@/lib/kide/workspace-access";
-import {
-  clearWorkspaceSaveState,
-  setWorkspaceSaveState,
-} from "@/lib/kide/workspace-save-state";
+import { clearWorkspaceSaveState, setWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
 import {
   clearWorkspace,
   replaceWorkspaceSources,
@@ -91,7 +88,8 @@ export function useWorkspacePersistence(enabled: boolean) {
       .catch((error) => {
         if (generation !== generationRef.current) return;
         clearWorkspaceAccess();
-        const message = error instanceof Error ? error.message : "Could not load project workspace.";
+        const message =
+          error instanceof Error ? error.message : "Could not load project workspace.";
         setWorkspaceSaveState({
           projectId: activeProject.projectId,
           status: "error",
