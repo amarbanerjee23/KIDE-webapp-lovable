@@ -100,7 +100,9 @@ function OverviewPage() {
       label: "Synthesis",
       icon: GitBranch,
       to: "/synthesis",
-      detail: report.ready ? `${report.candidates.length} candidate designs` : "Blocked by preflight",
+      detail: report.ready
+        ? `${report.candidates.length} candidate designs`
+        : "Blocked by preflight",
       done: report.ready,
     },
     {
@@ -114,7 +116,9 @@ function OverviewPage() {
       label: "Release",
       icon: Upload,
       to: "/release",
-      detail: assurance.releasable ? "Ready to export" : `${gatesPassed}/${assurance.gates.length} gates passed`,
+      detail: assurance.releasable
+        ? "Ready to export"
+        : `${gatesPassed}/${assurance.gates.length} gates passed`,
       done: assurance.releasable,
     },
   ] as const;
@@ -126,7 +130,9 @@ function OverviewPage() {
       <div className="mx-auto max-w-6xl px-5 py-8">
         <section className="flex flex-wrap items-end gap-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase text-muted-foreground">Active project</p>
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground">
+              Active project
+            </p>
             <h1 className="mt-1 text-2xl font-semibold">
               {projectContext.loading
                 ? "Loading project…"
@@ -166,7 +172,11 @@ function OverviewPage() {
         </section>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Models" value={`${workspace.files.length}`} note="linked and cross-checked" />
+          <Metric
+            label="Models"
+            value={`${workspace.files.length}`}
+            note="linked and cross-checked"
+          />
           <Metric
             label="Problems"
             value={`${errors} / ${warnings}`}
@@ -189,7 +199,9 @@ function OverviewPage() {
 
         <section className="mt-8">
           <h2 className="text-sm font-semibold">Engineering flow</h2>
-          <p className="text-xs text-muted-foreground">Seven stages from intent to a signed release bundle.</p>
+          <p className="text-xs text-muted-foreground">
+            Seven stages from intent to a signed release bundle.
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stages.map((stage, index) => (
               <Link
@@ -241,12 +253,42 @@ function OverviewPage() {
           <div className="rounded-md border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Workspace</h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <Shortcut to="/projects" icon={FolderKanban} label="Projects" note="All organizations and projects" />
-              <Shortcut to="/team" icon={Users} label="Team" note="Members, roles and invitations" />
-              <Shortcut to="/checkpoints" icon={History} label="Checkpoints" note="Saved snapshots and imports" />
-              <Shortcut to="/reviews" icon={ListTree} label="Reviews" note="Approvals and comments" />
-              <Shortcut to="/billing" icon={CreditCard} label="Plan & billing" note="Subscription and invoices" />
-              <Shortcut to="/qualification" icon={ShieldCheck} label="Qualification" note="Algorithm evidence report" />
+              <Shortcut
+                to="/projects"
+                icon={FolderKanban}
+                label="Projects"
+                note="All organizations and projects"
+              />
+              <Shortcut
+                to="/team"
+                icon={Users}
+                label="Team"
+                note="Members, roles and invitations"
+              />
+              <Shortcut
+                to="/checkpoints"
+                icon={History}
+                label="Checkpoints"
+                note="Saved snapshots and imports"
+              />
+              <Shortcut
+                to="/reviews"
+                icon={ListTree}
+                label="Reviews"
+                note="Approvals and comments"
+              />
+              <Shortcut
+                to="/billing"
+                icon={CreditCard}
+                label="Plan & billing"
+                note="Subscription and invoices"
+              />
+              <Shortcut
+                to="/qualification"
+                icon={ShieldCheck}
+                label="Qualification"
+                note="Algorithm evidence report"
+              />
             </div>
           </div>
         </section>
