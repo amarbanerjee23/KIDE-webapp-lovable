@@ -33,6 +33,7 @@ import {
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
 import { useActiveProject } from "@/lib/active-project";
 import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
+import { useWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
 import {
   linkFrom,
   loadExampleWorkspace,
@@ -62,6 +63,7 @@ function ModelLanguages() {
   const hash = useLocation({ select: (location) => location.hash });
   const activeProject = useActiveProject();
   const workspaceAccess = useWorkspaceAccess();
+  const saveState = useWorkspaceSaveState();
   const sources = useWorkspaceSources();
   const requestedPath = decodeURIComponent(hash.replace(/^#/, ""));
   const workspace = useMemo(() => linkFrom(sources), [sources]);
@@ -114,6 +116,22 @@ function ModelLanguages() {
     workspaceAccess.status === "ready" &&
     workspaceAccess.projectId === activeProject?.projectId;
   const canEdit = accessReady && workspaceAccess.canEdit;
+  const activeSaveState =
+    activeProject && saveState.projectId === activeProject.projectId ? saveState : null;
+  const saveLabel =
+    activeSaveState?.status === "saving"
+      ? "Saving…"
+      : activeSaveState?.status === "saved"
+        ? "Saved"
+        : activeSaveState?.status === "read-only"
+          ? "Read-only"
+          : activeSaveState?.status === "conflict"
+            ? "Save conflict"
+            : activeSaveState?.status === "error"
+              ? "Save failed"
+              : activeSaveState?.status === "loading"
+                ? "Loading…"
+                : null;
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
@@ -142,11 +160,21 @@ function ModelLanguages() {
             activeFile={activeFile ? { path: activeFile.path, kind: activeFile.kind } : null}
             onActivePath={setActivePath}
           />
-          {accessReady && !canEdit && (
-            <span className="rounded border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
-              Read-only
+          {saveLabel ? (
+            <span
+              aria-live="polite"
+              title={activeSaveState?.message ?? undefined}
+              className={`rounded border px-2 py-1 text-[11px] ${
+                activeSaveState?.status === "error" || activeSaveState?.status === "conflict"
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : activeSaveState?.status === "saving"
+                    ? "border-warning/40 bg-warning/10 text-warning"
+                    : "border-border bg-secondary text-muted-foreground"
+              }`}
+            >
+              {saveLabel}
             </span>
-          )}
+          ) : null}
           <span
             className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] ${
               workspace.errorCount > 0
