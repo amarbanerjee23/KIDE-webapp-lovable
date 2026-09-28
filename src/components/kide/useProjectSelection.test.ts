@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { preferredExplicitProjectId, type ProjectOption } from "@/components/kide/useProjectSelection";
+import {
+  preferredExplicitProjectId,
+  type ProjectOption,
+} from "@/components/kide/useProjectSelection";
 
 const projects: ProjectOption[] = [
   { id: "p1", name: "Alpha", status: "draft", current_stage: 1 },
@@ -9,11 +12,7 @@ const projects: ProjectOption[] = [
 describe("explicit project selection", () => {
   it("keeps a valid already-selected project", () => {
     expect(
-      preferredExplicitProjectId(
-        projects,
-        { projectId: "p2", organizationId: "org-1" },
-        "org-1",
-      ),
+      preferredExplicitProjectId(projects, { projectId: "p2", organizationId: "org-1" }, "org-1"),
     ).toBe("p2");
   });
 
