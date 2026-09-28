@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
@@ -35,10 +35,11 @@ function ProfilePage() {
   const [density, setDensity] = useState("compact");
   const [theme, setTheme] = useState("dark");
   const [orgs, setOrgs] = useState<Array<{ id: string; name: string; role: string }>>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    void (async () => {
+  const loadProfile = useCallback(async () => {
+    try {
       const data = await load();
       setEmail(data.email);
       setDisplayName(data.profile?.display_name ?? "");
@@ -47,8 +48,19 @@ function ProfilePage() {
       setDensity(prefs.density ?? "compact");
       setTheme(prefs.theme ?? "dark");
       setOrgs(data.organizations.map((org) => ({ id: org.id, name: org.name, role: org.role })));
-    })();
+      setLoadError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not load your profile.";
+      setLoadError(message);
+      throw error;
+    }
   }, [load]);
+
+  useEffect(() => {
+    void loadProfile().catch((error) =>
+      toast.error(error instanceof Error ? error.message : "Could not load your profile."),
+    );
+  }, [loadProfile]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -56,6 +68,28 @@ function ProfilePage() {
       <div className="mx-auto max-w-2xl p-6">
         <h1 className="text-xl font-semibold">Your profile</h1>
         <p className="mt-1 text-sm text-muted-foreground">{email}</p>
+
+        {loadError ? (
+          <div
+            role="alert"
+            className="mt-5 rounded-md border border-destructive/40 bg-destructive/10 p-4"
+          >
+            <p className="text-sm font-medium">Could not load your profile</p>
+            <p className="mt-1 text-xs text-muted-foreground">{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() =>
+                void loadProfile().catch((error) =>
+                  toast.error(error instanceof Error ? error.message : "Could not load your profile."),
+                )
+              }
+            >
+              Retry
+            </Button>
+          </div>
+        ) : null}
 
         <div className="mt-6 space-y-4 rounded-md border border-border bg-card p-5">
           <Field label="Display name" value={displayName} onChange={setDisplayName} />
