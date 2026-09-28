@@ -227,8 +227,8 @@ function KideWorkbench() {
 
             {workspaceReady && !workspaceAccess.canEdit ? (
               <div className="mt-5 rounded-md border border-border bg-secondary/40 px-4 py-3 text-sm">
-                This project is read-only for your current organization role. You can inspect
-                models and evidence, but edits will not be saved.
+                This project is read-only for your current organization role. You can inspect models
+                and evidence, but edits will not be saved.
               </div>
             ) : null}
 
@@ -395,7 +395,10 @@ function KideWorkbench() {
               </div>
               <div className="mt-3 grid gap-2 md:grid-cols-2">
                 {assurance.gates.map((gate) => (
-                  <div key={gate.id} className="flex items-start gap-2 rounded-md border border-border p-3">
+                  <div
+                    key={gate.id}
+                    className="flex items-start gap-2 rounded-md border border-border p-3"
+                  >
                     {gate.status === "pass" ? (
                       <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
                     ) : (
