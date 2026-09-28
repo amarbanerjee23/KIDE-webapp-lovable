@@ -144,10 +144,10 @@ function CheckpointsPage() {
                 onChange={(event) => selection.setProjectId(event.target.value || null)}
               >
                 {selection.projects.length === 0 ? (
-                <option value="">No projects yet</option>
-              ) : (
-                <option value="">Choose project</option>
-              )}
+                  <option value="">No projects yet</option>
+                ) : (
+                  <option value="">Choose project</option>
+                )}
                 {selection.projects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.name}
