@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileCode2, FolderKanban, Plus, Users } from "lucide-react";
+import { FolderKanban, Plus, Users } from "lucide-react";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { listAllProjects, createProject } from "@/lib/projects.functions";
@@ -38,14 +38,6 @@ const STAGES = [
   "Verification",
   "Release",
 ];
-
-const PROJECT_FILES = [
-  { path: "Ecre.dml", label: "Data model" },
-  { path: "Ecre.op", label: "Operations" },
-  { path: "Ecre.mncspec", label: "MNC specification" },
-  { path: "Ecre.cap", label: "Capabilities" },
-  { path: "MissionPlanning.activity", label: "Activity workflow" },
-] as const;
 
 function stageLabel(stage: number) {
   return STAGES[Math.min(Math.max(stage, 1), 7) - 1];
@@ -225,29 +217,46 @@ function ProjectsHome() {
                           </Link>
                         </Button>
                       </div>
-                      <div className="mt-3 grid gap-1 border-t border-border pt-3 sm:ml-13 sm:grid-cols-2 lg:grid-cols-5">
-                        {PROJECT_FILES.map((file) => (
+                      <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3 sm:ml-13">
+                        <Button asChild size="sm" variant="ghost" className="text-xs">
                           <Link
-                            key={file.path}
                             to="/models"
-                            hash={file.path}
                             onClick={() =>
                               setActiveProject({
                                 projectId: project.id,
                                 organizationId: org.id,
                               })
                             }
-                            className="flex min-w-0 items-center gap-2 rounded border border-transparent px-2 py-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:bg-secondary/50 hover:text-foreground"
                           >
-                            <FileCode2 className="size-3.5 shrink-0 text-capability" />
-                            <span className="min-w-0">
-                              <span className="block truncate font-mono text-foreground">
-                                {file.path}
-                              </span>
-                              <span className="block truncate text-[10px]">{file.label}</span>
-                            </span>
+                            Open models
                           </Link>
-                        ))}
+                        </Button>
+                        <Button asChild size="sm" variant="ghost" className="text-xs">
+                          <Link
+                            to="/designer"
+                            onClick={() =>
+                              setActiveProject({
+                                projectId: project.id,
+                                organizationId: org.id,
+                              })
+                            }
+                          >
+                            Activity designer
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="ghost" className="text-xs">
+                          <Link
+                            to="/workbench"
+                            onClick={() =>
+                              setActiveProject({
+                                projectId: project.id,
+                                organizationId: org.id,
+                              })
+                            }
+                          >
+                            Workbench
+                          </Link>
+                        </Button>
                       </div>
                     </li>
                   ))}
