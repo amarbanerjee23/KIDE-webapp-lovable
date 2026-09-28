@@ -108,7 +108,7 @@ function NotificationsPage() {
           </div>
         ) : null}
 
-        {items.length === 0 ? (
+        {!loadError && items.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">
             Nothing yet. Review requests, decisions and comments appear here.
           </p>
