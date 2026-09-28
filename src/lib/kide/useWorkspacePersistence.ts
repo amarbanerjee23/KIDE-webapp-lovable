@@ -13,6 +13,10 @@ import {
   setWorkspaceAccessLoading,
 } from "@/lib/kide/workspace-access";
 import {
+  clearWorkspaceSaveState,
+  setWorkspaceSaveState,
+} from "@/lib/kide/workspace-save-state";
+import {
   clearWorkspace,
   replaceWorkspaceSources,
   useWorkspaceSources,
@@ -43,6 +47,7 @@ export function useWorkspacePersistence(enabled: boolean) {
     conflictedRef.current = false;
     saveErrorNotifiedRef.current = false;
     clearWorkspaceAccess();
+    clearWorkspaceSaveState();
 
     if (!enabled) return;
 
@@ -53,6 +58,12 @@ export function useWorkspacePersistence(enabled: boolean) {
 
     clearWorkspace();
     setWorkspaceAccessLoading(activeProject.projectId);
+    setWorkspaceSaveState({
+      projectId: activeProject.projectId,
+      status: "loading",
+      savedAt: null,
+      message: null,
+    });
 
     void load({ data: { projectId: activeProject.projectId } })
       .then((workingCopy) => {
@@ -62,6 +73,12 @@ export function useWorkspacePersistence(enabled: boolean) {
         canEditRef.current = workingCopy.canEdit;
         savedAtRef.current = workingCopy.savedAt;
         setWorkspaceAccess(activeProject.projectId, workingCopy.canEdit);
+        setWorkspaceSaveState({
+          projectId: activeProject.projectId,
+          status: workingCopy.canEdit ? "saved" : "read-only",
+          savedAt: workingCopy.savedAt,
+          message: null,
+        });
 
         if (workingCopy.sources) {
           lastSavedSourcesRef.current = JSON.stringify(workingCopy.sources);
@@ -74,10 +91,14 @@ export function useWorkspacePersistence(enabled: boolean) {
       .catch((error) => {
         if (generation !== generationRef.current) return;
         clearWorkspaceAccess();
-        console.warn(
-          "[Workspace] Could not load project working copy:",
-          error instanceof Error ? error.message : error,
-        );
+        const message = error instanceof Error ? error.message : "Could not load project workspace.";
+        setWorkspaceSaveState({
+          projectId: activeProject.projectId,
+          status: "error",
+          savedAt: null,
+          message,
+        });
+        console.warn("[Workspace] Could not load project working copy:", message);
       });
   }, [activeProject, enabled, load]);
 
@@ -95,6 +116,13 @@ export function useWorkspacePersistence(enabled: boolean) {
     const serialized = JSON.stringify(sources);
     if (serialized === lastSavedSourcesRef.current) return;
 
+    setWorkspaceSaveState({
+      projectId: activeProject.projectId,
+      status: "saving",
+      savedAt: savedAtRef.current,
+      message: null,
+    });
+
     const timer = window.setTimeout(() => {
       void save({
         data: {
@@ -107,12 +135,24 @@ export function useWorkspacePersistence(enabled: boolean) {
           savedAtRef.current = result.savedAt;
           lastSavedSourcesRef.current = serialized;
           saveErrorNotifiedRef.current = false;
+          setWorkspaceSaveState({
+            projectId: activeProject.projectId,
+            status: "saved",
+            savedAt: result.savedAt,
+            message: null,
+          });
         })
         .catch((error) => {
           const message = error instanceof Error ? error.message : String(error);
 
           if (message.includes(WORKING_COPY_CONFLICT_MESSAGE)) {
             conflictedRef.current = true;
+            setWorkspaceSaveState({
+              projectId: activeProject.projectId,
+              status: "conflict",
+              savedAt: savedAtRef.current,
+              message: WORKING_COPY_CONFLICT_MESSAGE,
+            });
             toast.error("Project changed in another browser session", {
               description:
                 "Your local edits are preserved. Reload this project before saving again.",
@@ -121,6 +161,12 @@ export function useWorkspacePersistence(enabled: boolean) {
           }
 
           console.warn("[Workspace] Autosave failed:", message);
+          setWorkspaceSaveState({
+            projectId: activeProject.projectId,
+            status: "error",
+            savedAt: savedAtRef.current,
+            message,
+          });
           if (!saveErrorNotifiedRef.current) {
             saveErrorNotifiedRef.current = true;
             toast.error("Autosave failed", {
