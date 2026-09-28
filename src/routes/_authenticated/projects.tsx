@@ -64,12 +64,20 @@ function ProjectsHome() {
   const addOrg = useServerFn(createOrganization);
 
   const [orgs, setOrgs] = useState<Org[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<Record<string, string>>({});
   const [orgName, setOrgName] = useState("");
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    setOrgs((await load()).organizations);
+    try {
+      const result = await load();
+      setOrgs(result.organizations);
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load your projects.");
+      throw error;
+    }
   }, [load]);
 
   useEffect(() => {
@@ -101,15 +109,39 @@ function ProjectsHome() {
           <div>
             <h1 className="text-xl font-semibold">Your projects</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {orgs === null
-                ? "Loading your workspace…"
-                : `${totalProjects} project${totalProjects === 1 ? "" : "s"} across ${orgs.length} organization${orgs.length === 1 ? "" : "s"}.`}
+              {loadError
+                ? "Your workspace could not be loaded."
+                : orgs === null
+                  ? "Loading your workspace…"
+                  : `${totalProjects} project${totalProjects === 1 ? "" : "s"} across ${orgs.length} organization${orgs.length === 1 ? "" : "s"}.`}
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
             <Link to="/billing">Plan &amp; billing</Link>
           </Button>
         </div>
+
+        {loadError ? (
+          <section
+            role="alert"
+            className="mt-6 rounded-md border border-destructive/40 bg-destructive/10 p-5"
+          >
+            <h2 className="text-sm font-semibold">Could not load your workspace</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{loadError}</p>
+            <Button
+              className="mt-4"
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                void refresh().catch((error) =>
+                  toast.error(error instanceof Error ? error.message : "Could not load your projects."),
+                )
+              }
+            >
+              Retry
+            </Button>
+          </section>
+        ) : null}
 
         {orgs !== null && orgs.length === 0 && (
           <section className="mt-6 rounded-md border border-dashed border-border bg-card p-8 text-center">
