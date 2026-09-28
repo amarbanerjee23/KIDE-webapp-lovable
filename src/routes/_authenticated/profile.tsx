@@ -114,7 +114,7 @@ function ProfilePage() {
             />
           </div>
           <Button
-            disabled={busy}
+            disabled={busy || Boolean(loadError)}
             onClick={async () => {
               setBusy(true);
               try {
