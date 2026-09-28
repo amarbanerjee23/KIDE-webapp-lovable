@@ -78,7 +78,9 @@ function NotificationsPage() {
                   await refresh();
                   toast.success("All marked as read.");
                 } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Could not update notifications.");
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not update notifications.",
+                  );
                 } finally {
                   setBusy(false);
                 }
@@ -90,7 +92,10 @@ function NotificationsPage() {
         </header>
 
         {loadError ? (
-          <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 p-4"
+          >
             <p className="text-sm font-medium">Could not load notifications</p>
             <p className="mt-1 text-xs text-muted-foreground">{loadError}</p>
             <Button
@@ -99,7 +104,9 @@ function NotificationsPage() {
               className="mt-3"
               onClick={() =>
                 void refresh().catch((error) =>
-                  toast.error(error instanceof Error ? error.message : "Could not load notifications."),
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not load notifications.",
+                  ),
                 )
               }
             >
@@ -127,7 +134,9 @@ function NotificationsPage() {
                     {new Date(item.created_at).toLocaleString()}
                   </span>
                 </div>
-                {item.body ? <p className="mt-0.5 text-xs text-muted-foreground">{item.body}</p> : null}
+                {item.body ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground">{item.body}</p>
+                ) : null}
                 {item.link === "/reviews" ? (
                   <Link to="/reviews" className="mt-1 inline-block text-xs text-primary underline">
                     Open reviews
