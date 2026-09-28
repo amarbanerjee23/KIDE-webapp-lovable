@@ -31,12 +31,24 @@ function NotificationsPage() {
   const load = useServerFn(listNotifications);
   const markRead = useServerFn(markNotificationsRead);
   const [items, setItems] = useState<Notification[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const refresh = useCallback(async () => setItems(await load()), [load]);
+  const refresh = useCallback(async () => {
+    try {
+      setItems(await load());
+      setLoadError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not load notifications.";
+      setLoadError(message);
+      throw error;
+    }
+  }, [load]);
 
   useEffect(() => {
-    void refresh();
+    void refresh().catch((error) =>
+      toast.error(error instanceof Error ? error.message : "Could not load notifications."),
+    );
   }, [refresh]);
 
   const unread = items.filter((item) => !item.read_at).length;
@@ -65,6 +77,8 @@ function NotificationsPage() {
                   await markRead();
                   await refresh();
                   toast.success("All marked as read.");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not update notifications.");
                 } finally {
                   setBusy(false);
                 }
@@ -74,6 +88,25 @@ function NotificationsPage() {
             <CheckCheck className="size-4" /> Mark all read
           </Button>
         </header>
+
+        {loadError ? (
+          <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+            <p className="text-sm font-medium">Could not load notifications</p>
+            <p className="mt-1 text-xs text-muted-foreground">{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() =>
+                void refresh().catch((error) =>
+                  toast.error(error instanceof Error ? error.message : "Could not load notifications."),
+                )
+              }
+            >
+              Retry
+            </Button>
+          </div>
+        ) : null}
 
         {items.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">
