@@ -84,10 +84,20 @@ export function WorkspaceHeader({ current }: { current?: string }) {
       </nav>
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
-        <Button asChild variant="ghost" size="sm" className="hidden text-xs md:inline-flex">
+        <Button
+          asChild
+          variant={current === "Notifications" ? "secondary" : "ghost"}
+          size="sm"
+          className="hidden text-xs md:inline-flex"
+        >
           <Link to="/notifications">Notifications</Link>
         </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
+        <Button
+          asChild
+          variant={current === "Profile" ? "secondary" : "ghost"}
+          size="sm"
+          className="text-xs"
+        >
           <Link to="/profile">Profile</Link>
         </Button>
       </div>
