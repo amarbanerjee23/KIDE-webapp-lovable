@@ -14,6 +14,16 @@ import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
 import { WorkspaceFileActions } from "@/components/kide/WorkspaceFileActions";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DEFAULT_EXAMPLE_WORKSPACE_ID,
   DSL_LANGUAGES,
   EXAMPLE_WORKSPACES,
@@ -70,12 +80,22 @@ function ModelLanguages() {
     : (workspace.files[0]?.path ?? "");
   const [activePath, setActivePath] = useState(initialPath);
   const [selectedExampleId, setSelectedExampleId] = useState(DEFAULT_EXAMPLE_WORKSPACE_ID);
+  const [confirmExampleLoad, setConfirmExampleLoad] = useState(false);
   const selectedExample =
     EXAMPLE_WORKSPACES.find((example) => example.id === selectedExampleId) ?? EXAMPLE_WORKSPACES[0];
 
-  const loadSelectedExample = () => {
+  const applySelectedExample = () => {
     loadExampleWorkspace(selectedExampleId);
     setActivePath("");
+    setConfirmExampleLoad(false);
+  };
+
+  const requestExampleLoad = () => {
+    if (workspace.files.length === 0) {
+      applySelectedExample();
+      return;
+    }
+    setConfirmExampleLoad(true);
   };
 
   useEffect(() => {
@@ -154,7 +174,7 @@ function ModelLanguages() {
               </option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={loadSelectedExample} disabled={!canEdit}>
+          <Button variant="outline" size="sm" onClick={requestExampleLoad} disabled={!canEdit}>
             <RotateCcw />
             Load selected
           </Button>
@@ -275,7 +295,7 @@ function ModelLanguages() {
                     className="mt-4"
                     size="sm"
                     variant="outline"
-                    onClick={loadSelectedExample}
+                    onClick={requestExampleLoad}
                     disabled={!canEdit}
                   >
                     Load {selectedExample?.title ?? "selected example"}
@@ -334,6 +354,24 @@ function ModelLanguages() {
           </div>
         </section>
       </div>
+
+      <AlertDialog open={confirmExampleLoad} onOpenChange={setConfirmExampleLoad}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace this project workspace?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Loading {selectedExample?.title ?? "the selected example"} replaces every model file
+              currently open in this project. KIDE autosaves workspace changes, so the replacement
+              can be persisted to the active project. Use a checkpoint first if you may need the
+              current model set later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current workspace</AlertDialogCancel>
+            <AlertDialogAction onClick={applySelectedExample}>Replace with example</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
