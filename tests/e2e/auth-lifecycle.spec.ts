@@ -187,4 +187,3 @@ test("project UX keeps context truthful and confirms destructive example replace
     accessibility.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
   ).toEqual([]);
 });
-
