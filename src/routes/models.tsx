@@ -396,7 +396,9 @@ function ModelLanguages() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep current workspace</AlertDialogCancel>
-            <AlertDialogAction onClick={applySelectedExample}>Replace with example</AlertDialogAction>
+            <AlertDialogAction onClick={applySelectedExample}>
+              Replace with example
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
