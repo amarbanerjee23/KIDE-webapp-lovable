@@ -6,7 +6,12 @@ import { CircleCheck, CircleDot, MessageSquare, RotateCcw } from "lucide-react";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { useProjectSelection } from "@/components/kide/useProjectSelection";
 import { Button } from "@/components/ui/button";
-import { addReviewComment, decideReview, listReviews, requestReview } from "@/lib/projects.functions";
+import {
+  addReviewComment,
+  decideReview,
+  listReviews,
+  requestReview,
+} from "@/lib/projects.functions";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { synthesize } from "@/lib/kide/synthesis";
 import { buildAssurance } from "@/lib/kide/assurance";
@@ -120,9 +125,13 @@ function ReviewsPage() {
             <select
               className="h-9 min-w-48 rounded-md border border-border bg-background px-2 text-xs"
               value={selection.projectId ?? ""}
-              onChange={(event) => selection.setProjectId(event.target.value)}
+              onChange={(event) => selection.setProjectId(event.target.value || null)}
             >
-              {selection.projects.length === 0 ? <option value="">No projects yet</option> : null}
+              {selection.projects.length === 0 ? (
+                <option value="">No projects yet</option>
+              ) : (
+                <option value="">Choose project</option>
+              )}
               {selection.projects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
@@ -146,7 +155,9 @@ function ReviewsPage() {
                       title: reviewTitle,
                       summary: design.name
                         ? `Design ${design.name}. ${design.blockers} blocking findings. ${
-                            design.releasable ? "All release gates pass." : "Release gates are not all green."
+                            design.releasable
+                              ? "All release gates pass."
+                              : "Release gates are not all green."
                           }`
                         : "No design produced yet.",
                       designFingerprint: design.fingerprint,
@@ -193,14 +204,19 @@ function ReviewsPage() {
                 ) : null}
 
                 <ul className="mt-3 space-y-2">
-                  {review.comments.map((entry: { id: string; body: string; created_at: string }) => (
-                    <li key={entry.id} className="rounded border border-border bg-background p-2 text-xs">
-                      <p>{entry.body}</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        {new Date(entry.created_at).toLocaleString()}
-                      </p>
-                    </li>
-                  ))}
+                  {review.comments.map(
+                    (entry: { id: string; body: string; created_at: string }) => (
+                      <li
+                        key={entry.id}
+                        className="rounded border border-border bg-background p-2 text-xs"
+                      >
+                        <p>{entry.body}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {new Date(entry.created_at).toLocaleString()}
+                        </p>
+                      </li>
+                    ),
+                  )}
                 </ul>
 
                 <div className="mt-3 flex flex-wrap gap-2">

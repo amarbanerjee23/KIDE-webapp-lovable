@@ -14,6 +14,16 @@ import { MonacoDslEditor } from "@/components/kide/MonacoDslEditor";
 import { WorkspaceFileActions } from "@/components/kide/WorkspaceFileActions";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DEFAULT_EXAMPLE_WORKSPACE_ID,
   DSL_LANGUAGES,
   EXAMPLE_WORKSPACES,
@@ -23,6 +33,7 @@ import {
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
 import { useActiveProject } from "@/lib/active-project";
 import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
+import { useWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
 import {
   linkFrom,
   loadExampleWorkspace,
@@ -52,6 +63,7 @@ function ModelLanguages() {
   const hash = useLocation({ select: (location) => location.hash });
   const activeProject = useActiveProject();
   const workspaceAccess = useWorkspaceAccess();
+  const saveState = useWorkspaceSaveState();
   const sources = useWorkspaceSources();
   const requestedPath = decodeURIComponent(hash.replace(/^#/, ""));
   const workspace = useMemo(() => linkFrom(sources), [sources]);
@@ -70,12 +82,22 @@ function ModelLanguages() {
     : (workspace.files[0]?.path ?? "");
   const [activePath, setActivePath] = useState(initialPath);
   const [selectedExampleId, setSelectedExampleId] = useState(DEFAULT_EXAMPLE_WORKSPACE_ID);
+  const [confirmExampleLoad, setConfirmExampleLoad] = useState(false);
   const selectedExample =
     EXAMPLE_WORKSPACES.find((example) => example.id === selectedExampleId) ?? EXAMPLE_WORKSPACES[0];
 
-  const loadSelectedExample = () => {
+  const applySelectedExample = () => {
     loadExampleWorkspace(selectedExampleId);
     setActivePath("");
+    setConfirmExampleLoad(false);
+  };
+
+  const requestExampleLoad = () => {
+    if (workspace.files.length === 0) {
+      applySelectedExample();
+      return;
+    }
+    setConfirmExampleLoad(true);
   };
 
   useEffect(() => {
@@ -94,6 +116,22 @@ function ModelLanguages() {
     workspaceAccess.status === "ready" &&
     workspaceAccess.projectId === activeProject?.projectId;
   const canEdit = accessReady && workspaceAccess.canEdit;
+  const activeSaveState =
+    activeProject && saveState.projectId === activeProject.projectId ? saveState : null;
+  const saveLabel =
+    activeSaveState?.status === "saving"
+      ? "Saving…"
+      : activeSaveState?.status === "saved"
+        ? "Saved"
+        : activeSaveState?.status === "read-only"
+          ? "Read-only"
+          : activeSaveState?.status === "conflict"
+            ? "Save conflict"
+            : activeSaveState?.status === "error"
+              ? "Save failed"
+              : activeSaveState?.status === "loading"
+                ? "Loading…"
+                : null;
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
@@ -101,7 +139,7 @@ function ModelLanguages() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <Button asChild variant="ghost" size="sm">
           <Link to="/projects">
             <ArrowLeft />
@@ -116,17 +154,27 @@ function ModelLanguages() {
               : "No active project"}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <WorkspaceFileActions
             enabled={canEdit}
             activeFile={activeFile ? { path: activeFile.path, kind: activeFile.kind } : null}
             onActivePath={setActivePath}
           />
-          {accessReady && !canEdit && (
-            <span className="rounded border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
-              Read-only
+          {saveLabel ? (
+            <span
+              aria-live="polite"
+              title={activeSaveState?.message ?? undefined}
+              className={`rounded border px-2 py-1 text-[11px] ${
+                activeSaveState?.status === "error" || activeSaveState?.status === "conflict"
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : activeSaveState?.status === "saving"
+                    ? "border-warning/40 bg-warning/10 text-warning"
+                    : "border-border bg-secondary text-muted-foreground"
+              }`}
+            >
+              {saveLabel}
             </span>
-          )}
+          ) : null}
           <span
             className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] ${
               workspace.errorCount > 0
@@ -154,7 +202,7 @@ function ModelLanguages() {
               </option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={loadSelectedExample} disabled={!canEdit}>
+          <Button variant="outline" size="sm" onClick={requestExampleLoad} disabled={!canEdit}>
             <RotateCcw />
             Load selected
           </Button>
@@ -275,7 +323,7 @@ function ModelLanguages() {
                     className="mt-4"
                     size="sm"
                     variant="outline"
-                    onClick={loadSelectedExample}
+                    onClick={requestExampleLoad}
                     disabled={!canEdit}
                   >
                     Load {selectedExample?.title ?? "selected example"}
@@ -334,6 +382,26 @@ function ModelLanguages() {
           </div>
         </section>
       </div>
+
+      <AlertDialog open={confirmExampleLoad} onOpenChange={setConfirmExampleLoad}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace this project workspace?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Loading {selectedExample?.title ?? "the selected example"} replaces every model file
+              currently open in this project. KIDE autosaves workspace changes, so the replacement
+              can be persisted to the active project. Use a checkpoint first if you may need the
+              current model set later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current workspace</AlertDialogCancel>
+            <AlertDialogAction onClick={applySelectedExample}>
+              Replace with example
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

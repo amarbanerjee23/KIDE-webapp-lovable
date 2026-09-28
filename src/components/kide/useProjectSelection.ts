@@ -10,6 +10,17 @@ export interface ProjectOption {
   current_stage: number;
 }
 
+export function preferredExplicitProjectId(
+  projects: ProjectOption[],
+  active: { projectId: string; organizationId: string } | null,
+  organizationId: string,
+): string | null {
+  return active?.organizationId === organizationId &&
+    projects.some((project) => project.id === active.projectId)
+    ? active.projectId
+    : null;
+}
+
 /**
  * Shared organization + project picker state used by checkpoint and review
  * pages. The selected project is also the global browser working project.
@@ -33,15 +44,12 @@ export function useProjectSelection() {
       setProjects(list);
 
       const active = getActiveProject();
-      const preferred =
-        active?.organizationId === id && list.some((project) => project.id === active.projectId)
-          ? active.projectId
-          : (list[0]?.id ?? null);
+      const preferred = preferredExplicitProjectId(list, active, id);
 
       setProjectIdState(preferred);
       if (preferred) {
         setActiveProject({ projectId: preferred, organizationId: id });
-      } else if (active?.organizationId === id) {
+      } else if (active) {
         setActiveProject(null);
       }
     },
@@ -82,6 +90,8 @@ export function useProjectSelection() {
 
   const setOrgId = (nextOrgId: string | null) => {
     setOrgIdState(nextOrgId);
+    setProjectIdState(null);
+    if (getActiveProject()) setActiveProject(null);
   };
 
   const setProjectId = (nextProjectId: string | null) => {

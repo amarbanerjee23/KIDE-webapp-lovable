@@ -122,3 +122,68 @@ test("authenticated user can traverse every protected product surface without pa
 
   expect(errors).toEqual([]);
 });
+
+test("project UX keeps context truthful and confirms destructive example replacement", async ({
+  page,
+}) => {
+  const email = `ux-flow-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await page.getByRole("button", { name: "Create account" }).last().click();
+  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Password").fill("Pr39-Ux-Flow-Password!");
+  await page.getByRole("button", { name: "Create account" }).first().click();
+  await expect(page).toHaveURL("/projects");
+
+  await page.getByPlaceholder("Acme Robotics").fill("UX Aerospace");
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByRole("heading", { name: "UX Aerospace" })).toBeVisible();
+
+  await page.getByPlaceholder("New project name").fill("Flight Control UX");
+  await page.getByRole("button", { name: /project/i }).click();
+  await expect(page.getByText("Flight Control UX")).toBeVisible();
+
+  // Empty projects must not pretend that the warehouse example files already exist.
+  await expect(page.getByText("Ecre.dml")).toHaveCount(0);
+  await expect(page.getByText("MissionPlanning.activity")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Open overview" }).click();
+  await expect(page).toHaveURL("/overview");
+  await expect(page.getByRole("heading", { name: "Flight Control UX" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^sign in$/i })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "More workspace destinations" }).click();
+  await expect(page.getByRole("menuitem", { name: "Trust centre" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.goto("/workbench");
+  await expect(page.getByRole("heading", { name: "Flight Control UX" })).toBeVisible();
+  await expect(page.getByText("Warehouse Fleet")).toHaveCount(0);
+  await expect(page.getByText("Optimize fleet route")).toHaveCount(0);
+  await expect(page.getByText("No model files yet")).toBeVisible();
+
+  await page.goto("/models");
+  await expect(page.getByText("This project has no model files yet")).toBeVisible();
+  await page.getByRole("button", { name: /Load Autonomous warehouse fleet/i }).click();
+  await expect(page.getByText("Ecre.dml")).toBeVisible();
+
+  // A second load would replace authored/saved files, so it must require explicit confirmation.
+  await page.getByRole("button", { name: "Load selected" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await expect(page.getByText("Replace this project workspace?")).toBeVisible();
+  await page.getByRole("button", { name: "Keep current workspace" }).click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  await expect(page.getByText("Ecre.dml")).toBeVisible();
+
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto("/overview");
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(horizontalOverflow).toBeLessThanOrEqual(1);
+
+  const accessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(
+    accessibility.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
+  ).toEqual([]);
+});

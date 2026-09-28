@@ -31,12 +31,24 @@ function NotificationsPage() {
   const load = useServerFn(listNotifications);
   const markRead = useServerFn(markNotificationsRead);
   const [items, setItems] = useState<Notification[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const refresh = useCallback(async () => setItems(await load()), [load]);
+  const refresh = useCallback(async () => {
+    try {
+      setItems(await load());
+      setLoadError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not load notifications.";
+      setLoadError(message);
+      throw error;
+    }
+  }, [load]);
 
   useEffect(() => {
-    void refresh();
+    void refresh().catch((error) =>
+      toast.error(error instanceof Error ? error.message : "Could not load notifications."),
+    );
   }, [refresh]);
 
   const unread = items.filter((item) => !item.read_at).length;
@@ -65,6 +77,10 @@ function NotificationsPage() {
                   await markRead();
                   await refresh();
                   toast.success("All marked as read.");
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not update notifications.",
+                  );
                 } finally {
                   setBusy(false);
                 }
@@ -75,7 +91,31 @@ function NotificationsPage() {
           </Button>
         </header>
 
-        {items.length === 0 ? (
+        {loadError ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 p-4"
+          >
+            <p className="text-sm font-medium">Could not load notifications</p>
+            <p className="mt-1 text-xs text-muted-foreground">{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() =>
+                void refresh().catch((error) =>
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not load notifications.",
+                  ),
+                )
+              }
+            >
+              Retry
+            </Button>
+          </div>
+        ) : null}
+
+        {!loadError && items.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-xs text-muted-foreground">
             Nothing yet. Review requests, decisions and comments appear here.
           </p>
@@ -94,7 +134,9 @@ function NotificationsPage() {
                     {new Date(item.created_at).toLocaleString()}
                   </span>
                 </div>
-                {item.body ? <p className="mt-0.5 text-xs text-muted-foreground">{item.body}</p> : null}
+                {item.body ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground">{item.body}</p>
+                ) : null}
                 {item.link === "/reviews" ? (
                   <Link to="/reviews" className="mt-1 inline-block text-xs text-primary underline">
                     Open reviews

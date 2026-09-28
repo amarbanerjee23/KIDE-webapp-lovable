@@ -12,7 +12,6 @@ import {
   History,
   Library,
   ListTree,
-  LockKeyhole,
   Play,
   ShieldCheck,
   Sparkles,
@@ -20,6 +19,8 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
+import { useActiveProjectDetails } from "@/components/kide/useActiveProjectDetails";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { buildCatalogue } from "@/lib/kide/catalogue";
 import { synthesize } from "@/lib/kide/synthesis";
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/_authenticated/overview")({
 });
 
 function OverviewPage() {
+  const projectContext = useActiveProjectDetails();
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const catalogue = useMemo(() => buildCatalogue(workspace), [workspace]);
@@ -71,7 +73,7 @@ function OverviewPage() {
       icon: BookOpen,
       to: "/models",
       detail: `${workspace.files.length} models linked`,
-      done: errors === 0,
+      done: workspace.files.length > 0 && errors === 0,
     },
     {
       label: "Knowledge",
@@ -98,7 +100,9 @@ function OverviewPage() {
       label: "Synthesis",
       icon: GitBranch,
       to: "/synthesis",
-      detail: report.ready ? `${report.candidates.length} candidate designs` : "Blocked by preflight",
+      detail: report.ready
+        ? `${report.candidates.length} candidate designs`
+        : "Blocked by preflight",
       done: report.ready,
     },
     {
@@ -112,76 +116,67 @@ function OverviewPage() {
       label: "Release",
       icon: Upload,
       to: "/release",
-      detail: assurance.releasable ? "Ready to export" : `${gatesPassed}/${assurance.gates.length} gates passed`,
+      detail: assurance.releasable
+        ? "Ready to export"
+        : `${gatesPassed}/${assurance.gates.length} gates passed`,
       done: assurance.releasable,
     },
   ] as const;
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="flex h-14 flex-wrap items-center gap-1 border-b border-border bg-card px-3">
-        <Link to="/overview" className="mr-3 flex items-center gap-2">
-          <img src="/favicon.png" alt="" className="size-8" />
-          <div>
-            <div className="text-sm font-semibold">KIDE</div>
-            <div className="text-[10px] text-muted-foreground">SYSTEMS WORKBENCH</div>
-          </div>
-        </Link>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/projects">Projects</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/models">Model languages</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/catalogue">Catalogue</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/trust">Trust centre</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/release">Release</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link to="/billing">Billing</Link>
-        </Button>
-        <div className="ml-auto flex items-center gap-1">
-          <Button asChild size="sm">
-            <Link to="/auth">
-              <LockKeyhole />
-              Sign in
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <WorkspaceHeader current="Overview" />
 
       <div className="mx-auto max-w-6xl px-5 py-8">
         <section className="flex flex-wrap items-end gap-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase text-muted-foreground">Active baseline</p>
-            <h1 className="mt-1 text-2xl font-semibold">Warehouse Fleet — Autonomous Routing</h1>
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground">
+              Active project
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold">
+              {projectContext.loading
+                ? "Loading project…"
+                : (projectContext.details?.projectName ?? "No project selected")}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Everything below is computed live from the five linked engineering models.
+              {projectContext.details
+                ? `${projectContext.details.organizationName} · ${projectContext.details.status.replace("_", " ")} · everything below is computed from this project's saved workspace`
+                : "Choose a project before editing models, running synthesis, or creating release evidence."}
             </p>
           </div>
           <div className="ml-auto flex gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/scenario">
-                <Play />
-                Run scenario
-              </Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link to="/workbench">
-                <Sparkles />
-                Open workbench
-              </Link>
-            </Button>
+            {projectContext.details ? (
+              <>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/scenario">
+                    <Play />
+                    Run scenario
+                  </Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link to="/workbench">
+                    <Sparkles />
+                    Open workbench
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="sm">
+                <Link to="/projects">
+                  <FolderKanban />
+                  Choose project
+                </Link>
+              </Button>
+            )}
           </div>
         </section>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Models" value={`${workspace.files.length}`} note="linked and cross-checked" />
+          <Metric
+            label="Models"
+            value={`${workspace.files.length}`}
+            note="linked and cross-checked"
+          />
           <Metric
             label="Problems"
             value={`${errors} / ${warnings}`}
@@ -204,7 +199,9 @@ function OverviewPage() {
 
         <section className="mt-8">
           <h2 className="text-sm font-semibold">Engineering flow</h2>
-          <p className="text-xs text-muted-foreground">Seven stages from intent to a signed release bundle.</p>
+          <p className="text-xs text-muted-foreground">
+            Seven stages from intent to a signed release bundle.
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stages.map((stage, index) => (
               <Link
@@ -256,12 +253,42 @@ function OverviewPage() {
           <div className="rounded-md border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Workspace</h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <Shortcut to="/projects" icon={FolderKanban} label="Projects" note="All organizations and projects" />
-              <Shortcut to="/team" icon={Users} label="Team" note="Members, roles and invitations" />
-              <Shortcut to="/checkpoints" icon={History} label="Checkpoints" note="Saved snapshots and imports" />
-              <Shortcut to="/reviews" icon={ListTree} label="Reviews" note="Approvals and comments" />
-              <Shortcut to="/billing" icon={CreditCard} label="Plan & billing" note="Subscription and invoices" />
-              <Shortcut to="/qualification" icon={ShieldCheck} label="Qualification" note="Algorithm evidence report" />
+              <Shortcut
+                to="/projects"
+                icon={FolderKanban}
+                label="Projects"
+                note="All organizations and projects"
+              />
+              <Shortcut
+                to="/team"
+                icon={Users}
+                label="Team"
+                note="Members, roles and invitations"
+              />
+              <Shortcut
+                to="/checkpoints"
+                icon={History}
+                label="Checkpoints"
+                note="Saved snapshots and imports"
+              />
+              <Shortcut
+                to="/reviews"
+                icon={ListTree}
+                label="Reviews"
+                note="Approvals and comments"
+              />
+              <Shortcut
+                to="/billing"
+                icon={CreditCard}
+                label="Plan & billing"
+                note="Subscription and invoices"
+              />
+              <Shortcut
+                to="/qualification"
+                icon={ShieldCheck}
+                label="Qualification"
+                note="Algorithm evidence report"
+              />
             </div>
           </div>
         </section>
