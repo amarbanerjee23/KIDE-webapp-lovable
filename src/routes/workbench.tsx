@@ -203,12 +203,19 @@ function KideWorkbench() {
                 <Button asChild variant="outline" size="sm">
                   <Link to="/designer">Activity designer</Link>
                 </Button>
-                <Button asChild size="sm" disabled={!synthesis.ready}>
-                  <Link to="/synthesis">
+                {synthesis.ready ? (
+                  <Button asChild size="sm">
+                    <Link to="/synthesis">
+                      <Sparkles />
+                      Synthesis
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" disabled title="Complete synthesis preflight first">
                     <Sparkles />
                     Synthesis
-                  </Link>
-                </Button>
+                  </Button>
+                )}
               </div>
             </section>
 
