@@ -31,6 +31,7 @@ export function useWorkspacePersistence(enabled: boolean) {
   const lastSavedSourcesRef = useRef<string | null>(null);
   const savedAtRef = useRef<string | null>(null);
   const conflictedRef = useRef(false);
+  const saveErrorNotifiedRef = useRef(false);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -40,6 +41,7 @@ export function useWorkspacePersistence(enabled: boolean) {
     lastSavedSourcesRef.current = null;
     savedAtRef.current = null;
     conflictedRef.current = false;
+    saveErrorNotifiedRef.current = false;
     clearWorkspaceAccess();
 
     if (!enabled) return;
@@ -104,6 +106,7 @@ export function useWorkspacePersistence(enabled: boolean) {
         .then((result) => {
           savedAtRef.current = result.savedAt;
           lastSavedSourcesRef.current = serialized;
+          saveErrorNotifiedRef.current = false;
         })
         .catch((error) => {
           const message = error instanceof Error ? error.message : String(error);
@@ -118,6 +121,13 @@ export function useWorkspacePersistence(enabled: boolean) {
           }
 
           console.warn("[Workspace] Autosave failed:", message);
+          if (!saveErrorNotifiedRef.current) {
+            saveErrorNotifiedRef.current = true;
+            toast.error("Autosave failed", {
+              description:
+                "Your edits are still open in this browser, but KIDE could not save them to the active project. Check connectivity before leaving this page.",
+            });
+          }
         });
     }, AUTOSAVE_DELAY_MS);
 
