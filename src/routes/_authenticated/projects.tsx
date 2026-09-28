@@ -134,7 +134,9 @@ function ProjectsHome() {
               variant="outline"
               onClick={() =>
                 void refresh().catch((error) =>
-                  toast.error(error instanceof Error ? error.message : "Could not load your projects."),
+                  toast.error(
+                    error instanceof Error ? error.message : "Could not load your projects.",
+                  ),
                 )
               }
             >
