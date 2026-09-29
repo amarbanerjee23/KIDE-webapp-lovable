@@ -2,9 +2,7 @@ import { authClient } from "@/lib/auth-client";
 
 export const BROWSER_SESSION_TIMEOUT_MS = 5_000;
 
-export async function getActiveBrowserSession(
-  timeoutMs: number = BROWSER_SESSION_TIMEOUT_MS,
-) {
+export async function getActiveBrowserSession(timeoutMs: number = BROWSER_SESSION_TIMEOUT_MS) {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   try {
