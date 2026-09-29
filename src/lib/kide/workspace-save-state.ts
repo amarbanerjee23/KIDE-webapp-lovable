@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 export type WorkspaceSaveStatus =
-  "idle" | "loading" | "saving" | "saved" | "read-only" | "conflict" | "error";
+  "idle" | "loading" | "saving" | "saved" | "read-only" | "offline" | "conflict" | "error";
 
 export interface WorkspaceSaveState {
   projectId: string | null;
