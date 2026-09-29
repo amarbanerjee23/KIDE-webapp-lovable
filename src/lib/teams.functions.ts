@@ -15,6 +15,19 @@ function randomToken() {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+export const getUiPreferences = createServerFn({ method: "GET" })
+  .middleware([requireKideAuth])
+  .handler(async ({ context }) => {
+    const rows = await context.db<{ preferences: { density?: string; theme?: string } | null }[]>\`
+      SELECT preferences
+      FROM public.profiles
+      WHERE user_id = ${context.userId}::uuid
+      LIMIT 1
+    \`;
+
+    return rows[0]?.preferences ?? {};
+  });
+
 export const getWorkspace = createServerFn({ method: "GET" })
   .middleware([requireKideAuth])
   .handler(async ({ context }) => {
