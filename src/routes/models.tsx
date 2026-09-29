@@ -128,12 +128,12 @@ function ModelLanguages() {
           : activeSaveState?.status === "offline"
             ? "Offline"
             : activeSaveState?.status === "conflict"
-            ? "Save conflict"
-            : activeSaveState?.status === "error"
-              ? "Save failed"
-              : activeSaveState?.status === "loading"
-                ? "Loading…"
-                : null;
+              ? "Save conflict"
+              : activeSaveState?.status === "error"
+                ? "Save failed"
+                : activeSaveState?.status === "loading"
+                  ? "Loading…"
+                  : null;
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
