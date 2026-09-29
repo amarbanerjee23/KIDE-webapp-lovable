@@ -119,11 +119,14 @@ export function useWorkspacePersistence(enabled: boolean) {
         clearWorkspaceAccess();
         const message =
           error instanceof Error ? error.message : "Could not load project workspace.";
+        const offline = typeof window !== "undefined" && !window.navigator.onLine;
         setWorkspaceSaveState({
           projectId: activeProject.projectId,
-          status: "error",
+          status: offline ? "offline" : "error",
           savedAt: null,
-          message,
+          message: offline
+            ? "Browser is offline. KIDE will retry workspace loading after connectivity returns."
+            : message,
         });
         console.warn("[Workspace] Could not load project working copy:", message);
       });
@@ -198,11 +201,14 @@ export function useWorkspacePersistence(enabled: boolean) {
           }
 
           console.warn("[Workspace] Autosave failed:", message);
+          const offline = typeof window !== "undefined" && !window.navigator.onLine;
           setWorkspaceSaveState({
             projectId: activeProject.projectId,
-            status: "error",
+            status: offline ? "offline" : "error",
             savedAt: savedAtRef.current,
-            message,
+            message: offline
+              ? "Browser is offline. Unsaved changes will retry when connectivity returns."
+              : message,
           });
           if (!saveErrorNotifiedRef.current) {
             saveErrorNotifiedRef.current = true;
