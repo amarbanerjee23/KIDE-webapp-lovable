@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { getWorkspace, updateProfile } from "@/lib/teams.functions";
 import { authClient } from "@/lib/auth-client";
 import { clearPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
+import {
+  applyUiPreferences,
+  normalizeUiPreferences,
+  UI_DENSITIES,
+  UI_THEMES,
+} from "@/lib/ui-preferences";
 
 const title = "KIDE Profile — your account and working preferences";
 const description =
@@ -44,9 +50,10 @@ function ProfilePage() {
       setEmail(data.email);
       setDisplayName(data.profile?.display_name ?? "");
       setJobTitle(data.profile?.job_title ?? "");
-      const prefs = (data.profile?.preferences ?? {}) as { density?: string; theme?: string };
-      setDensity(prefs.density ?? "compact");
-      setTheme(prefs.theme ?? "dark");
+      const prefs = normalizeUiPreferences(data.profile?.preferences);
+      setDensity(prefs.density);
+      setTheme(prefs.theme);
+      applyUiPreferences(prefs);
       setOrgs(data.organizations.map((org) => ({ id: org.id, name: org.name, role: org.role })));
       setLoadError(null);
     } catch (error) {
@@ -106,13 +113,13 @@ function ProfilePage() {
               label="Density"
               value={density}
               onChange={setDensity}
-              options={["compact", "comfortable"]}
+              options={[...UI_DENSITIES]}
             />
             <Choice
               label="Theme"
               value={theme}
               onChange={setTheme}
-              options={["dark", "light", "high-contrast"]}
+              options={[...UI_THEMES]}
             />
           </div>
           <Button
@@ -120,7 +127,16 @@ function ProfilePage() {
             onClick={async () => {
               setBusy(true);
               try {
-                await save({ data: { displayName, jobTitle, density, theme } });
+                const preferences = normalizeUiPreferences({ density, theme });
+                await save({
+                  data: {
+                    displayName,
+                    jobTitle,
+                    density: preferences.density,
+                    theme: preferences.theme,
+                  },
+                });
+                applyUiPreferences(preferences);
                 toast.success("Profile saved");
               } catch (error) {
                 toast.error(
