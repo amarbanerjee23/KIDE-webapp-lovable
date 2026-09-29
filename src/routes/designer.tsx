@@ -80,12 +80,12 @@ function Designer() {
           : activeSaveState?.status === "offline"
             ? "Offline"
             : activeSaveState?.status === "conflict"
-            ? "Save conflict"
-            : activeSaveState?.status === "error"
-              ? "Save failed"
-              : activeSaveState?.status === "loading"
-                ? "Loading…"
-                : null;
+              ? "Save conflict"
+              : activeSaveState?.status === "error"
+                ? "Save failed"
+                : activeSaveState?.status === "loading"
+                  ? "Loading…"
+                  : null;
 
   const [positions, setPositions] = useState<Positions>({});
   const [selectedRaw, setSelected] = useState<string | null>(null);
