@@ -22,7 +22,7 @@ describe("UI preferences", () => {
   it("applies preferences to the document root contract", () => {
     const root = { dataset: {} as DOMStringMap };
     applyUiPreferences({ theme: "high-contrast", density: "compact" }, root as HTMLElement);
-    expect(root.dataset.theme).toBe("high-contrast");
-    expect(root.dataset.density).toBe("compact");
+    expect(root.dataset["theme"]).toBe("high-contrast");
+    expect(root.dataset["density"]).toBe("compact");
   });
 });
