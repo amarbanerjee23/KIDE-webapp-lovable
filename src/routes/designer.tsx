@@ -77,7 +77,9 @@ function Designer() {
         ? "Saved"
         : activeSaveState?.status === "read-only"
           ? "Read-only"
-          : activeSaveState?.status === "conflict"
+          : activeSaveState?.status === "offline"
+            ? "Offline"
+            : activeSaveState?.status === "conflict"
             ? "Save conflict"
             : activeSaveState?.status === "error"
               ? "Save failed"
@@ -263,7 +265,7 @@ function Designer() {
               className={`mr-1 rounded border px-2 py-1 text-[11px] ${
                 activeSaveState?.status === "error" || activeSaveState?.status === "conflict"
                   ? "border-destructive/40 bg-destructive/10 text-destructive"
-                  : activeSaveState?.status === "saving"
+                  : activeSaveState?.status === "saving" || activeSaveState?.status === "offline"
                     ? "border-warning/40 bg-warning/10 text-warning"
                     : "border-border bg-secondary text-muted-foreground"
               }`}
