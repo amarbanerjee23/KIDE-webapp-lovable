@@ -42,6 +42,6 @@ export function applyUiPreferences(
     : null,
 ): void {
   if (!root) return;
-  root.dataset.theme = preferences.theme;
-  root.dataset.density = preferences.density;
+  root.dataset["theme"] = preferences.theme;
+  root.dataset["density"] = preferences.density;
 }
