@@ -187,3 +187,70 @@ test("project UX keeps context truthful and confirms destructive example replace
     accessibility.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
   ).toEqual([]);
 });
+
+test("saved UI preferences and designer persistence state survive real workflow changes", async ({
+  page,
+}) => {
+  const email = `ux-preferences-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await page.getByRole("button", { name: "Create account" }).last().click();
+  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Password").fill("Pr40-Ux-Preferences-Password!");
+  await page.getByRole("button", { name: "Create account" }).first().click();
+  await expect(page).toHaveURL("/projects");
+
+  await page.getByPlaceholder("Acme Robotics").fill("Preference Systems");
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.getByPlaceholder("New project name").fill("Preference Controller");
+  await page.getByRole("button", { name: /project/i }).click();
+
+  await page.goto("/models");
+  await page.getByRole("button", { name: /Load Autonomous warehouse fleet/i }).click();
+  await expect(page.getByText("Ecre.dml")).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await page.goto("/profile");
+  await page.getByLabel("Theme").selectOption("light");
+  await page.getByLabel("Density").selectOption("comfortable");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-density", "comfortable");
+
+  await page.goto("/overview");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-density", "comfortable");
+
+  await page.goto("/designer");
+  await expect(page.getByRole("heading", { name: "Activity designer" })).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await page.setViewportSize({ width: 800, height: 900 });
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+
+  await page.context().setOffline(true);
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+
+  const navigateCapability = page.getByRole("button", { name: /Navigate/ }).first();
+  await expect(navigateCapability).toBeEnabled();
+  await navigateCapability.click();
+  await expect(page.getByText("Offline", { exact: true })).toBeVisible();
+
+  await page.context().setOffline(false);
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await page.goto("/profile");
+  await page.getByLabel("Theme").selectOption("high-contrast");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "high-contrast");
+
+  const accessibility = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(
+    accessibility.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
+  ).toEqual([]);
+});

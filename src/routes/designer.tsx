@@ -18,6 +18,7 @@ import type { ActivityFileNode } from "@/lib/dsl/ast";
 import { useActiveProject } from "@/lib/active-project";
 import { buildCatalogue } from "@/lib/kide/catalogue";
 import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
+import { useWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
 import {
   NODE_HEIGHT,
   NODE_WIDTH,
@@ -53,6 +54,7 @@ type Positions = Record<string, { x: number; y: number }>;
 function Designer() {
   const activeProject = useActiveProject();
   const workspaceAccess = useWorkspaceAccess();
+  const saveState = useWorkspaceSaveState();
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const activityFile = workspace.files.find((file) => file.kind === "activity") ?? null;
@@ -66,6 +68,24 @@ function Designer() {
     workspaceAccess.status === "ready" &&
     workspaceAccess.projectId === activeProject?.projectId;
   const canEdit = accessReady && workspaceAccess.canEdit;
+  const activeSaveState =
+    activeProject && saveState.projectId === activeProject.projectId ? saveState : null;
+  const saveLabel =
+    activeSaveState?.status === "saving"
+      ? "Saving…"
+      : activeSaveState?.status === "saved"
+        ? "Saved"
+        : activeSaveState?.status === "read-only"
+          ? "Read-only"
+          : activeSaveState?.status === "offline"
+            ? "Offline"
+            : activeSaveState?.status === "conflict"
+              ? "Save conflict"
+              : activeSaveState?.status === "error"
+                ? "Save failed"
+                : activeSaveState?.status === "loading"
+                  ? "Loading…"
+                  : null;
 
   const [positions, setPositions] = useState<Positions>({});
   const [selectedRaw, setSelected] = useState<string | null>(null);
@@ -223,7 +243,7 @@ function Designer() {
 
   return (
     <main className="flex h-screen flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <Button asChild variant="ghost" size="sm">
           <Link to="/workbench">
             <ArrowLeft />
@@ -237,12 +257,22 @@ function Designer() {
             branches
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-1">
-          {accessReady && !canEdit && (
-            <span className="mr-1 rounded border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
-              Read-only
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
+          {saveLabel ? (
+            <span
+              aria-live="polite"
+              title={activeSaveState?.message ?? undefined}
+              className={`mr-1 rounded border px-2 py-1 text-[11px] ${
+                activeSaveState?.status === "error" || activeSaveState?.status === "conflict"
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : activeSaveState?.status === "saving" || activeSaveState?.status === "offline"
+                    ? "border-warning/40 bg-warning/10 text-warning"
+                    : "border-border bg-secondary text-muted-foreground"
+              }`}
+            >
+              {saveLabel}
             </span>
-          )}
+          ) : null}
           <Button
             variant="ghost"
             size="sm"
@@ -289,8 +319,8 @@ function Designer() {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="flex w-64 shrink-0 flex-col gap-3 overflow-auto border-r border-border bg-card/40 p-3">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <aside className="flex max-h-48 w-full shrink-0 flex-col gap-3 overflow-auto border-b border-border bg-card/40 p-3 lg:max-h-none lg:w-64 lg:border-b-0 lg:border-r">
           <div>
             <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Capabilities
@@ -354,7 +384,7 @@ function Designer() {
           </div>
         </aside>
 
-        <section className="relative min-w-0 flex-1 overflow-auto bg-[radial-gradient(circle,hsl(var(--border))_1px,transparent_1px)] [background-size:20px_20px]">
+        <section className="relative min-h-[28rem] min-w-0 flex-1 overflow-auto bg-[radial-gradient(circle,hsl(var(--border))_1px,transparent_1px)] [background-size:20px_20px]">
           <div
             ref={surface}
             className="relative origin-top-left"
@@ -454,7 +484,7 @@ function Designer() {
           </div>
         </section>
 
-        <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-auto border-l border-border bg-card/40 p-3">
+        <aside className="flex max-h-56 w-full shrink-0 flex-col gap-3 overflow-auto border-t border-border bg-card/40 p-3 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
           <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             {selected ? `Step: ${selected}` : "Select a step"}
           </h2>

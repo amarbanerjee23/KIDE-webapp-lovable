@@ -9,6 +9,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -17,6 +18,8 @@ import { isPathSessionVerified, requiresActiveSession } from "@/lib/auth/session
 import { useWorkspacePersistence } from "@/lib/kide/useWorkspacePersistence";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { getUiPreferences } from "@/lib/teams.functions";
+import { applyUiPreferences, normalizeUiPreferences } from "@/lib/ui-preferences";
 
 function NotFoundComponent() {
   return (
@@ -138,10 +141,31 @@ function RootComponent() {
   const router = useRouter();
   const location = useLocation();
   const sessionState = useAuthSessionCoordinator(router, queryClient, location.pathname);
+  const loadUiPreferences = useServerFn(getUiPreferences);
   const pathVerified = isPathSessionVerified(location.pathname, sessionState);
   const protectedRoute = requiresActiveSession(location.pathname);
   useWorkspacePersistence(pathVerified && protectedRoute);
   const gated = !pathVerified;
+
+  useEffect(() => {
+    if (!pathVerified || !protectedRoute) return;
+
+    let current = true;
+    void loadUiPreferences()
+      .then((preferences) => {
+        if (current) applyUiPreferences(normalizeUiPreferences(preferences));
+      })
+      .catch((error) => {
+        console.warn(
+          "[KIDE UI] Could not load saved interface preferences:",
+          error instanceof Error ? error.message : error,
+        );
+      });
+
+    return () => {
+      current = false;
+    };
+  }, [loadUiPreferences, pathVerified, protectedRoute]);
 
   useEffect(() => {
     if (

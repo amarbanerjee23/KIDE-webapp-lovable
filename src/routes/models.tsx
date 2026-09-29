@@ -125,13 +125,15 @@ function ModelLanguages() {
         ? "Saved"
         : activeSaveState?.status === "read-only"
           ? "Read-only"
-          : activeSaveState?.status === "conflict"
-            ? "Save conflict"
-            : activeSaveState?.status === "error"
-              ? "Save failed"
-              : activeSaveState?.status === "loading"
-                ? "Loading…"
-                : null;
+          : activeSaveState?.status === "offline"
+            ? "Offline"
+            : activeSaveState?.status === "conflict"
+              ? "Save conflict"
+              : activeSaveState?.status === "error"
+                ? "Save failed"
+                : activeSaveState?.status === "loading"
+                  ? "Loading…"
+                  : null;
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
@@ -167,7 +169,7 @@ function ModelLanguages() {
               className={`rounded border px-2 py-1 text-[11px] ${
                 activeSaveState?.status === "error" || activeSaveState?.status === "conflict"
                   ? "border-destructive/40 bg-destructive/10 text-destructive"
-                  : activeSaveState?.status === "saving"
+                  : activeSaveState?.status === "saving" || activeSaveState?.status === "offline"
                     ? "border-warning/40 bg-warning/10 text-warning"
                     : "border-border bg-secondary text-muted-foreground"
               }`}

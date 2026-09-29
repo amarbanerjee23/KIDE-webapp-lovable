@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -33,6 +33,35 @@ export function useWorkspacePersistence(enabled: boolean) {
   const savedAtRef = useRef<string | null>(null);
   const conflictedRef = useRef(false);
   const saveErrorNotifiedRef = useRef(false);
+  const [connectivityVersion, setConnectivityVersion] = useState(0);
+
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+
+    const handleOffline = () => {
+      if (!activeProject) return;
+      setWorkspaceSaveState({
+        projectId: activeProject.projectId,
+        status: "offline",
+        savedAt: savedAtRef.current,
+        message: "Browser is offline. Unsaved changes will retry when connectivity returns.",
+      });
+    };
+
+    const handleOnline = () => {
+      saveErrorNotifiedRef.current = false;
+      setConnectivityVersion((version) => version + 1);
+    };
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    if (!window.navigator.onLine) handleOffline();
+
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [activeProject, enabled]);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -90,11 +119,14 @@ export function useWorkspacePersistence(enabled: boolean) {
         clearWorkspaceAccess();
         const message =
           error instanceof Error ? error.message : "Could not load project workspace.";
+        const offline = typeof window !== "undefined" && !window.navigator.onLine;
         setWorkspaceSaveState({
           projectId: activeProject.projectId,
-          status: "error",
+          status: offline ? "offline" : "error",
           savedAt: null,
-          message,
+          message: offline
+            ? "Browser is offline. KIDE will retry workspace loading after connectivity returns."
+            : message,
         });
         console.warn("[Workspace] Could not load project working copy:", message);
       });
@@ -113,6 +145,16 @@ export function useWorkspacePersistence(enabled: boolean) {
 
     const serialized = JSON.stringify(sources);
     if (serialized === lastSavedSourcesRef.current) return;
+
+    if (typeof window !== "undefined" && !window.navigator.onLine) {
+      setWorkspaceSaveState({
+        projectId: activeProject.projectId,
+        status: "offline",
+        savedAt: savedAtRef.current,
+        message: "Browser is offline. Unsaved changes will retry when connectivity returns.",
+      });
+      return;
+    }
 
     setWorkspaceSaveState({
       projectId: activeProject.projectId,
@@ -159,11 +201,14 @@ export function useWorkspacePersistence(enabled: boolean) {
           }
 
           console.warn("[Workspace] Autosave failed:", message);
+          const offline = typeof window !== "undefined" && !window.navigator.onLine;
           setWorkspaceSaveState({
             projectId: activeProject.projectId,
-            status: "error",
+            status: offline ? "offline" : "error",
             savedAt: savedAtRef.current,
-            message,
+            message: offline
+              ? "Browser is offline. Unsaved changes will retry when connectivity returns."
+              : message,
           });
           if (!saveErrorNotifiedRef.current) {
             saveErrorNotifiedRef.current = true;
@@ -176,5 +221,5 @@ export function useWorkspacePersistence(enabled: boolean) {
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeProject, enabled, save, sources]);
+  }, [activeProject, connectivityVersion, enabled, save, sources]);
 }

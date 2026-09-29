@@ -8,12 +8,26 @@ import {
   requireOrganizationAccess,
   type Role,
 } from "@/lib/data-access.server";
+import { normalizeUiPreferences } from "@/lib/ui-preferences";
 
 function randomToken() {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
+
+export const getUiPreferences = createServerFn({ method: "GET" })
+  .middleware([requireKideAuth])
+  .handler(async ({ context }) => {
+    const rows = await context.db<{ preferences: { density?: string; theme?: string } | null }[]>`
+      SELECT preferences
+      FROM public.profiles
+      WHERE user_id = ${context.userId}::uuid
+      LIMIT 1
+    `;
+
+    return rows[0]?.preferences ?? {};
+  });
 
 export const getWorkspace = createServerFn({ method: "GET" })
   .middleware([requireKideAuth])
@@ -90,6 +104,11 @@ export const updateProfile = createServerFn({ method: "POST" })
     (input: { displayName: string; jobTitle: string; density: string; theme: string }) => input,
   )
   .handler(async ({ data, context }) => {
+    const preferences = normalizeUiPreferences({
+      density: data.density,
+      theme: data.theme,
+    });
+
     await context.db`
       INSERT INTO public.profiles (
         user_id, display_name, job_title, preferences, updated_at
@@ -98,7 +117,7 @@ export const updateProfile = createServerFn({ method: "POST" })
         ${context.userId}::uuid,
         ${data.displayName.slice(0, 80)},
         ${data.jobTitle.slice(0, 80)},
-        ${context.db.json({ density: data.density, theme: data.theme })},
+        ${context.db.json({ density: preferences.density, theme: preferences.theme })},
         now()
       )
       ON CONFLICT (user_id) DO UPDATE SET
