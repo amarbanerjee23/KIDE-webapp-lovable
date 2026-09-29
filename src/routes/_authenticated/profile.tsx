@@ -115,12 +115,7 @@ function ProfilePage() {
               onChange={setDensity}
               options={[...UI_DENSITIES]}
             />
-            <Choice
-              label="Theme"
-              value={theme}
-              onChange={setTheme}
-              options={[...UI_THEMES]}
-            />
+            <Choice label="Theme" value={theme} onChange={setTheme} options={[...UI_THEMES]} />
           </div>
           <Button
             disabled={busy || Boolean(loadError)}
