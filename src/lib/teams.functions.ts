@@ -8,6 +8,7 @@ import {
   requireOrganizationAccess,
   type Role,
 } from "@/lib/data-access.server";
+import { normalizeUiPreferences } from "@/lib/ui-preferences";
 
 function randomToken() {
   const bytes = new Uint8Array(24);
@@ -103,6 +104,11 @@ export const updateProfile = createServerFn({ method: "POST" })
     (input: { displayName: string; jobTitle: string; density: string; theme: string }) => input,
   )
   .handler(async ({ data, context }) => {
+    const preferences = normalizeUiPreferences({
+      density: data.density,
+      theme: data.theme,
+    });
+
     await context.db`
       INSERT INTO public.profiles (
         user_id, display_name, job_title, preferences, updated_at
@@ -111,7 +117,7 @@ export const updateProfile = createServerFn({ method: "POST" })
         ${context.userId}::uuid,
         ${data.displayName.slice(0, 80)},
         ${data.jobTitle.slice(0, 80)},
-        ${context.db.json({ density: data.density, theme: data.theme })},
+        ${context.db.json(preferences)},
         now()
       )
       ON CONFLICT (user_id) DO UPDATE SET
