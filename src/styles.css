@@ -71,6 +71,7 @@
 }
 
 :root {
+  font-size: 15px;
   --radius: 0.375rem;
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
