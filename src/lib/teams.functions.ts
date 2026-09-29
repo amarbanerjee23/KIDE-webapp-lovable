@@ -117,7 +117,7 @@ export const updateProfile = createServerFn({ method: "POST" })
         ${context.userId}::uuid,
         ${data.displayName.slice(0, 80)},
         ${data.jobTitle.slice(0, 80)},
-        ${context.db.json(preferences)},
+        ${context.db.json({ density: preferences.density, theme: preferences.theme })},
         now()
       )
       ON CONFLICT (user_id) DO UPDATE SET
