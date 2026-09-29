@@ -190,8 +190,12 @@ function ProjectsHome() {
                     event.preventDefault();
                     const name = (projectName[org.id] ?? "").trim();
                     if (!name) return;
-                    void run("Project created", async () => {
-                      await addProject({ data: { organizationId: org.id, name } });
+                    void run("Project created and selected", async () => {
+                      const created = await addProject({ data: { organizationId: org.id, name } });
+                      setActiveProject({
+                        projectId: created.id,
+                        organizationId: org.id,
+                      });
                       setProjectName((current) => ({ ...current, [org.id]: "" }));
                     });
                   }}
