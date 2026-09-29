@@ -18,10 +18,15 @@ function includes<T extends readonly string[]>(values: T, value: unknown): value
   return typeof value === "string" && values.includes(value);
 }
 
-export function normalizeUiPreferences(value: {
-  theme?: unknown;
-  density?: unknown;
-} | null | undefined): UiPreferences {
+export function normalizeUiPreferences(
+  value:
+    | {
+        theme?: unknown;
+        density?: unknown;
+      }
+    | null
+    | undefined,
+): UiPreferences {
   return {
     theme: includes(UI_THEMES, value?.theme) ? value.theme : DEFAULT_UI_PREFERENCES.theme,
     density: includes(UI_DENSITIES, value?.density)
