@@ -254,4 +254,3 @@ test("saved UI preferences and designer persistence state survive real workflow 
     accessibility.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
   ).toEqual([]);
 });
-
