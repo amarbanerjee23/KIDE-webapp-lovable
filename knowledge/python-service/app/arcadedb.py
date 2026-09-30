@@ -189,7 +189,8 @@ class ArcadeDB:
             "query",
             (
                 "MATCH {type: KideEntity, as: cap, where: (semanticId = :capabilityId)}"
-                ".in('SemanticRelation'){as: device, where: (kind = 'Device')}; "
+                ".(inE('SemanticRelation'){where: (kind = 'hasCapability')}.outV())"
+                "{as: device, where: (kind = 'Device')} "
                 "RETURN device LIMIT :limit"
             ),
             params={"capabilityId": capability_id, "limit": limit},
