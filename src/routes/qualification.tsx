@@ -98,7 +98,7 @@ function Qualification() {
               ) : null}
             </div>
           </section>
-  
+
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Qualification rules
@@ -110,7 +110,9 @@ function Qualification() {
                     <StatusIcon status={rule.status} />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-[10px] text-muted-foreground">{rule.id}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {rule.id}
+                        </span>
                         <h3 className="text-sm font-medium">{rule.title}</h3>
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">{rule.detail}</p>
@@ -136,7 +138,7 @@ function Qualification() {
               ))}
             </div>
           </section>
-  
+
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Comparison with the desktop KIDE tool
@@ -177,7 +179,7 @@ function Qualification() {
               ))}
             </div>
           </section>
-  
+
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Algorithm properties
