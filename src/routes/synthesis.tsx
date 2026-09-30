@@ -137,7 +137,11 @@ function SynthesisReview() {
           </p>
         ) : (
           <>
-            <section className="mt-5 grid gap-3 lg:grid-cols-3" role="radiogroup" aria-label="Synthesis candidates">
+            <section
+              className="mt-5 grid gap-3 lg:grid-cols-3"
+              role="radiogroup"
+              aria-label="Synthesis candidates"
+            >
               {report.candidates.map((candidate) => {
                 const active = candidate.id === selected?.id;
                 return (
