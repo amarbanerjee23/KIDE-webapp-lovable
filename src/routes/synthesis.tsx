@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { approveCandidate, selectCandidate, useApprovalState } from "@/lib/kide/approval-store";
 import { synthesize, type Candidate } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
@@ -101,6 +102,7 @@ function SynthesisReview() {
       </header>
 
       <div className="mx-auto w-full max-w-7xl p-5">
+        <EngineeringWorkspaceGuard>
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <Sparkles className="size-4 text-primary" />
@@ -294,6 +296,7 @@ function SynthesisReview() {
             )}
           </>
         )}
+        </EngineeringWorkspaceGuard>
       </div>
     </main>
   );
