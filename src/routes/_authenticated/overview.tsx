@@ -173,86 +173,86 @@ function OverviewPage() {
         </section>
 
         <EngineeringWorkspaceGuard>
-        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric
-            label="Models"
-            value={`${workspace.files.length}`}
-            note="linked and cross-checked"
-          />
-          <Metric
-            label="Problems"
-            value={`${errors} / ${warnings}`}
-            note="errors / warnings"
-            tone={errors > 0 ? "bad" : warnings > 0 ? "warn" : "good"}
-          />
-          <Metric
-            label="Candidate designs"
-            value={`${report.candidates.length}`}
-            note={report.ready ? "preflight passed" : "preflight blocked"}
-            tone={report.ready ? "good" : "bad"}
-          />
-          <Metric
-            label="Release gates"
-            value={`${gatesPassed}/${assurance.gates.length}`}
-            note={assurance.releasable ? "ready to export" : "export blocked"}
-            tone={assurance.releasable ? "good" : "warn"}
-          />
-        </section>
-
-        <section className="mt-8">
-          <h2 className="text-sm font-semibold">Engineering flow</h2>
-          <p className="text-xs text-muted-foreground">
-            Seven stages from intent to a signed release bundle.
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {stages.map((stage, index) => (
-              <Link
-                key={stage.label}
-                to={stage.to}
-                className="rounded-md border border-border bg-card p-4 transition-colors hover:border-primary/50"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="grid size-6 place-items-center rounded bg-secondary font-mono text-[10px]">
-                    {index + 1}
-                  </span>
-                  <stage.icon className="size-4 text-capability" />
-                  <span className="text-sm font-medium">{stage.label}</span>
-                  {stage.done ? (
-                    <Check className="ml-auto size-4 text-primary" />
-                  ) : (
-                    <CircleAlert className="ml-auto size-4 text-warning" />
-                  )}
-                </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">{stage.detail}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
+          <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric
+              label="Models"
+              value={`${workspace.files.length}`}
+              note="linked and cross-checked"
+            />
+            <Metric
+              label="Problems"
+              value={`${errors} / ${warnings}`}
+              note="errors / warnings"
+              tone={errors > 0 ? "bad" : warnings > 0 ? "warn" : "good"}
+            />
+            <Metric
+              label="Candidate designs"
+              value={`${report.candidates.length}`}
+              note={report.ready ? "preflight passed" : "preflight blocked"}
+              tone={report.ready ? "good" : "bad"}
+            />
+            <Metric
+              label="Release gates"
+              value={`${gatesPassed}/${assurance.gates.length}`}
+              note={assurance.releasable ? "ready to export" : "export blocked"}
+              tone={assurance.releasable ? "good" : "warn"}
+            />
+          </section>
+  
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold">Engineering flow</h2>
+            <p className="text-xs text-muted-foreground">
+              Seven stages from intent to a signed release bundle.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {stages.map((stage, index) => (
+                <Link
+                  key={stage.label}
+                  to={stage.to}
+                  className="rounded-md border border-border bg-card p-4 transition-colors hover:border-primary/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-6 place-items-center rounded bg-secondary font-mono text-[10px]">
+                      {index + 1}
+                    </span>
+                    <stage.icon className="size-4 text-capability" />
+                    <span className="text-sm font-medium">{stage.label}</span>
+                    {stage.done ? (
+                      <Check className="ml-auto size-4 text-primary" />
+                    ) : (
+                      <CircleAlert className="ml-auto size-4 text-warning" />
+                    )}
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">{stage.detail}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
         </EngineeringWorkspaceGuard>
 
         <section className="mt-8 grid gap-4 lg:grid-cols-2">
           <EngineeringWorkspaceGuard>
-          <div className="rounded-md border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Assurance summary</h2>
-            <div className="mt-3 space-y-2 text-xs">
-              {assurance.gates.map((gate) => (
-                <div key={gate.id} className="flex items-start gap-2">
-                  {gate.status === "pass" ? (
-                    <Check className="mt-0.5 size-3.5 text-primary" />
-                  ) : (
-                    <CircleAlert className="mt-0.5 size-3.5 text-destructive" />
-                  )}
-                  <div>
-                    <p className="font-medium">{gate.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{gate.detail}</p>
+            <div className="rounded-md border border-border bg-card p-4">
+              <h2 className="text-sm font-semibold">Assurance summary</h2>
+              <div className="mt-3 space-y-2 text-xs">
+                {assurance.gates.map((gate) => (
+                  <div key={gate.id} className="flex items-start gap-2">
+                    {gate.status === "pass" ? (
+                      <Check className="mt-0.5 size-3.5 text-primary" />
+                    ) : (
+                      <CircleAlert className="mt-0.5 size-3.5 text-destructive" />
+                    )}
+                    <div>
+                      <p className="font-medium">{gate.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{gate.detail}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <Button asChild variant="link" size="sm" className="mt-2 h-auto p-0 text-xs">
+                <Link to="/trust">Open trust centre →</Link>
+              </Button>
             </div>
-            <Button asChild variant="link" size="sm" className="mt-2 h-auto p-0 text-xs">
-              <Link to="/trust">Open trust centre →</Link>
-            </Button>
-          </div>
           </EngineeringWorkspaceGuard>
 
           <div className="rounded-md border border-border bg-card p-4">
