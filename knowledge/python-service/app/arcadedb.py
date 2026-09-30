@@ -72,20 +72,20 @@ class ArcadeDB:
     def ensure_schema(self) -> None:
         commands = [
             "CREATE VERTEX TYPE KideEntity IF NOT EXISTS",
-            "CREATE PROPERTY KideEntity.semanticId STRING IF NOT EXISTS",
-            "CREATE PROPERTY KideEntity.kind STRING IF NOT EXISTS",
-            "CREATE PROPERTY KideEntity.displayName STRING IF NOT EXISTS",
-            "CREATE PROPERTY KideEntity.scope STRING IF NOT EXISTS",
-            "CREATE PROPERTY KideEntity.projectId STRING IF NOT EXISTS",
-            "CREATE PROPERTY KideEntity.sourcePath STRING IF NOT EXISTS",
-            "CREATE PROPERTY KideEntity.propertiesJson STRING IF NOT EXISTS",
+            "CREATE PROPERTY KideEntity.semanticId IF NOT EXISTS STRING",
+            "CREATE PROPERTY KideEntity.kind IF NOT EXISTS STRING",
+            "CREATE PROPERTY KideEntity.displayName IF NOT EXISTS STRING",
+            "CREATE PROPERTY KideEntity.scope IF NOT EXISTS STRING",
+            "CREATE PROPERTY KideEntity.projectId IF NOT EXISTS STRING",
+            "CREATE PROPERTY KideEntity.sourcePath IF NOT EXISTS STRING",
+            "CREATE PROPERTY KideEntity.propertiesJson IF NOT EXISTS STRING",
             "CREATE INDEX IF NOT EXISTS ON KideEntity (semanticId) UNIQUE",
             "CREATE EDGE TYPE SemanticRelation IF NOT EXISTS",
-            "CREATE PROPERTY SemanticRelation.semanticId STRING IF NOT EXISTS",
-            "CREATE PROPERTY SemanticRelation.kind STRING IF NOT EXISTS",
-            "CREATE PROPERTY SemanticRelation.scope STRING IF NOT EXISTS",
-            "CREATE PROPERTY SemanticRelation.projectId STRING IF NOT EXISTS",
-            "CREATE PROPERTY SemanticRelation.propertiesJson STRING IF NOT EXISTS",
+            "CREATE PROPERTY SemanticRelation.semanticId IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.kind IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.scope IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.projectId IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.propertiesJson IF NOT EXISTS STRING",
         ]
         for command in commands:
             self._db_request("command", command)
