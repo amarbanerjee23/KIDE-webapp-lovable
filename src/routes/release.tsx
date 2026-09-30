@@ -179,7 +179,8 @@ function ReleaseCentre() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </section>
       </div>
     </main>
