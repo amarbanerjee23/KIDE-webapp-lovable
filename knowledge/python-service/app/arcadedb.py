@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from contextlib import contextmanager
 from typing import Any, Iterator
 
@@ -90,9 +91,27 @@ class ArcadeDB:
         for command in commands:
             self._db_request("command", command)
 
+    def server_ready(self) -> bool:
+        try:
+            with self._client() as client:
+                response = client.get("/api/v1/ready")
+                return response.is_success
+        except Exception:
+            return False
+
+    def initialize(self, attempts: int = 60, delay_seconds: float = 1.0) -> None:
+        for attempt in range(attempts):
+            if self.server_ready():
+                self.ensure_database()
+                self.ensure_schema()
+                return
+            if attempt + 1 < attempts:
+                time.sleep(delay_seconds)
+        raise ArcadeDBError("ArcadeDB did not become ready before the semantic service startup deadline.")
+
     def ping(self) -> bool:
         try:
-            self._db_request("query", "SELECT count(*) AS count FROM KideEntity")
+            self._db_request("query", "SELECT 1")
             return True
         except Exception:
             return False
