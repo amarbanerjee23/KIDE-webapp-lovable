@@ -52,7 +52,7 @@ function SynthesisReview() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <Button asChild variant="ghost" size="sm">
           <Link to="/">
             <ArrowLeft />
@@ -65,7 +65,7 @@ function SynthesisReview() {
             {report.diagram ? `Workflow ${report.diagram}` : "No workflow"} · {report.generator}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0 max-sm:w-full">
           <Button asChild variant="outline" size="sm">
             <Link to="/models">
               <FileCode2 />
@@ -137,15 +137,17 @@ function SynthesisReview() {
           </p>
         ) : (
           <>
-            <section className="mt-5 grid gap-3 lg:grid-cols-3">
+            <section className="mt-5 grid gap-3 lg:grid-cols-3" role="radiogroup" aria-label="Synthesis candidates">
               {report.candidates.map((candidate) => {
                 const active = candidate.id === selected?.id;
                 return (
                   <button
                     key={candidate.id}
                     type="button"
+                    role="radio"
+                    aria-checked={active}
                     onClick={() => setSelectedId(candidate.id)}
-                    className={`rounded-lg border p-4 text-left transition-colors ${
+                    className={`min-h-11 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                       active
                         ? "border-primary bg-card"
                         : "border-border bg-card/60 hover:border-primary/40"
