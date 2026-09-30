@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
+import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { useActiveProjectDetails } from "@/components/kide/useActiveProjectDetails";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { buildCatalogue } from "@/lib/kide/catalogue";
@@ -171,6 +172,7 @@ function OverviewPage() {
           </div>
         </section>
 
+        <EngineeringWorkspaceGuard>
         <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Metric
             label="Models"
@@ -226,8 +228,10 @@ function OverviewPage() {
             ))}
           </div>
         </section>
+        </EngineeringWorkspaceGuard>
 
         <section className="mt-8 grid gap-4 lg:grid-cols-2">
+          <EngineeringWorkspaceGuard>
           <div className="rounded-md border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Assurance summary</h2>
             <div className="mt-3 space-y-2 text-xs">
@@ -249,6 +253,7 @@ function OverviewPage() {
               <Link to="/trust">Open trust centre →</Link>
             </Button>
           </div>
+          </EngineeringWorkspaceGuard>
 
           <div className="rounded-md border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Workspace</h2>
