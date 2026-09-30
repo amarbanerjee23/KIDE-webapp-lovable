@@ -1,0 +1,35 @@
+# Optional Python + ArcadeDB knowledge projection.
+# This overlay is intentionally separate from compose.knowledge.yaml so the existing
+# JanusGraph/Cassandra path cannot be changed by merely merging this feature.
+
+services:
+  arcadedb:
+    image: arcadedata/arcadedb:26.9.1
+    environment:
+      JAVA_OPTS: >-
+        -Darcadedb.server.rootPassword=${KIDE_ARCADEDB_PASSWORD:?KIDE_ARCADEDB_PASSWORD is required}
+        -Darcadedb.server.defaultDatabases=kide[root]
+    ports:
+      - "2480:2480"
+    volumes:
+      - kide-arcadedb-data:/home/arcadedb/databases
+
+  knowledge-python:
+    build:
+      context: .
+      dockerfile: knowledge/python-service/Dockerfile
+    depends_on:
+      arcadedb:
+        condition: service_started
+    environment:
+      KIDE_ARCADEDB_URL: http://arcadedb:2480
+      KIDE_ARCADEDB_DATABASE: kide
+      KIDE_ARCADEDB_USER: root
+      KIDE_ARCADEDB_PASSWORD: ${KIDE_ARCADEDB_PASSWORD:?KIDE_ARCADEDB_PASSWORD is required}
+      KIDE_ONTOLOGY_PATH: /knowledge/ontology/kide-capability.ttl
+      KIDE_SHACL_PATH: /knowledge/ontology/kide-capability.shacl.ttl
+    ports:
+      - "8090:8090"
+
+volumes:
+  kide-arcadedb-data:
