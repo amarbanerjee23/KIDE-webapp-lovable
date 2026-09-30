@@ -159,26 +159,26 @@ function ReleaseCentre() {
           </p>
           <div className="mt-3 overflow-x-auto rounded-md border border-border/70">
             <table className="min-w-[640px] w-full text-left text-[11px]">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="p-2 font-medium">Artefact</th>
-                <th className="p-2 font-medium">Kind</th>
-                <th className="p-2 font-medium">Size</th>
-                <th className="p-2 font-medium">SHA-256</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bundle.artifacts.map((entry) => (
-                <tr key={entry.path} className="border-t border-border">
-                  <td className="p-2 font-mono">{entry.path}</td>
-                  <td className="p-2">{entry.kind}</td>
-                  <td className="p-2">{entry.bytes} B</td>
-                  <td className="p-2 font-mono text-muted-foreground">
-                    {entry.sha256.slice(0, 16)}…
-                  </td>
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="p-2 font-medium">Artefact</th>
+                  <th className="p-2 font-medium">Kind</th>
+                  <th className="p-2 font-medium">Size</th>
+                  <th className="p-2 font-medium">SHA-256</th>
                 </tr>
-              ))}
-            </tbody>
+              </thead>
+              <tbody>
+                {bundle.artifacts.map((entry) => (
+                  <tr key={entry.path} className="border-t border-border">
+                    <td className="p-2 font-mono">{entry.path}</td>
+                    <td className="p-2">{entry.kind}</td>
+                    <td className="p-2">{entry.bytes} B</td>
+                    <td className="p-2 font-mono text-muted-foreground">
+                      {entry.sha256.slice(0, 16)}…
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </section>
