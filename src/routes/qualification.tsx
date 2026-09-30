@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowLeft, CircleAlert, CircleCheck, CircleSlash, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { synthesize } from "@/lib/kide/synthesis";
 import { qualify, VALIDATED_DEVICE_LIMIT } from "@/lib/kide/qualification";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
@@ -64,6 +65,7 @@ function Qualification() {
       </header>
 
       <div className="mx-auto max-w-5xl space-y-6 p-6">
+        <EngineeringWorkspaceGuard>
         <section
           className={`flex items-start gap-3 rounded-lg border p-4 ${
             qualification.qualified
@@ -200,6 +202,7 @@ function Qualification() {
             ))}
           </div>
         </section>
+        </EngineeringWorkspaceGuard>
       </div>
     </main>
   );
