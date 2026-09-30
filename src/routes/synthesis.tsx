@@ -132,7 +132,7 @@ function SynthesisReview() {
               ))}
             </ul>
           </section>
-  
+
           {!report.ready ? (
             <p className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive">
               Synthesis is blocked. {report.blockedReason}
@@ -192,7 +192,7 @@ function SynthesisReview() {
                   );
                 })}
               </section>
-  
+
               {selected && (
                 <section className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                   <div className="rounded-lg border border-border bg-card p-4">
@@ -208,7 +208,9 @@ function SynthesisReview() {
                         >
                           <p className="text-xs font-medium">{binding.activity}</p>
                           {binding.description && (
-                            <p className="text-[11px] text-muted-foreground">{binding.description}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {binding.description}
+                            </p>
                           )}
                           <p className="mt-1.5 font-mono text-[11px] text-capability">
                             {binding.capability ?? binding.operation ?? "unassigned"}
@@ -243,7 +245,7 @@ function SynthesisReview() {
                         </li>
                       ))}
                     </ul>
-  
+
                     <h3 className="mt-5 text-sm font-semibold">Evidence ledger</h3>
                     <ul className="mt-2 space-y-2">
                       {selected.evidence.map((entry) => (
@@ -251,7 +253,9 @@ function SynthesisReview() {
                           key={entry.rule}
                           className="rounded-md border border-border/70 bg-background p-3"
                         >
-                          <p className="font-mono text-[10px] text-muted-foreground">{entry.rule}</p>
+                          <p className="font-mono text-[10px] text-muted-foreground">
+                            {entry.rule}
+                          </p>
                           <p className="text-[11px]">{entry.statement}</p>
                           <p className="mt-1 font-mono text-[10px] text-muted-foreground">
                             {entry.elements.join(" · ")}
@@ -260,7 +264,7 @@ function SynthesisReview() {
                       ))}
                     </ul>
                   </div>
-  
+
                   <div className="rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold">Generated control model</h3>
