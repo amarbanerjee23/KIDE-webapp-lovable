@@ -21,6 +21,7 @@ db = ArcadeDB()
 @app.on_event("startup")
 def startup() -> None:
     validate_ontology_assets()
+    db.initialize()
 
 
 @app.get("/health")
