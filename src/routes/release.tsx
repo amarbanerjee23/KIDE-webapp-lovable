@@ -157,7 +157,8 @@ function ReleaseCentre() {
             Manifest checksum{" "}
             <span className="font-mono text-foreground">{bundle.manifestHash}</span>
           </p>
-          <div className="mt-3 overflow-x-auto rounded-md border border-border/70">\n            <table className="min-w-[640px] w-full text-left text-[11px]">
+          <div className="mt-3 overflow-x-auto rounded-md border border-border/70">
+            <table className="min-w-[640px] w-full text-left text-[11px]">
             <thead className="text-muted-foreground">
               <tr>
                 <th className="p-2 font-medium">Artefact</th>
