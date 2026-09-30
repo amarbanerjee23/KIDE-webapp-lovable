@@ -43,7 +43,762 @@ jobs:
           test ! -e src/integrations/supabase
           ! grep -q '"@supabase/supabase-js"' package.json
 
-          forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)
+          forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\\.xml|requirements\\.txt)$|\\.(py|java)$(git grep -n 'createServerFn' -- src/lib/kide || true)"
+          if [[ -n "$kide_server_compute" ]]; then
+            echo "KIDE domain computation must stay in the browser."
+            printf '%s\n' "$kide_server_compute"
+            exit 1
+          fi
+
+          server_domain_imports="$(git grep -nE 'from "@/lib/(dsl|kide/)' -- 'src/lib/*.functions.ts' 'src/lib/*.server.ts' || true)"
+          if [[ -n "$server_domain_imports" ]]; then
+            echo "Backend I/O functions must not import KIDE computational modules."
+            printf '%s\n' "$server_domain_imports"
+            exit 1
+          fi
+
+      - name: Lint all changed JavaScript and TypeScript
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.js' '*.jsx' '*.ts' '*.tsx'
+          )
+          if (( ${#files[@]} > 0 )); then
+            printf 'Linting %s\n' "${files[@]}"
+            bunx eslint "${files[@]}"
+          else
+            echo "No changed JavaScript or TypeScript files."
+          fi
+
+      - name: Strict TypeScript check including tests
+        run: bunx tsc --noEmit
+
+      - name: Run full unit and domain suite
+        run: bun run test:unit
+
+      - name: Enforce critical-library coverage thresholds
+        run: bun run test:coverage
+
+      - name: Build production application
+        run: KIDE_NODE_BUILD=1 bun run build
+
+      - name: Upload coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr26-coverage
+          path: coverage
+          if-no-files-found: ignore
+          retention-days: 14
+
+  database-and-deployment-contracts:
+    name: PostgreSQL, deployment and secret-management contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Validate GCP, Compose and secret contracts
+        run: bash scripts/ci/validate-deployment-contract.sh
+
+      - name: Simulate GCP auth-secret bootstrap
+        run: bash scripts/ci/test-gcp-bootstrap.sh
+
+      - name: Validate PostgreSQL schema, constraints and cascades
+        run: bash scripts/ci/test-postgres-schema.sh
+
+      - name: Validate Knowledge Fabric contracts
+        run: bash scripts/ci/test-knowledge-fabric.sh
+
+      - name: Validate optional Python semantic knowledge service
+        run: bash scripts/ci/test-python-knowledge-service.sh
+
+  python-semantic-knowledge:
+    name: Python ontology + ArcadeDB semantic runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: knowledge/python-service/pyproject.toml
+
+      - name: Install semantic service and test dependencies
+        working-directory: knowledge/python-service
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+
+      - name: Compile all Python sources
+        run: python -m compileall -q knowledge/python-service/app knowledge/python-service/tests
+
+      - name: Run Python semantic unit and failure-path suite
+        working-directory: knowledge/python-service
+        run: pytest -q
+
+      - name: Validate Python knowledge deployment contract
+        run: bash scripts/ci/test-python-knowledge-service.sh
+
+      - name: Run live ArcadeDB persistence and traversal integration
+        run: bash scripts/ci/test-python-knowledge-runtime.sh
+
+      - name: Capture Python/ArcadeDB diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          KIDE_ARCADEDB_PASSWORD=ci-arcadedb-knowledge-password \
+            docker compose -f compose.knowledge-python.yaml ps || true
+          KIDE_ARCADEDB_PASSWORD=ci-arcadedb-knowledge-password \
+            docker compose -f compose.knowledge-python.yaml logs --no-color || true
+
+      - name: Stop Python knowledge stack
+        if: always()
+        shell: bash
+        run: |
+          KIDE_ARCADEDB_PASSWORD=ci-arcadedb-knowledge-password \
+            docker compose -f compose.knowledge-python.yaml down -v --remove-orphans || true
+
+  knowledge-graph-runtime:
+    name: JanusGraph HTTP runtime contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Start JanusGraph HTTP endpoint
+        shell: bash
+        run: |
+          docker run -d --name kide-janusgraph-ci -p 8182:8182 \
+            -v "$PWD/knowledge/janusgraph/schema.json:/etc/opt/janusgraph/kide-schema.json:ro" \
+            -e JANUS_PROPS_TEMPLATE=inmemory \
+            -e janusgraph.schema.default=none \
+            -e janusgraph.schema.init.strategy=json \
+            -e janusgraph.schema.init.json.file=/etc/opt/janusgraph/kide-schema.json \
+            -e janusgraph.schema.init.json.indices-activation=reindex_and_enable_non_enabled \
+            -e gremlinserver.channelizer=org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer \
+            janusgraph/janusgraph:1.1.0 >/dev/null
+
+          ready=0
+          for _ in $(seq 1 90); do
+            if curl --silent --fail \
+              -H 'content-type: application/json' \
+              --data '{"gremlin":"g.V().count()"}' \
+              http://127.0.0.1:8182 >/tmp/janusgraph-count.json; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$ready" != "1" ]]; then
+            echo "JanusGraph HTTP endpoint did not become ready."
+            docker logs kide-janusgraph-ci || true
+            exit 1
+          fi
+
+      - name: Prove graph write and traversal
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            --data '{"gremlin":"g.addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:device\u0027).as(\u0027d\u0027).addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:capability\u0027).as(\u0027c\u0027).addE(\u0027semanticRelation\u0027).from(\u0027d\u0027).property(\u0027kind\u0027,\u0027hasCapability\u0027).iterate(); g.E().has(\u0027kind\u0027,\u0027hasCapability\u0027).count()"}' \
+            http://127.0.0.1:8182)"
+          printf '%s' "$response" | grep -Eq '"@type":"g:Int64","@value":[1-9][0-9]*' || {
+            echo "JanusGraph write/traversal contract did not produce the expected relationship."
+            printf '%s\n' "$response"
+            exit 1
+          }
+
+      - name: Capture JanusGraph diagnostics
+        if: failure()
+        run: docker logs kide-janusgraph-ci || true
+
+      - name: Stop JanusGraph
+        if: always()
+        run: docker rm -f kide-janusgraph-ci >/dev/null 2>&1 || true
+
+  production-container-e2e:
+    name: Production container + Better Auth + browser E2E
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium, Firefox and WebKit for Playwright
+        run: bunx playwright install --with-deps chromium firefox webkit
+
+      - name: Build production container
+        shell: bash
+        run: |
+          set -o pipefail
+          docker build --pull -t kide-webapp:e2e . 2>&1 | tee /tmp/kide-docker-build.log
+          if grep -q 'SecretsUsedInArgOrEnv' /tmp/kide-docker-build.log; then
+            echo "Docker build emitted a secret-like ARG/ENV warning."
+            exit 1
+          fi
+
+      - name: Start isolated PostgreSQL and KIDE containers
+        shell: bash
+        run: |
+          docker network create kide-pr26 >/dev/null
+          docker run -d --name kide-e2e-db --network kide-pr26 \
+            -e POSTGRES_DB=kide \
+            -e POSTGRES_USER=kide \
+            -e POSTGRES_PASSWORD=kide-e2e-password \
+            postgres:17-alpine >/dev/null
+
+          db_ready=0
+          for _ in $(seq 1 60); do
+            if docker exec kide-e2e-db psql -At -U kide -d kide -c 'select 1' 2>/dev/null | grep -qx 1; then
+              sleep 2
+              if docker exec kide-e2e-db psql -At -U kide -d kide -c 'select 1' 2>/dev/null | grep -qx 1; then
+                db_ready=1
+                break
+              fi
+            fi
+            sleep 1
+          done
+          [[ "$db_ready" == "1" ]] || {
+            echo "PostgreSQL did not reach stable readiness."
+            docker logs kide-e2e-db || true
+            exit 1
+          }
+
+          docker run -d --name kide-e2e-app --network kide-pr26 -p 8080:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://kide:kide-e2e-password@kide-e2e-db:5432/kide \
+            -e BETTER_AUTH_URL=http://127.0.0.1:8080 \
+            -e BETTER_AUTH_SECRET=pr26-e2e-secret-012345678901234567890123456789 \
+            kide-webapp:e2e >/dev/null
+
+          docker run -d --name kide-e2e-noauth -p 8081:8080 \
+            -e PORT=8080 \
+            kide-webapp:e2e >/dev/null
+
+          docker run -d --name kide-e2e-nodb -p 8082:8080 \
+            -e PORT=8080 \
+            -e BETTER_AUTH_URL=http://127.0.0.1:8082 \
+            -e BETTER_AUTH_SECRET=pr28-database-missing-secret-012345678901234567890123 \
+            kide-webapp:e2e >/dev/null
+
+          docker run -d --name kide-e2e-baddb -p 8083:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://kide:invalid@127.0.0.1:59999/kide \
+            -e BETTER_AUTH_URL=http://127.0.0.1:8083 \
+            -e BETTER_AUTH_SECRET=pr29-unreachable-database-secret-012345678901234567890123 \
+            -e KIDE_AUTH_DB_CONNECT_TIMEOUT_MS=1500 \
+            kide-webapp:e2e >/dev/null
+
+          for port in 8080 8081 8082 8083; do
+            ready=0
+            for _ in $(seq 1 60); do
+              if curl --fail --silent "http://127.0.0.1:${port}/" >/dev/null; then ready=1; break; fi
+              sleep 1
+            done
+            if [[ "$ready" != "1" ]]; then
+              echo "KIDE container on port $port did not become ready."
+              echo "=== compiled auth bundle around runtime failure ==="
+              docker run --rm --entrypoint sh kide-webapp:e2e -c '
+                auth_file="$(ls /app/.output/server/_ssr/auth.server-*.mjs 2>/dev/null | head -1)"
+                if [ -n "$auth_file" ]; then
+                  echo "bundle: $auth_file"
+                  nl -ba "$auth_file" | sed -n "420,445p"
+                else
+                  echo "auth bundle not found"
+                fi
+              ' || true
+              exit 1
+            fi
+          done
+
+      - name: Run browser critical paths, auth lifecycle, accessibility and compatibility E2E
+        env:
+          KIDE_E2E_URL: http://127.0.0.1:8080
+          KIDE_E2E_UNCONFIGURED_URL: http://127.0.0.1:8081
+          KIDE_E2E_MISSING_DATABASE_URL: http://127.0.0.1:8082
+          KIDE_E2E_UNREACHABLE_DATABASE_URL: http://127.0.0.1:8083
+          KIDE_E2E_RUN_ID: ${{ github.run_id }}
+        run: bun run test:e2e
+
+      - name: Verify Better Auth and KIDE persistence reached PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for table in user session account verification; do
+            exists="$(docker exec kide-e2e-db psql -At -U kide -d kide -c \
+              "select to_regclass('public.\"${table}\"') is not null;")"
+            if [[ "$exists" != "t" ]]; then
+              echo "Better Auth table missing after real browser authentication: $table"
+              exit 1
+            fi
+          done
+
+          users="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public."user";')"
+          orgs="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public.organizations;')"
+          projects="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public.projects;')"
+
+          [[ "$users" -ge 1 ]] || { echo "No persisted Better Auth users"; exit 1; }
+          [[ "$orgs" -ge 1 ]] || { echo "No persisted KIDE organizations"; exit 1; }
+          [[ "$projects" -ge 1 ]] || { echo "No persisted KIDE projects"; exit 1; }
+
+      - name: Prove authentication survives an application-container restart
+        shell: bash
+        env:
+          KIDE_E2E_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          email="restart-${KIDE_E2E_RUN_ID}@example.com"
+          password="Pr26-Restart-Persistence-Password!"
+
+          signup="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            --data "{\"name\":\"Restart Test\",\"email\":\"${email}\",\"password\":\"${password}\"}" \
+            http://127.0.0.1:8080/api/auth/sign-up/email)"
+          printf '%s' "$signup" | grep -Fq "$email" || {
+            echo "Could not seed the restart-durability user"
+            exit 1
+          }
+
+          docker restart kide-e2e-app >/dev/null
+
+          ready=0
+          for _ in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          [[ "$ready" == "1" ]] || { echo "KIDE did not recover after restart"; exit 1; }
+
+          response="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            -c /tmp/kide-restart.cookies \
+            --data "{\"email\":\"${email}\",\"password\":\"${password}\"}" \
+            http://127.0.0.1:8080/api/auth/sign-in/email)"
+
+          printf '%s' "$response" | grep -Fq "$email" || {
+            echo "Persisted Better Auth user could not sign in after application restart"
+            exit 1
+          }
+
+          session="$(curl --fail-with-body --silent \
+            -b /tmp/kide-restart.cookies \
+            http://127.0.0.1:8080/api/auth/get-session)"
+          printf '%s' "$session" | grep -Fq "$email" || {
+            echo "Session recovery failed after application restart"
+            exit 1
+          }
+
+      - name: Capture container diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          echo '=== configured KIDE ==='
+          docker logs kide-e2e-app || true
+          echo '=== unconfigured KIDE ==='
+          docker logs kide-e2e-noauth || true
+          echo '=== database-missing KIDE ==='
+          docker logs kide-e2e-nodb || true
+          echo '=== database-unreachable KIDE ==='
+          docker logs kide-e2e-baddb || true
+          echo '=== postgres ==='
+          docker logs kide-e2e-db || true
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr26-playwright-evidence
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop test containers
+        if: always()
+        run: |
+          docker rm -f kide-e2e-app kide-e2e-noauth kide-e2e-nodb kide-e2e-baddb kide-e2e-db >/dev/null 2>&1 || true
+          docker network rm kide-pr26 >/dev/null 2>&1 || true
+ | grep -v '^knowledge/python-service/' || true)"
+          if [[ -n "$forbidden_runtime" ]]; then
+            echo "Tracked non-TypeScript application runtimes are only allowed in the isolated knowledge/python-service boundary."
+            printf '%s\n' "$forbidden_runtime"
+            exit 1
+          fi
+
+          kide_server_compute="$(git grep -n 'createServerFn' -- src/lib/kide || true)"
+          if [[ -n "$kide_server_compute" ]]; then
+            echo "KIDE domain computation must stay in the browser."
+            printf '%s\n' "$kide_server_compute"
+            exit 1
+          fi
+
+          server_domain_imports="$(git grep -nE 'from "@/lib/(dsl|kide/)' -- 'src/lib/*.functions.ts' 'src/lib/*.server.ts' || true)"
+          if [[ -n "$server_domain_imports" ]]; then
+            echo "Backend I/O functions must not import KIDE computational modules."
+            printf '%s\n' "$server_domain_imports"
+            exit 1
+          fi
+
+      - name: Lint all changed JavaScript and TypeScript
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR origin/main...HEAD -- '*.js' '*.jsx' '*.ts' '*.tsx'
+          )
+          if (( ${#files[@]} > 0 )); then
+            printf 'Linting %s\n' "${files[@]}"
+            bunx eslint "${files[@]}"
+          else
+            echo "No changed JavaScript or TypeScript files."
+          fi
+
+      - name: Strict TypeScript check including tests
+        run: bunx tsc --noEmit
+
+      - name: Run full unit and domain suite
+        run: bun run test:unit
+
+      - name: Enforce critical-library coverage thresholds
+        run: bun run test:coverage
+
+      - name: Build production application
+        run: KIDE_NODE_BUILD=1 bun run build
+
+      - name: Upload coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr26-coverage
+          path: coverage
+          if-no-files-found: ignore
+          retention-days: 14
+
+  database-and-deployment-contracts:
+    name: PostgreSQL, deployment and secret-management contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Validate GCP, Compose and secret contracts
+        run: bash scripts/ci/validate-deployment-contract.sh
+
+      - name: Simulate GCP auth-secret bootstrap
+        run: bash scripts/ci/test-gcp-bootstrap.sh
+
+      - name: Validate PostgreSQL schema, constraints and cascades
+        run: bash scripts/ci/test-postgres-schema.sh
+
+      - name: Validate Knowledge Fabric contracts
+        run: bash scripts/ci/test-knowledge-fabric.sh
+
+  knowledge-graph-runtime:
+    name: JanusGraph HTTP runtime contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Start JanusGraph HTTP endpoint
+        shell: bash
+        run: |
+          docker run -d --name kide-janusgraph-ci -p 8182:8182 \
+            -v "$PWD/knowledge/janusgraph/schema.json:/etc/opt/janusgraph/kide-schema.json:ro" \
+            -e JANUS_PROPS_TEMPLATE=inmemory \
+            -e janusgraph.schema.default=none \
+            -e janusgraph.schema.init.strategy=json \
+            -e janusgraph.schema.init.json.file=/etc/opt/janusgraph/kide-schema.json \
+            -e janusgraph.schema.init.json.indices-activation=reindex_and_enable_non_enabled \
+            -e gremlinserver.channelizer=org.apache.tinkerpop.gremlin.server.channel.WsAndHttpChannelizer \
+            janusgraph/janusgraph:1.1.0 >/dev/null
+
+          ready=0
+          for _ in $(seq 1 90); do
+            if curl --silent --fail \
+              -H 'content-type: application/json' \
+              --data '{"gremlin":"g.V().count()"}' \
+              http://127.0.0.1:8182 >/tmp/janusgraph-count.json; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$ready" != "1" ]]; then
+            echo "JanusGraph HTTP endpoint did not become ready."
+            docker logs kide-janusgraph-ci || true
+            exit 1
+          fi
+
+      - name: Prove graph write and traversal
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            --data '{"gremlin":"g.addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:device\u0027).as(\u0027d\u0027).addV(\u0027KideEntity\u0027).property(\u0027semanticId\u0027,\u0027urn:kide:ci:capability\u0027).as(\u0027c\u0027).addE(\u0027semanticRelation\u0027).from(\u0027d\u0027).property(\u0027kind\u0027,\u0027hasCapability\u0027).iterate(); g.E().has(\u0027kind\u0027,\u0027hasCapability\u0027).count()"}' \
+            http://127.0.0.1:8182)"
+          printf '%s' "$response" | grep -Eq '"@type":"g:Int64","@value":[1-9][0-9]*' || {
+            echo "JanusGraph write/traversal contract did not produce the expected relationship."
+            printf '%s\n' "$response"
+            exit 1
+          }
+
+      - name: Capture JanusGraph diagnostics
+        if: failure()
+        run: docker logs kide-janusgraph-ci || true
+
+      - name: Stop JanusGraph
+        if: always()
+        run: docker rm -f kide-janusgraph-ci >/dev/null 2>&1 || true
+
+  production-container-e2e:
+    name: Production container + Better Auth + browser E2E
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium, Firefox and WebKit for Playwright
+        run: bunx playwright install --with-deps chromium firefox webkit
+
+      - name: Build production container
+        shell: bash
+        run: |
+          set -o pipefail
+          docker build --pull -t kide-webapp:e2e . 2>&1 | tee /tmp/kide-docker-build.log
+          if grep -q 'SecretsUsedInArgOrEnv' /tmp/kide-docker-build.log; then
+            echo "Docker build emitted a secret-like ARG/ENV warning."
+            exit 1
+          fi
+
+      - name: Start isolated PostgreSQL and KIDE containers
+        shell: bash
+        run: |
+          docker network create kide-pr26 >/dev/null
+          docker run -d --name kide-e2e-db --network kide-pr26 \
+            -e POSTGRES_DB=kide \
+            -e POSTGRES_USER=kide \
+            -e POSTGRES_PASSWORD=kide-e2e-password \
+            postgres:17-alpine >/dev/null
+
+          db_ready=0
+          for _ in $(seq 1 60); do
+            if docker exec kide-e2e-db psql -At -U kide -d kide -c 'select 1' 2>/dev/null | grep -qx 1; then
+              sleep 2
+              if docker exec kide-e2e-db psql -At -U kide -d kide -c 'select 1' 2>/dev/null | grep -qx 1; then
+                db_ready=1
+                break
+              fi
+            fi
+            sleep 1
+          done
+          [[ "$db_ready" == "1" ]] || {
+            echo "PostgreSQL did not reach stable readiness."
+            docker logs kide-e2e-db || true
+            exit 1
+          }
+
+          docker run -d --name kide-e2e-app --network kide-pr26 -p 8080:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://kide:kide-e2e-password@kide-e2e-db:5432/kide \
+            -e BETTER_AUTH_URL=http://127.0.0.1:8080 \
+            -e BETTER_AUTH_SECRET=pr26-e2e-secret-012345678901234567890123456789 \
+            kide-webapp:e2e >/dev/null
+
+          docker run -d --name kide-e2e-noauth -p 8081:8080 \
+            -e PORT=8080 \
+            kide-webapp:e2e >/dev/null
+
+          docker run -d --name kide-e2e-nodb -p 8082:8080 \
+            -e PORT=8080 \
+            -e BETTER_AUTH_URL=http://127.0.0.1:8082 \
+            -e BETTER_AUTH_SECRET=pr28-database-missing-secret-012345678901234567890123 \
+            kide-webapp:e2e >/dev/null
+
+          docker run -d --name kide-e2e-baddb -p 8083:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://kide:invalid@127.0.0.1:59999/kide \
+            -e BETTER_AUTH_URL=http://127.0.0.1:8083 \
+            -e BETTER_AUTH_SECRET=pr29-unreachable-database-secret-012345678901234567890123 \
+            -e KIDE_AUTH_DB_CONNECT_TIMEOUT_MS=1500 \
+            kide-webapp:e2e >/dev/null
+
+          for port in 8080 8081 8082 8083; do
+            ready=0
+            for _ in $(seq 1 60); do
+              if curl --fail --silent "http://127.0.0.1:${port}/" >/dev/null; then ready=1; break; fi
+              sleep 1
+            done
+            if [[ "$ready" != "1" ]]; then
+              echo "KIDE container on port $port did not become ready."
+              echo "=== compiled auth bundle around runtime failure ==="
+              docker run --rm --entrypoint sh kide-webapp:e2e -c '
+                auth_file="$(ls /app/.output/server/_ssr/auth.server-*.mjs 2>/dev/null | head -1)"
+                if [ -n "$auth_file" ]; then
+                  echo "bundle: $auth_file"
+                  nl -ba "$auth_file" | sed -n "420,445p"
+                else
+                  echo "auth bundle not found"
+                fi
+              ' || true
+              exit 1
+            fi
+          done
+
+      - name: Run browser critical paths, auth lifecycle, accessibility and compatibility E2E
+        env:
+          KIDE_E2E_URL: http://127.0.0.1:8080
+          KIDE_E2E_UNCONFIGURED_URL: http://127.0.0.1:8081
+          KIDE_E2E_MISSING_DATABASE_URL: http://127.0.0.1:8082
+          KIDE_E2E_UNREACHABLE_DATABASE_URL: http://127.0.0.1:8083
+          KIDE_E2E_RUN_ID: ${{ github.run_id }}
+        run: bun run test:e2e
+
+      - name: Verify Better Auth and KIDE persistence reached PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for table in user session account verification; do
+            exists="$(docker exec kide-e2e-db psql -At -U kide -d kide -c \
+              "select to_regclass('public.\"${table}\"') is not null;")"
+            if [[ "$exists" != "t" ]]; then
+              echo "Better Auth table missing after real browser authentication: $table"
+              exit 1
+            fi
+          done
+
+          users="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public."user";')"
+          orgs="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public.organizations;')"
+          projects="$(docker exec kide-e2e-db psql -At -U kide -d kide -c 'select count(*) from public.projects;')"
+
+          [[ "$users" -ge 1 ]] || { echo "No persisted Better Auth users"; exit 1; }
+          [[ "$orgs" -ge 1 ]] || { echo "No persisted KIDE organizations"; exit 1; }
+          [[ "$projects" -ge 1 ]] || { echo "No persisted KIDE projects"; exit 1; }
+
+      - name: Prove authentication survives an application-container restart
+        shell: bash
+        env:
+          KIDE_E2E_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          email="restart-${KIDE_E2E_RUN_ID}@example.com"
+          password="Pr26-Restart-Persistence-Password!"
+
+          signup="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            --data "{\"name\":\"Restart Test\",\"email\":\"${email}\",\"password\":\"${password}\"}" \
+            http://127.0.0.1:8080/api/auth/sign-up/email)"
+          printf '%s' "$signup" | grep -Fq "$email" || {
+            echo "Could not seed the restart-durability user"
+            exit 1
+          }
+
+          docker restart kide-e2e-app >/dev/null
+
+          ready=0
+          for _ in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8080/ >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          [[ "$ready" == "1" ]] || { echo "KIDE did not recover after restart"; exit 1; }
+
+          response="$(curl --fail-with-body --silent \
+            -H 'content-type: application/json' \
+            -c /tmp/kide-restart.cookies \
+            --data "{\"email\":\"${email}\",\"password\":\"${password}\"}" \
+            http://127.0.0.1:8080/api/auth/sign-in/email)"
+
+          printf '%s' "$response" | grep -Fq "$email" || {
+            echo "Persisted Better Auth user could not sign in after application restart"
+            exit 1
+          }
+
+          session="$(curl --fail-with-body --silent \
+            -b /tmp/kide-restart.cookies \
+            http://127.0.0.1:8080/api/auth/get-session)"
+          printf '%s' "$session" | grep -Fq "$email" || {
+            echo "Session recovery failed after application restart"
+            exit 1
+          }
+
+      - name: Capture container diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          echo '=== configured KIDE ==='
+          docker logs kide-e2e-app || true
+          echo '=== unconfigured KIDE ==='
+          docker logs kide-e2e-noauth || true
+          echo '=== database-missing KIDE ==='
+          docker logs kide-e2e-nodb || true
+          echo '=== database-unreachable KIDE ==='
+          docker logs kide-e2e-baddb || true
+          echo '=== postgres ==='
+          docker logs kide-e2e-db || true
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr26-playwright-evidence
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop test containers
+        if: always()
+        run: |
+          docker rm -f kide-e2e-app kide-e2e-noauth kide-e2e-nodb kide-e2e-baddb kide-e2e-db >/dev/null 2>&1 || true
+          docker network rm kide-pr26 >/dev/null 2>&1 || true
+ | grep -v '^knowledge/python-service/' || true)"
+          if [[ -n "$forbidden_runtime" ]]; then
+            echo "Tracked non-TypeScript runtimes are only allowed in knowledge/python-service."
+            printf '%s\\n' "$forbidden_runtime"
+            exit 1
+          fi
 
           kide_server_compute="$(git grep -n 'createServerFn' -- src/lib/kide || true)"
           if [[ -n "$kide_server_compute" ]]; then
