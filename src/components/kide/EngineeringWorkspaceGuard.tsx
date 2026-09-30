@@ -31,8 +31,7 @@ export function EngineeringWorkspaceGuard({ children }: { children: ReactNode })
 
   if (accessReady) return <>{children}</>;
 
-  const activeSaveState =
-    saveState.projectId === activeProject.projectId ? saveState : null;
+  const activeSaveState = saveState.projectId === activeProject.projectId ? saveState : null;
 
   if (activeSaveState?.status === "error") {
     return (
