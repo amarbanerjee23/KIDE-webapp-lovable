@@ -8,6 +8,9 @@ class FakeDb:
     def __init__(self) -> None:
         self.projection = None
 
+    def initialize(self) -> None:
+        return None
+
     def ping(self) -> bool:
         return True
 
