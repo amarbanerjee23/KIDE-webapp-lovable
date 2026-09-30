@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useActiveProject, type ActiveProject } from "@/lib/active-project";
+import { clearActiveProject, useActiveProject, type ActiveProject } from "@/lib/active-project";
 import { listAllProjects } from "@/lib/projects.functions";
 
 type ProjectIndex = Awaited<ReturnType<typeof listAllProjects>>;
@@ -42,6 +42,7 @@ export function useActiveProjectDetails() {
   const [details, setDetails] = useState<ActiveProjectDetails | null>(null);
   const [loading, setLoading] = useState(Boolean(activeProject));
   const [error, setError] = useState<string | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
     let current = true;
@@ -61,7 +62,13 @@ export function useActiveProjectDetails() {
     void loadProjects()
       .then((result) => {
         if (!current) return;
-        setDetails(resolveActiveProjectDetails(result.organizations, activeProject));
+        const resolved = resolveActiveProjectDetails(result.organizations, activeProject);
+        if (!resolved) {
+          clearActiveProject();
+          setDetails(null);
+          return;
+        }
+        setDetails(resolved);
       })
       .catch((reason) => {
         if (!current) return;
@@ -75,7 +82,13 @@ export function useActiveProjectDetails() {
     return () => {
       current = false;
     };
-  }, [activeProject, loadProjects]);
+  }, [activeProject, loadProjects, refreshVersion]);
 
-  return { activeProject, details, loading, error };
+  return {
+    activeProject,
+    details,
+    loading,
+    error,
+    retry: () => setRefreshVersion((version) => version + 1),
+  };
 }

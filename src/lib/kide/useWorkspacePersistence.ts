@@ -13,6 +13,7 @@ import {
   setWorkspaceAccessLoading,
 } from "@/lib/kide/workspace-access";
 import { clearWorkspaceSaveState, setWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
+import { requestWorkspaceReload, useWorkspaceReloadVersion } from "@/lib/kide/workspace-reload";
 import {
   clearWorkspace,
   replaceWorkspaceSources,
@@ -34,6 +35,7 @@ export function useWorkspacePersistence(enabled: boolean) {
   const conflictedRef = useRef(false);
   const saveErrorNotifiedRef = useRef(false);
   const [connectivityVersion, setConnectivityVersion] = useState(0);
+  const workspaceReloadVersion = useWorkspaceReloadVersion();
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
@@ -50,7 +52,11 @@ export function useWorkspacePersistence(enabled: boolean) {
 
     const handleOnline = () => {
       saveErrorNotifiedRef.current = false;
-      setConnectivityVersion((version) => version + 1);
+      if (activeProject && loadedProjectRef.current !== activeProject.projectId) {
+        requestWorkspaceReload();
+      } else {
+        setConnectivityVersion((version) => version + 1);
+      }
     };
 
     window.addEventListener("offline", handleOffline);
@@ -130,7 +136,7 @@ export function useWorkspacePersistence(enabled: boolean) {
         });
         console.warn("[Workspace] Could not load project working copy:", message);
       });
-  }, [activeProject, enabled, load]);
+  }, [activeProject, enabled, load, workspaceReloadVersion]);
 
   useEffect(() => {
     if (

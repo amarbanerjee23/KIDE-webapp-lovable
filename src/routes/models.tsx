@@ -34,6 +34,7 @@ import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-servic
 import { useActiveProject } from "@/lib/active-project";
 import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
 import { useWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
+import { requestWorkspaceReload } from "@/lib/kide/workspace-reload";
 import {
   linkFrom,
   loadExampleWorkspace,
@@ -310,6 +311,43 @@ function ModelLanguages() {
                   <Button asChild className="mt-4" size="sm">
                     <Link to="/projects">Choose project</Link>
                   </Button>
+                </div>
+              </div>
+            ) : activeSaveState?.status === "loading" ? (
+              <div className="grid h-full place-items-center p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-sm font-semibold">Loading project workspace…</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    KIDE is loading the saved working copy before showing project model state.
+                  </p>
+                </div>
+              </div>
+            ) : activeSaveState?.status === "error" ? (
+              <div className="grid h-full place-items-center p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-sm font-semibold">Project workspace could not be loaded</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {activeSaveState.message ??
+                      "KIDE could not load the saved working copy. The editor is staying empty rather than showing misleading project state."}
+                  </p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <Button size="sm" onClick={requestWorkspaceReload}>
+                      Retry loading
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/projects">Choose another project</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : activeSaveState?.status === "offline" && workspace.files.length === 0 ? (
+              <div className="grid h-full place-items-center p-8 text-center">
+                <div className="max-w-md">
+                  <p className="text-sm font-semibold">Project workspace is unavailable offline</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {activeSaveState.message ??
+                      "Reconnect to load this project. KIDE will retry automatically when connectivity returns."}
+                  </p>
                 </div>
               </div>
             ) : workspace.files.length === 0 ? (

@@ -167,7 +167,22 @@ function KideWorkbench() {
       <WorkspaceHeader current="Workbench" />
 
       <div className="mx-auto max-w-7xl px-5 py-7">
-        {!projectContext.loading && !hasProject ? (
+        {projectContext.error ? (
+          <section className="rounded-lg border border-destructive/40 bg-destructive/5 p-8 text-center">
+            <h1 className="text-lg font-semibold">Could not verify the active project</h1>
+            <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
+              {projectContext.error}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Button size="sm" onClick={projectContext.retry}>
+                Retry
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/projects">Choose another project</Link>
+              </Button>
+            </div>
+          </section>
+        ) : !projectContext.loading && !hasProject ? (
           <section className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
             <h1 className="text-lg font-semibold">Choose a project to open the workbench</h1>
             <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
