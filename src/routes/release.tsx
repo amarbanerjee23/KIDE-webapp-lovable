@@ -129,8 +129,7 @@ function ReleaseCentre() {
                   ? `${approval?.candidateName} approved ${new Date(approval!.approvedAt).toLocaleString()}.`
                   : approval
                     ? "The models changed after approval, so the approval no longer applies. Review and approve again."
-                    : "Approve a design in the synthesis review before releasing."}
-                {" "}
+                    : "Approve a design in the synthesis review before releasing."}{" "}
                 <Link to="/synthesis" className="text-primary underline">
                   Open synthesis review
                 </Link>
