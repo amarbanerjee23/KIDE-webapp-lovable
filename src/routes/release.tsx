@@ -98,91 +98,91 @@ function ReleaseCentre() {
 
       <div className="mx-auto w-full max-w-6xl space-y-5 p-5">
         <EngineeringWorkspaceGuard>
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <ShieldCheck className="size-4 text-primary" />
-            Gates
-          </h2>
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
-            {assurance.gates.map((gate) => (
-              <div key={gate.id} className="rounded-md border border-border bg-background p-3">
+          <section className="rounded-lg border border-border bg-card p-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <ShieldCheck className="size-4 text-primary" />
+              Gates
+            </h2>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {assurance.gates.map((gate) => (
+                <div key={gate.id} className="rounded-md border border-border bg-background p-3">
+                  <p className="flex items-center gap-2 text-xs font-medium">
+                    {gate.status === "pass" ? (
+                      <Check className="size-3.5 text-primary" />
+                    ) : (
+                      <CircleAlert className="size-3.5 text-destructive" />
+                    )}
+                    {gate.label}
+                  </p>
+                  <p className="mt-1 pl-5 text-[11px] text-muted-foreground">{gate.detail}</p>
+                </div>
+              ))}
+              <div className="rounded-md border border-border bg-background p-3">
                 <p className="flex items-center gap-2 text-xs font-medium">
-                  {gate.status === "pass" ? (
+                  {approvalCurrent ? (
                     <Check className="size-3.5 text-primary" />
                   ) : (
                     <CircleAlert className="size-3.5 text-destructive" />
                   )}
-                  {gate.label}
+                  A reviewer approved this exact design
                 </p>
-                <p className="mt-1 pl-5 text-[11px] text-muted-foreground">{gate.detail}</p>
+                <p className="mt-1 pl-5 text-[11px] text-muted-foreground">
+                  {approvalCurrent
+                    ? `${approval?.candidateName} approved ${new Date(approval!.approvedAt).toLocaleString()}.`
+                    : approval
+                      ? "The models changed after approval, so the approval no longer applies. Review and approve again."
+                      : "Approve a design in the synthesis review before releasing."}{" "}
+                  <Link to="/synthesis" className="text-primary underline">
+                    Open synthesis review
+                  </Link>
+                </p>
               </div>
-            ))}
-            <div className="rounded-md border border-border bg-background p-3">
-              <p className="flex items-center gap-2 text-xs font-medium">
-                {approvalCurrent ? (
-                  <Check className="size-3.5 text-primary" />
-                ) : (
-                  <CircleAlert className="size-3.5 text-destructive" />
-                )}
-                A reviewer approved this exact design
-              </p>
-              <p className="mt-1 pl-5 text-[11px] text-muted-foreground">
-                {approvalCurrent
-                  ? `${approval?.candidateName} approved ${new Date(approval!.approvedAt).toLocaleString()}.`
-                  : approval
-                    ? "The models changed after approval, so the approval no longer applies. Review and approve again."
-                    : "Approve a design in the synthesis review before releasing."}{" "}
-                <Link to="/synthesis" className="text-primary underline">
-                  Open synthesis review
-                </Link>
-              </p>
             </div>
-          </div>
-          {!canRelease && (
-            <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-[11px] text-destructive">
-              Release blocked. Resolve everything above — see the{" "}
-              <Link to="/trust" className="underline">
-                Trust Centre
-              </Link>{" "}
-              for the repair steps.
+            {!canRelease && (
+              <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-[11px] text-destructive">
+                Release blocked. Resolve everything above — see the{" "}
+                <Link to="/trust" className="underline">
+                  Trust Centre
+                </Link>{" "}
+                for the repair steps.
+              </p>
+            )}
+          </section>
+  
+          <section className="rounded-lg border border-border bg-card p-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Package className="size-4 text-primary" />
+              Bundle contents
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Manifest checksum{" "}
+              <span className="font-mono text-foreground">{bundle.manifestHash}</span>
             </p>
-          )}
-        </section>
-
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Package className="size-4 text-primary" />
-            Bundle contents
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Manifest checksum{" "}
-            <span className="font-mono text-foreground">{bundle.manifestHash}</span>
-          </p>
-          <div className="mt-3 overflow-x-auto rounded-md border border-border/70">
-            <table className="min-w-[640px] w-full text-left text-[11px]">
-              <thead className="text-muted-foreground">
-                <tr>
-                  <th className="p-2 font-medium">Artefact</th>
-                  <th className="p-2 font-medium">Kind</th>
-                  <th className="p-2 font-medium">Size</th>
-                  <th className="p-2 font-medium">SHA-256</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bundle.artifacts.map((entry) => (
-                  <tr key={entry.path} className="border-t border-border">
-                    <td className="p-2 font-mono">{entry.path}</td>
-                    <td className="p-2">{entry.kind}</td>
-                    <td className="p-2">{entry.bytes} B</td>
-                    <td className="p-2 font-mono text-muted-foreground">
-                      {entry.sha256.slice(0, 16)}…
-                    </td>
+            <div className="mt-3 overflow-x-auto rounded-md border border-border/70">
+              <table className="min-w-[640px] w-full text-left text-[11px]">
+                <thead className="text-muted-foreground">
+                  <tr>
+                    <th className="p-2 font-medium">Artefact</th>
+                    <th className="p-2 font-medium">Kind</th>
+                    <th className="p-2 font-medium">Size</th>
+                    <th className="p-2 font-medium">SHA-256</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {bundle.artifacts.map((entry) => (
+                    <tr key={entry.path} className="border-t border-border">
+                      <td className="p-2 font-mono">{entry.path}</td>
+                      <td className="p-2">{entry.kind}</td>
+                      <td className="p-2">{entry.bytes} B</td>
+                      <td className="p-2 font-mono text-muted-foreground">
+                        {entry.sha256.slice(0, 16)}…
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </EngineeringWorkspaceGuard>
       </div>
     </main>
