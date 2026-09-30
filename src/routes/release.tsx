@@ -66,7 +66,7 @@ function ReleaseCentre() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <Button asChild variant="ghost" size="sm">
           <Link to="/">
             <ArrowLeft />
@@ -79,7 +79,7 @@ function ReleaseCentre() {
             {bundle.design ? `Design ${bundle.design}` : "No design selected"} · {bundle.generator}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0 max-sm:w-full">
           <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
             Version
             <input
@@ -157,7 +157,7 @@ function ReleaseCentre() {
             Manifest checksum{" "}
             <span className="font-mono text-foreground">{bundle.manifestHash}</span>
           </p>
-          <table className="mt-3 w-full text-left text-[11px]">
+          <div className="mt-3 overflow-x-auto rounded-md border border-border/70">\n            <table className="min-w-[640px] w-full text-left text-[11px]">
             <thead className="text-muted-foreground">
               <tr>
                 <th className="p-2 font-medium">Artefact</th>
