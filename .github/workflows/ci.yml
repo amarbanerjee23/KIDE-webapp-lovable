@@ -34,6 +34,7 @@ jobs:
       - name: Enforce client-compute and self-hosted architecture
         shell: bash
         run: |
+          set -euo pipefail
           test -f docs/architecture/client-compute-reference.md
           test ! -e services/synthesis-worker
           test ! -e services/jena-fuseki
@@ -43,7 +44,14 @@ jobs:
           test ! -e src/integrations/supabase
           ! grep -q '"@supabase/supabase-js"' package.json
 
-          forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\\.xml|requirements\\.txt)$|\\.(py|java)$(git grep -n 'createServerFn' -- src/lib/kide || true)"
+          forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' | grep -v '^knowledge/python-service/' || true)"
+          if [[ -n "$forbidden_runtime" ]]; then
+            echo "Tracked non-TypeScript runtimes are only allowed in knowledge/python-service."
+            printf '%s\n' "$forbidden_runtime"
+            exit 1
+          fi
+
+          kide_server_compute="$(git grep -n 'createServerFn' -- src/lib/kide || true)"
           if [[ -n "$kide_server_compute" ]]; then
             echo "KIDE domain computation must stay in the browser."
             printf '%s\n' "$kide_server_compute"
