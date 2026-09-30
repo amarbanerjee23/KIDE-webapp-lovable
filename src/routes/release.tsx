@@ -148,7 +148,7 @@ function ReleaseCentre() {
               </p>
             )}
           </section>
-  
+
           <section className="rounded-lg border border-border bg-card p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Package className="size-4 text-primary" />
