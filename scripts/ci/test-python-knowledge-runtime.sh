@@ -7,7 +7,6 @@ export KIDE_ARCADEDB_PASSWORD="$password"
 cleanup() {
   docker compose -f compose.knowledge-python.yaml down -v --remove-orphans >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
 cleanup
 
 docker compose -f compose.knowledge-python.yaml up -d --build
@@ -28,7 +27,8 @@ fi
 
 service_ready=0
 for _ in $(seq 1 90); do
-  if curl --silent --fail http://127.0.0.1:8090/health >/tmp/kide-knowledge-health.json; then
+  if curl --silent --fail http://127.0.0.1:8090/health >/tmp/kide-knowledge-health.json &&
+    grep -q '"arcadeDbReady":true' /tmp/kide-knowledge-health.json; then
     service_ready=1
     break
   fi
@@ -39,11 +39,6 @@ if [[ "$service_ready" != "1" ]]; then
   docker compose -f compose.knowledge-python.yaml logs knowledge-python || true
   exit 1
 fi
-
-grep -q '"arcadeDbReady":true' /tmp/kide-knowledge-health.json || {
-  cat /tmp/kide-knowledge-health.json
-  exit 1
-}
 
 cat >/tmp/kide-complete-projection.json <<'JSON'
 {
@@ -123,3 +118,5 @@ done
 grep -q '"semanticId":"device-robot"' /tmp/kide-devices-after-restart.json
 
 echo "Python + ArcadeDB live semantic knowledge integration validated."
+
+cleanup
