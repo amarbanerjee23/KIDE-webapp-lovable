@@ -43,9 +43,9 @@ jobs:
           test ! -e src/integrations/supabase
           ! grep -q '"@supabase/supabase-js"' package.json
 
-          forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' || true)"
+          forbidden_runtime="$(git ls-files | grep -E '(^|/)(pom\.xml|requirements\.txt)$|\.(py|java)$' | grep -v '^knowledge/python-service/' || true)"
           if [[ -n "$forbidden_runtime" ]]; then
-            echo "Tracked non-TypeScript application runtimes are not allowed."
+            echo "Tracked non-TypeScript runtimes are only allowed in knowledge/python-service."
             printf '%s\n' "$forbidden_runtime"
             exit 1
           fi
@@ -119,6 +119,57 @@ jobs:
       - name: Validate Knowledge Fabric contracts
         run: bash scripts/ci/test-knowledge-fabric.sh
 
+      - name: Validate optional Python semantic knowledge service
+        run: bash scripts/ci/test-python-knowledge-service.sh
+
+  python-semantic-knowledge:
+    name: Python ontology + ArcadeDB semantic runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: knowledge/python-service/pyproject.toml
+
+      - name: Install semantic service and test dependencies
+        working-directory: knowledge/python-service
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+
+      - name: Compile all Python sources
+        run: python -m compileall -q knowledge/python-service/app knowledge/python-service/tests
+
+      - name: Run Python semantic unit and failure-path suite
+        working-directory: knowledge/python-service
+        run: pytest -q
+
+      - name: Validate Python knowledge deployment contract
+        run: bash scripts/ci/test-python-knowledge-service.sh
+
+      - name: Run live ArcadeDB persistence and traversal integration
+        run: bash scripts/ci/test-python-knowledge-runtime.sh
+
+      - name: Capture Python/ArcadeDB diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          KIDE_ARCADEDB_PASSWORD=ci-arcadedb-knowledge-password \
+            docker compose -f compose.knowledge-python.yaml ps || true
+          KIDE_ARCADEDB_PASSWORD=ci-arcadedb-knowledge-password \
+            docker compose -f compose.knowledge-python.yaml logs --no-color || true
+
+      - name: Stop Python knowledge stack
+        if: always()
+        shell: bash
+        run: |
+          KIDE_ARCADEDB_PASSWORD=ci-arcadedb-knowledge-password \
+            docker compose -f compose.knowledge-python.yaml down -v --remove-orphans || true
+
   knowledge-graph-runtime:
     name: JanusGraph HTTP runtime contract
     runs-on: ubuntu-24.04
@@ -182,7 +233,7 @@ jobs:
 
   production-container-e2e:
     name: Production container + Better Auth + browser E2E
-    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime]
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
