@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, Check, CircleAlert, Download, Package, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { buildAssurance } from "@/lib/kide/assurance";
 import { buildRelease } from "@/lib/kide/release";
 import { synthesize } from "@/lib/kide/synthesis";
@@ -96,6 +97,7 @@ function ReleaseCentre() {
       </header>
 
       <div className="mx-auto w-full max-w-6xl space-y-5 p-5">
+        <EngineeringWorkspaceGuard>
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <ShieldCheck className="size-4 text-primary" />
@@ -181,6 +183,7 @@ function ReleaseCentre() {
             </table>
           </div>
         </section>
+        </EngineeringWorkspaceGuard>
       </div>
     </main>
   );
