@@ -6,9 +6,8 @@ services:
   arcadedb:
     image: arcadedata/arcadedb:26.9.1
     environment:
-      JAVA_OPTS: >-
+      ARCADEDB_SETTINGS: >-
         -Darcadedb.server.rootPassword=${KIDE_ARCADEDB_PASSWORD:?KIDE_ARCADEDB_PASSWORD is required}
-        -Darcadedb.server.defaultDatabases=kide[root]
     ports:
       - "2480:2480"
     volumes:
