@@ -40,7 +40,7 @@ function Qualification() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <Button asChild variant="ghost" size="sm">
           <Link to="/">
             <ArrowLeft />
@@ -53,7 +53,7 @@ function Qualification() {
             {qualification.qualificationVersion} · generator {qualification.generator}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0 max-sm:w-full">
           <Button asChild variant="ghost" size="sm">
             <Link to="/synthesis">Synthesis review</Link>
           </Button>
@@ -113,7 +113,9 @@ function Qualification() {
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">{rule.detail}</p>
                     <p className="mt-1 text-[11px] text-muted-foreground/80">{rule.rationale}</p>
-                    <p className="mt-1 text-[10px] italic text-muted-foreground/70">{rule.source}</p>
+                    <p className="mt-1 text-[10px] italic text-muted-foreground/70">
+                      {rule.source}
+                    </p>
                     {rule.elements.length > 0 ? (
                       <ul className="mt-1.5 flex flex-wrap gap-1">
                         {rule.elements.map((element) => (
@@ -149,10 +151,14 @@ function Qualification() {
                   <StatusIcon status={entry.status} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[10px] text-muted-foreground">{entry.id}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {entry.id}
+                      </span>
                       <h3 className="text-sm font-medium">{entry.title}</h3>
                       <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                        {entry.provenance === "eclipse-reference" ? "repository models" : "derived variant"}
+                        {entry.provenance === "eclipse-reference"
+                          ? "repository models"
+                          : "derived variant"}
                       </span>
                     </div>
                     <p className="mt-0.5 text-[11px] text-muted-foreground/80">{entry.source}</p>
@@ -183,7 +189,9 @@ function Qualification() {
                 <StatusIcon status={property.status} />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-muted-foreground">{property.id}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {property.id}
+                    </span>
                     <h3 className="text-sm font-medium">{property.title}</h3>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">{property.detail}</p>

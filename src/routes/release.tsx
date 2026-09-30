@@ -66,7 +66,7 @@ function ReleaseCentre() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <Button asChild variant="ghost" size="sm">
           <Link to="/">
             <ArrowLeft />
@@ -79,7 +79,7 @@ function ReleaseCentre() {
             {bundle.design ? `Design ${bundle.design}` : "No design selected"} · {bundle.generator}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0 max-sm:w-full">
           <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
             Version
             <input
@@ -129,8 +129,7 @@ function ReleaseCentre() {
                   ? `${approval?.candidateName} approved ${new Date(approval!.approvedAt).toLocaleString()}.`
                   : approval
                     ? "The models changed after approval, so the approval no longer applies. Review and approve again."
-                    : "Approve a design in the synthesis review before releasing."}
-                {" "}
+                    : "Approve a design in the synthesis review before releasing."}{" "}
                 <Link to="/synthesis" className="text-primary underline">
                   Open synthesis review
                 </Link>
@@ -157,28 +156,30 @@ function ReleaseCentre() {
             Manifest checksum{" "}
             <span className="font-mono text-foreground">{bundle.manifestHash}</span>
           </p>
-          <table className="mt-3 w-full text-left text-[11px]">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="p-2 font-medium">Artefact</th>
-                <th className="p-2 font-medium">Kind</th>
-                <th className="p-2 font-medium">Size</th>
-                <th className="p-2 font-medium">SHA-256</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bundle.artifacts.map((entry) => (
-                <tr key={entry.path} className="border-t border-border">
-                  <td className="p-2 font-mono">{entry.path}</td>
-                  <td className="p-2">{entry.kind}</td>
-                  <td className="p-2">{entry.bytes} B</td>
-                  <td className="p-2 font-mono text-muted-foreground">
-                    {entry.sha256.slice(0, 16)}…
-                  </td>
+          <div className="mt-3 overflow-x-auto rounded-md border border-border/70">
+            <table className="min-w-[640px] w-full text-left text-[11px]">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="p-2 font-medium">Artefact</th>
+                  <th className="p-2 font-medium">Kind</th>
+                  <th className="p-2 font-medium">Size</th>
+                  <th className="p-2 font-medium">SHA-256</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bundle.artifacts.map((entry) => (
+                  <tr key={entry.path} className="border-t border-border">
+                    <td className="p-2 font-mono">{entry.path}</td>
+                    <td className="p-2">{entry.kind}</td>
+                    <td className="p-2">{entry.bytes} B</td>
+                    <td className="p-2 font-mono text-muted-foreground">
+                      {entry.sha256.slice(0, 16)}…
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </main>
