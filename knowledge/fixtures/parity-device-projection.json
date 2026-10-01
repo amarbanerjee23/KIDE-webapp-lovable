@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ontologyIri": "https://kide.dev/ontology/capability",
+  "scope": "global",
+  "generatedAt": "2026-10-01T00:00:00Z",
+  "nodes": [
+    {"id":"urn:kide:fixture:device:robot","kind":"Device","label":"Parity Robot","scope":"global","properties":{"vendor":"KIDE","model":"Parity-1"}},
+    {"id":"urn:kide:fixture:capability:move","kind":"Capability","label":"Move","scope":"global","properties":{"version":"1"}},
+    {"id":"urn:kide:fixture:interface:motion","kind":"Interface","label":"Motion","scope":"global","properties":{"protocol":"test"}},
+    {"id":"urn:kide:fixture:behavior:move","kind":"Behavior","label":"Move behavior","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:context:cell","kind":"Context","label":"Cell","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:precondition:ready","kind":"Precondition","label":"Ready","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:postcondition:moved","kind":"Postcondition","label":"Moved","scope":"global","properties":{}}
+  ],
+  "edges": [
+    {"id":"urn:kide:fixture:edge:device-cap","kind":"hasCapability","from":"urn:kide:fixture:device:robot","to":"urn:kide:fixture:capability:move","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:edge:cap-iface","kind":"hasInterface","from":"urn:kide:fixture:capability:move","to":"urn:kide:fixture:interface:motion","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:edge:cap-behavior","kind":"hasBehavior","from":"urn:kide:fixture:capability:move","to":"urn:kide:fixture:behavior:move","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:edge:cap-context","kind":"hasContext","from":"urn:kide:fixture:capability:move","to":"urn:kide:fixture:context:cell","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:edge:cap-pre","kind":"hasPrecondition","from":"urn:kide:fixture:capability:move","to":"urn:kide:fixture:precondition:ready","scope":"global","properties":{}},
+    {"id":"urn:kide:fixture:edge:cap-post","kind":"hasPostcondition","from":"urn:kide:fixture:capability:move","to":"urn:kide:fixture:postcondition:moved","scope":"global","properties":{}}
+  ],
+  "diagnostics": []
+}

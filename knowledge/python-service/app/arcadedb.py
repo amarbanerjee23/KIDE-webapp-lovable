@@ -86,6 +86,8 @@ class ArcadeDB:
             "CREATE PROPERTY SemanticRelation.kind IF NOT EXISTS STRING",
             "CREATE PROPERTY SemanticRelation.scope IF NOT EXISTS STRING",
             "CREATE PROPERTY SemanticRelation.projectId IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.fromSemanticId IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.toSemanticId IF NOT EXISTS STRING",
             "CREATE PROPERTY SemanticRelation.propertiesJson IF NOT EXISTS STRING",
         ]
         for command in commands:
@@ -160,6 +162,8 @@ class ArcadeDB:
                 "propertiesJson": json.dumps(edge.properties, separators=(",", ":")),
                 "fromId": edge.from_,
                 "toId": edge.to,
+                "fromSemanticId": edge.from_,
+                "toSemanticId": edge.to,
             }
             self._db_request(
                 "command",
@@ -169,7 +173,8 @@ class ArcadeDB:
                     "TO (SELECT FROM KideEntity WHERE semanticId = :toId) "
                     "IF NOT EXISTS "
                     "SET semanticId = :semanticId, kind = :kind, scope = :scope, "
-                    "projectId = :projectId, propertiesJson = :propertiesJson"
+                    "projectId = :projectId, fromSemanticId = :fromSemanticId, "
+                    "toSemanticId = :toSemanticId, propertiesJson = :propertiesJson"
                 ),
                 params=params,
             )
@@ -202,6 +207,51 @@ class ArcadeDB:
                 )
             )
         return entities
+
+    def canonical_graph(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        node_result = self._db_request(
+            "query",
+            "SELECT semanticId, kind, displayName, propertiesJson FROM KideEntity",
+        )
+        edge_result = self._db_request(
+            "query",
+            (
+                "SELECT semanticId, kind, propertiesJson, "
+                "fromSemanticId, toSemanticId FROM SemanticRelation"
+            ),
+        )
+
+        nodes: list[dict[str, Any]] = []
+        for row in node_result.get("result", []):
+            try:
+                properties = json.loads(row.get("propertiesJson") or "{}")
+            except json.JSONDecodeError:
+                properties = {}
+            nodes.append(
+                {
+                    "semanticId": row["semanticId"],
+                    "kind": row["kind"],
+                    "displayName": row.get("displayName") or row["semanticId"],
+                    "properties": properties,
+                }
+            )
+
+        edges: list[dict[str, Any]] = []
+        for row in edge_result.get("result", []):
+            try:
+                properties = json.loads(row.get("propertiesJson") or "{}")
+            except json.JSONDecodeError:
+                properties = {}
+            edges.append(
+                {
+                    "semanticId": row["semanticId"],
+                    "kind": row["kind"],
+                    "from": row["fromSemanticId"],
+                    "to": row["toSemanticId"],
+                    "properties": properties,
+                }
+            )
+        return nodes, edges
 
     def devices_for_capability(self, capability_id: str, limit: int = 100) -> list[GraphEntity]:
         result = self._db_request(
