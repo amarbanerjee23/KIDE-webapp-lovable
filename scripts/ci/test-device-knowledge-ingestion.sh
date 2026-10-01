@@ -76,6 +76,14 @@ grep -q '"semanticId":"urn:kide:device:example-robotics:r1"' /tmp/kide-ingested-
 grep -q '"sourceLicense":"CC-BY-4.0"' /tmp/kide-ingested-devices.json
 grep -q '"confidence":0.95' /tmp/kide-ingested-devices.json
 
+curl --fail-with-body --silent   -H 'content-type: application/json'   --data-binary @/tmp/kide-trusted-device.json   http://127.0.0.1:8090/v1/ingestion/commit >/tmp/kide-repeat-commit.json
+
+repeat_count="$(curl --fail-with-body --silent http://127.0.0.1:8090/v1/devices | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')"
+[[ "$repeat_count" == "1" ]] || {
+  echo "Repeated ingestion created a duplicate device; expected one, got $repeat_count." >&2
+  exit 1
+}
+
 python3 - <<'PY'
 import json
 payload=json.load(open('/tmp/kide-trusted-device.json'))
