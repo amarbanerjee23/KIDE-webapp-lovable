@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Query
 
 from .arcadedb import ArcadeDB, ArcadeDBError
 from .canonical import canonical_snapshot, semantic_fingerprint
+from .ingestion import IngestionDecision, IngestionRequest, normalize
 from .models import GraphEntity, IngestResult, KnowledgeProjection
 from .ontology import SemanticValidationError, validate_ontology_assets, validate_projection
 
@@ -75,3 +76,30 @@ def canonical_graph_snapshot() -> dict[str, object]:
         "snapshot": snapshot,
         "fingerprint": semantic_fingerprint(snapshot),
     }
+
+
+@app.post("/v1/ingestion/preview", response_model=IngestionDecision)
+def preview_ingestion(request: IngestionRequest) -> IngestionDecision:
+    return normalize(request)
+
+
+@app.post("/v1/ingestion/commit", response_model=IngestResult)
+def commit_ingestion(request: IngestionRequest) -> IngestResult:
+    decision = normalize(request)
+    if decision.status != "accepted":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Device knowledge is quarantined and cannot be promoted.",
+                "reasons": decision.reasons,
+            },
+        )
+    try:
+        node_count, edge_count = db.replace_projection(decision.projection)
+        return IngestResult(
+            nodeCount=node_count,
+            edgeCount=edge_count,
+            validationWarnings=[],
+        )
+    except ArcadeDBError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
