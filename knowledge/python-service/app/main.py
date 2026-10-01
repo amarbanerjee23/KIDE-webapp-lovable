@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException, Query
 
 from .arcadedb import ArcadeDB, ArcadeDBError
+from .canonical import canonical_snapshot, semantic_fingerprint
 from .models import GraphEntity, IngestResult, KnowledgeProjection
 from .ontology import SemanticValidationError, validate_ontology_assets, validate_projection
 
@@ -64,3 +65,13 @@ def devices_for_capability(
     limit: int = Query(default=100, ge=1, le=1000),
 ) -> list[GraphEntity]:
     return db.devices_for_capability(capability_id, limit)
+
+
+@app.get("/v1/canonical-snapshot")
+def canonical_graph_snapshot() -> dict[str, object]:
+    nodes, edges = db.canonical_graph()
+    snapshot = canonical_snapshot(nodes, edges)
+    return {
+        "snapshot": snapshot,
+        "fingerprint": semantic_fingerprint(snapshot),
+    }
