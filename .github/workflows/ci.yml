@@ -170,6 +170,47 @@ jobs:
           KIDE_ARCADEDB_PASSWORD=ci-arcadedb-knowledge-password \
             docker compose -f compose.knowledge-python.yaml down -v --remove-orphans || true
 
+  knowledge-backend-parity:
+    name: JanusGraph ↔ ArcadeDB semantic parity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: knowledge/python-service/pyproject.toml
+
+      - name: Install semantic parity tooling
+        working-directory: knowledge/python-service
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+
+      - name: Compile parity tooling
+        run: python -m compileall -q knowledge/python-service/app knowledge/python-service/tools
+
+      - name: Prove JanusGraph and ArcadeDB semantic fingerprint parity
+        run: bash scripts/ci/test-knowledge-backend-parity.sh
+
+      - name: Capture parity diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          docker logs kide-janusgraph-parity || true
+          KIDE_ARCADEDB_PASSWORD=ci-knowledge-parity-password \
+            docker compose -f compose.knowledge-python.yaml logs --no-color || true
+
+      - name: Stop parity graph stacks
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f kide-janusgraph-parity >/dev/null 2>&1 || true
+          KIDE_ARCADEDB_PASSWORD=ci-knowledge-parity-password \
+            docker compose -f compose.knowledge-python.yaml down -v --remove-orphans || true
+
   knowledge-graph-runtime:
     name: JanusGraph HTTP runtime contract
     runs-on: ubuntu-24.04
@@ -233,7 +274,7 @@ jobs:
 
   production-container-e2e:
     name: Production container + Better Auth + browser E2E
-    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge]
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
