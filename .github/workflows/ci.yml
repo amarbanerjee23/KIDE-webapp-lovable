@@ -154,6 +154,9 @@ jobs:
       - name: Run live ArcadeDB persistence and traversal integration
         run: bash scripts/ci/test-python-knowledge-runtime.sh
 
+      - name: Run live device ingestion, provenance and quarantine integration
+        run: bash scripts/ci/test-device-knowledge-ingestion.sh
+
       - name: Capture Python/ArcadeDB diagnostics
         if: failure()
         shell: bash
