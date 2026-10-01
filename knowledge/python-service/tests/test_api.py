@@ -95,3 +95,67 @@ def test_invalid_projection_is_rejected_before_storage(monkeypatch) -> None:
         response = client.post("/v1/projections", json=payload)
     assert response.status_code == 422
     assert fake.projection is None
+
+
+def trusted_ingestion_payload():
+    return {
+        "source": {
+            "uri": "https://manufacturer.example/devices/r1",
+            "publisher": "Example Robotics",
+            "license": "CC-BY-4.0",
+            "retrievedAt": "2026-10-01T00:00:00Z",
+            "sourceType": "manufacturer",
+            "version": "1.0",
+        },
+        "device": {
+            "manufacturer": "Example Robotics",
+            "model": "R1",
+            "label": "Example R1",
+            "capabilities": [
+                {
+                    "id": "move",
+                    "label": "Move",
+                    "interface": "Motion",
+                    "behavior": "Translate",
+                    "context": "IndoorCell",
+                    "preconditions": ["Ready"],
+                    "postconditions": ["Moved"],
+                }
+            ],
+        },
+        "confidence": 0.95,
+    }
+
+
+def test_ingestion_preview_does_not_write(monkeypatch) -> None:
+    fake = FakeDb()
+    monkeypatch.setattr(main, "db", fake)
+    monkeypatch.setattr(main, "validate_ontology_assets", lambda: [])
+    with TestClient(main.app) as client:
+        response = client.post("/v1/ingestion/preview", json=trusted_ingestion_payload())
+    assert response.status_code == 200
+    assert response.json()["status"] == "accepted"
+    assert fake.projection is None
+
+
+def test_ingestion_commit_writes_only_accepted_knowledge(monkeypatch) -> None:
+    fake = FakeDb()
+    monkeypatch.setattr(main, "db", fake)
+    monkeypatch.setattr(main, "validate_ontology_assets", lambda: [])
+    with TestClient(main.app) as client:
+        response = client.post("/v1/ingestion/commit", json=trusted_ingestion_payload())
+    assert response.status_code == 200
+    assert fake.projection is not None
+
+
+def test_ingestion_commit_rejects_quarantined_knowledge(monkeypatch) -> None:
+    fake = FakeDb()
+    monkeypatch.setattr(main, "db", fake)
+    monkeypatch.setattr(main, "validate_ontology_assets", lambda: [])
+    payload = trusted_ingestion_payload()
+    payload["confidence"] = 0.2
+    with TestClient(main.app) as client:
+        response = client.post("/v1/ingestion/commit", json=payload)
+    assert response.status_code == 422
+    assert "quarantined" in response.json()["detail"]["message"].lower()
+    assert fake.projection is None
