@@ -203,6 +203,52 @@ class ArcadeDB:
             )
         return entities
 
+    def canonical_graph(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        node_result = self._db_request(
+            "query",
+            "SELECT semanticId, kind, displayName, propertiesJson FROM KideEntity",
+        )
+        edge_result = self._db_request(
+            "query",
+            (
+                "SELECT semanticId, kind, propertiesJson, "
+                "out.semanticId AS fromId, in.semanticId AS toId "
+                "FROM SemanticRelation"
+            ),
+        )
+
+        nodes: list[dict[str, Any]] = []
+        for row in node_result.get("result", []):
+            try:
+                properties = json.loads(row.get("propertiesJson") or "{}")
+            except json.JSONDecodeError:
+                properties = {}
+            nodes.append(
+                {
+                    "semanticId": row["semanticId"],
+                    "kind": row["kind"],
+                    "displayName": row.get("displayName") or row["semanticId"],
+                    "properties": properties,
+                }
+            )
+
+        edges: list[dict[str, Any]] = []
+        for row in edge_result.get("result", []):
+            try:
+                properties = json.loads(row.get("propertiesJson") or "{}")
+            except json.JSONDecodeError:
+                properties = {}
+            edges.append(
+                {
+                    "semanticId": row["semanticId"],
+                    "kind": row["kind"],
+                    "from": row["fromId"],
+                    "to": row["toId"],
+                    "properties": properties,
+                }
+            )
+        return nodes, edges
+
     def devices_for_capability(self, capability_id: str, limit: int = 100) -> list[GraphEntity]:
         result = self._db_request(
             "query",
