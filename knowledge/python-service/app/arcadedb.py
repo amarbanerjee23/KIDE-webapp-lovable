@@ -86,6 +86,8 @@ class ArcadeDB:
             "CREATE PROPERTY SemanticRelation.kind IF NOT EXISTS STRING",
             "CREATE PROPERTY SemanticRelation.scope IF NOT EXISTS STRING",
             "CREATE PROPERTY SemanticRelation.projectId IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.fromSemanticId IF NOT EXISTS STRING",
+            "CREATE PROPERTY SemanticRelation.toSemanticId IF NOT EXISTS STRING",
             "CREATE PROPERTY SemanticRelation.propertiesJson IF NOT EXISTS STRING",
         ]
         for command in commands:
@@ -160,6 +162,8 @@ class ArcadeDB:
                 "propertiesJson": json.dumps(edge.properties, separators=(",", ":")),
                 "fromId": edge.from_,
                 "toId": edge.to,
+                "fromSemanticId": edge.from_,
+                "toSemanticId": edge.to,
             }
             self._db_request(
                 "command",
@@ -169,7 +173,8 @@ class ArcadeDB:
                     "TO (SELECT FROM KideEntity WHERE semanticId = :toId) "
                     "IF NOT EXISTS "
                     "SET semanticId = :semanticId, kind = :kind, scope = :scope, "
-                    "projectId = :projectId, propertiesJson = :propertiesJson"
+                    "projectId = :projectId, fromSemanticId = :fromSemanticId, "
+                    "toSemanticId = :toSemanticId, propertiesJson = :propertiesJson"
                 ),
                 params=params,
             )
@@ -212,8 +217,7 @@ class ArcadeDB:
             "query",
             (
                 "SELECT semanticId, kind, propertiesJson, "
-                "out.semanticId AS fromId, in.semanticId AS toId "
-                "FROM SemanticRelation"
+                "fromSemanticId, toSemanticId FROM SemanticRelation"
             ),
         )
 
@@ -242,8 +246,8 @@ class ArcadeDB:
                 {
                     "semanticId": row["semanticId"],
                     "kind": row["kind"],
-                    "from": row["fromId"],
-                    "to": row["toId"],
+                    "from": row["fromSemanticId"],
+                    "to": row["toSemanticId"],
                     "properties": properties,
                 }
             )
