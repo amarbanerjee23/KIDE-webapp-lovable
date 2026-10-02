@@ -6,10 +6,7 @@ describe("JanusGraph GraphSON normalization", () => {
     expect(
       unwrapGraphson({
         "@type": "g:List",
-        "@value": [
-          { "@type": "g:Int64", "@value": 7 },
-          "value",
-        ],
+        "@value": [{ "@type": "g:Int64", "@value": 7 }, "value"],
       }),
     ).toEqual([7, "value"]);
   });
