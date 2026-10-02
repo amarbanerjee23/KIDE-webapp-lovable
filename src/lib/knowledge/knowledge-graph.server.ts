@@ -24,10 +24,7 @@ export function unwrapGraphson(value: unknown): unknown {
     if (type.endsWith(":Map") && Array.isArray(raw)) {
       const entries: [string, unknown][] = [];
       for (let index = 0; index < raw.length; index += 2) {
-        entries.push([
-          String(unwrapGraphson(raw[index])),
-          unwrapGraphson(raw[index + 1]),
-        ]);
+        entries.push([String(unwrapGraphson(raw[index])), unwrapGraphson(raw[index + 1])]);
       }
       return Object.fromEntries(entries);
     }
