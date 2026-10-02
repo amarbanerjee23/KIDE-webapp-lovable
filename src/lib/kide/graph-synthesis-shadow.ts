@@ -1,11 +1,5 @@
-import type {
-  ActivityFileNode,
-  Workspace,
-} from "@/lib/dsl";
-import type {
-  GlobalDeviceCandidate,
-  GlobalKnowledgeSnapshot,
-} from "@/lib/knowledge/contracts";
+import type { ActivityFileNode, Workspace } from "@/lib/dsl";
+import type { GlobalDeviceCandidate, GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 import type { SynthesisReport } from "./synthesis";
 import { sha256 } from "./sha256";
 
