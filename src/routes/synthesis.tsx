@@ -45,9 +45,7 @@ function SynthesisReview() {
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const report = useMemo(() => synthesize(workspace), [workspace]);
-  const graphEnabled = graphAssistanceEnabled(
-    import.meta.env.VITE_KIDE_GRAPH_ASSISTED_SYNTHESIS,
-  );
+  const graphEnabled = graphAssistanceEnabled(import.meta.env.VITE_KIDE_GRAPH_ASSISTED_SYNTHESIS);
   const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
   const [graphError, setGraphError] = useState<string | null>(null);
 
@@ -67,7 +65,9 @@ function SynthesisReview() {
       .catch((error: unknown) => {
         if (!active) return;
         setGraphSnapshot(null);
-        setGraphError(error instanceof Error ? error.message : "Trusted graph knowledge is unavailable.");
+        setGraphError(
+          error instanceof Error ? error.message : "Trusted graph knowledge is unavailable.",
+        );
       });
 
     return () => {
@@ -76,7 +76,14 @@ function SynthesisReview() {
   }, [graphEnabled]);
 
   const graphAssistance = useMemo(
-    () => evaluateGraphAssistance(workspace, report, graphSnapshot, graphEnabled, graphError ?? undefined),
+    () =>
+      evaluateGraphAssistance(
+        workspace,
+        report,
+        graphSnapshot,
+        graphEnabled,
+        graphError ?? undefined,
+      ),
     [workspace, report, graphSnapshot, graphEnabled, graphError],
   );
   const { selectedId: storedId } = useApprovalState();
@@ -219,8 +226,8 @@ function SynthesisReview() {
                             key={`${device.semanticId}:${device.capabilityId}`}
                             className="text-[11px] text-muted-foreground"
                           >
-                            <span className="font-medium text-foreground">{device.label}</span>{" "}
-                            · confidence {device.confidence.toFixed(2)} · source{" "}
+                            <span className="font-medium text-foreground">{device.label}</span> ·
+                            confidence {device.confidence.toFixed(2)} · source{" "}
                             <span className="font-mono">
                               {device.sourceFingerprint.slice(0, 12)}…
                             </span>
