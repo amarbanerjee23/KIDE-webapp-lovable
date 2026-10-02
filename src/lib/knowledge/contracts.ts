@@ -116,3 +116,34 @@ export interface KnowledgeGraphSummary {
   warningCount: number;
   byKind: Partial<Record<KnowledgeNodeKind, number>>;
 }
+
+
+export interface GlobalCapabilityContract {
+  semanticId: string;
+  label: string;
+  interfaceIds: string[];
+  behaviorIds: string[];
+  contextIds: string[];
+  preconditionIds: string[];
+  postconditionIds: string[];
+}
+
+export interface GlobalDeviceCandidate {
+  semanticId: string;
+  label: string;
+  manufacturer: string | null;
+  model: string | null;
+  sourceUri: string;
+  sourceLicense: string;
+  sourceVersion: string | null;
+  retrievedAt: string;
+  confidence: number;
+  sourceFingerprint: string;
+  capabilities: GlobalCapabilityContract[];
+}
+
+export interface GlobalKnowledgeSnapshot {
+  backend: "janusgraph";
+  generatedAt: string;
+  devices: GlobalDeviceCandidate[];
+}
