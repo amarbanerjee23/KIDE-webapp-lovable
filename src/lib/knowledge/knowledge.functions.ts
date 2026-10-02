@@ -5,6 +5,7 @@ import type { KnowledgeProjection } from "@/lib/knowledge/contracts";
 import {
   knowledgeGraphStatus,
   pingKnowledgeGraph,
+  readTrustedGlobalKnowledgeSnapshot,
   replaceProjectKnowledgeProjection,
 } from "@/lib/knowledge/knowledge-graph.server";
 
@@ -82,3 +83,8 @@ export const publishProjectKnowledgeGraph = createServerFn({ method: "POST" })
     const result = await replaceProjectKnowledgeProjection(data);
     return { ok: true as const, ...result };
   });
+
+
+export const getTrustedGlobalKnowledgeSnapshot = createServerFn({ method: "GET" })
+  .middleware([requireKideAuth])
+  .handler(async () => readTrustedGlobalKnowledgeSnapshot());
