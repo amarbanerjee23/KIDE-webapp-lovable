@@ -69,7 +69,6 @@ connect(cap, behavior, "e2", "hasBehavior")
 connect(cap, context, "e3", "hasContext")
 connect(cap, pre, "e4", "hasPrecondition")
 connect(cap, post, "e5", "hasPostcondition")
-g.tx().commit()
 "seeded"
 '
 
