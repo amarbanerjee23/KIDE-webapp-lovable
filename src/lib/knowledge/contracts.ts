@@ -117,7 +117,6 @@ export interface KnowledgeGraphSummary {
   byKind: Partial<Record<KnowledgeNodeKind, number>>;
 }
 
-
 export interface GlobalCapabilityContract {
   semanticId: string;
   label: string;
