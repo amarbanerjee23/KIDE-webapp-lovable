@@ -35,15 +35,17 @@ function snapshot(): GlobalKnowledgeSnapshot {
       retrievedAt: "2026-10-02T00:00:00.000Z",
       confidence: 0.97,
       sourceFingerprint: `assist-source-${index}`,
-      capabilities: [{
-        semanticId: `urn:assist:capability:${index}`,
-        label: name,
-        interfaceIds: [`urn:assist:interface:${index}`],
-        behaviorIds: [`urn:assist:behavior:${index}`],
-        contextIds: [`urn:assist:context:${index}`],
-        preconditionIds: [`urn:assist:pre:${index}`],
-        postconditionIds: [`urn:assist:post:${index}`],
-      }],
+      capabilities: [
+        {
+          semanticId: `urn:assist:capability:${index}`,
+          label: name,
+          interfaceIds: [`urn:assist:interface:${index}`],
+          behaviorIds: [`urn:assist:behavior:${index}`],
+          contextIds: [`urn:assist:context:${index}`],
+          preconditionIds: [`urn:assist:pre:${index}`],
+          postconditionIds: [`urn:assist:post:${index}`],
+        },
+      ],
     })),
   };
 }
