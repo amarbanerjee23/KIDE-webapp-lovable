@@ -11,6 +11,11 @@ export interface Approval {
   candidateName: string;
   fingerprint: string;
   approvedAt: string;
+  graphAssistance?: {
+    graphSnapshotFingerprint: string;
+    baselineSynthesisFingerprint: string;
+    sourceFingerprints: string[];
+  };
 }
 
 let selectedId: string | null = null;
