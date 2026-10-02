@@ -1,7 +1,10 @@
 import type { Workspace } from "@/lib/dsl";
 import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 import { buildAssurance } from "./assurance";
-import { assessGraphSynthesisShadow, type GraphSynthesisShadowReport } from "./graph-synthesis-shadow";
+import {
+  assessGraphSynthesisShadow,
+  type GraphSynthesisShadowReport,
+} from "./graph-synthesis-shadow";
 import { buildRelease } from "./release";
 import { synthesize } from "./synthesis";
 
@@ -58,10 +61,6 @@ export function qualifyGraphShadowCase(
     qualificationStable,
     assuranceStable,
     releaseStable,
-    passed:
-      shadow.applied === false &&
-      qualificationStable &&
-      assuranceStable &&
-      releaseStable,
+    passed: shadow.applied === false && qualificationStable && assuranceStable && releaseStable,
   };
 }
