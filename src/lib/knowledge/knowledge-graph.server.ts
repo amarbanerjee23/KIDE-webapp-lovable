@@ -12,6 +12,34 @@ function configuredEndpoint(): string | null {
   return value ? value.replace(/\/+$/, "") : null;
 }
 
+export function unwrapGraphson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(unwrapGraphson);
+  if (!value || typeof value !== "object") return value;
+
+  const record = value as Record<string, unknown>;
+  if ("@type" in record && "@value" in record) {
+    const type = String(record["@type"]);
+    const raw = record["@value"];
+
+    if (type.endsWith(":Map") && Array.isArray(raw)) {
+      const entries: [string, unknown][] = [];
+      for (let index = 0; index < raw.length; index += 2) {
+        entries.push([
+          String(unwrapGraphson(raw[index])),
+          unwrapGraphson(raw[index + 1]),
+        ]);
+      }
+      return Object.fromEntries(entries);
+    }
+
+    return unwrapGraphson(raw);
+  }
+
+  return Object.fromEntries(
+    Object.entries(record).map(([key, item]) => [key, unwrapGraphson(item)]),
+  );
+}
+
 export function knowledgeGraphStatus(): KnowledgeGraphStatus {
   const endpoint = configuredEndpoint();
   return {
@@ -51,7 +79,7 @@ async function gremlin<T>(script: string, bindings: Record<string, unknown>): Pr
       );
     }
 
-    return payload?.result?.data as T;
+    return unwrapGraphson(payload?.result?.data) as T;
   } finally {
     clearTimeout(timer);
   }
