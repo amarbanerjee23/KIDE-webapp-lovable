@@ -45,7 +45,7 @@ function SynthesisReview() {
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const report = useMemo(() => synthesize(workspace), [workspace]);
-  const graphEnabled = graphAssistanceEnabled(import.meta.env.VITE_KIDE_GRAPH_ASSISTED_SYNTHESIS);
+  const graphEnabled = graphAssistanceEnabled(import.meta.env["VITE_KIDE_GRAPH_ASSISTED_SYNTHESIS"]);
   const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
   const [graphError, setGraphError] = useState<string | null>(null);
 
