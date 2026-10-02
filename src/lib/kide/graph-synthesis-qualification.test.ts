@@ -34,15 +34,17 @@ function deviceFor(name: string, index: number): GlobalDeviceCandidate {
     retrievedAt: "2026-10-02T00:00:00.000Z",
     confidence: 0.95,
     sourceFingerprint: `fingerprint-${index}`,
-    capabilities: [{
-      semanticId: `urn:corpus:capability:${index}`,
-      label: name,
-      interfaceIds: [`urn:corpus:interface:${index}`],
-      behaviorIds: [`urn:corpus:behavior:${index}`],
-      contextIds: [`urn:corpus:context:${index}`],
-      preconditionIds: [`urn:corpus:precondition:${index}`],
-      postconditionIds: [`urn:corpus:postcondition:${index}`],
-    }],
+    capabilities: [
+      {
+        semanticId: `urn:corpus:capability:${index}`,
+        label: name,
+        interfaceIds: [`urn:corpus:interface:${index}`],
+        behaviorIds: [`urn:corpus:behavior:${index}`],
+        contextIds: [`urn:corpus:context:${index}`],
+        preconditionIds: [`urn:corpus:precondition:${index}`],
+        postconditionIds: [`urn:corpus:postcondition:${index}`],
+      },
+    ],
   };
 }
 
@@ -84,7 +86,11 @@ describe("graph synthesis qualification corpus", () => {
     const result = qualifyGraphShadowCase("irrelevant", workspace(), baseline);
     expect(result.passed).toBe(true);
     expect(result.shadow.promotionEligible).toBe(true);
-    expect(result.shadow.matches.flatMap((m) => m.matchedDevices).some((d) => d.semanticId === extra.semanticId)).toBe(false);
+    expect(
+      result.shadow.matches
+        .flatMap((m) => m.matchedDevices)
+        .some((d) => d.semanticId === extra.semanticId),
+    ).toBe(false);
   });
 
   it("fails promotion eligibility for a missing required capability but preserves baseline release", () => {
