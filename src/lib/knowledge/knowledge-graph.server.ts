@@ -1,4 +1,9 @@
-import type { GlobalDeviceCandidate, GlobalKnowledgeSnapshot, KnowledgeGraphStatus, KnowledgeProjection } from "@/lib/knowledge/contracts";
+import type {
+  GlobalDeviceCandidate,
+  GlobalKnowledgeSnapshot,
+  KnowledgeGraphStatus,
+  KnowledgeProjection,
+} from "@/lib/knowledge/contracts";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
@@ -222,13 +227,7 @@ export async function readTrustedGlobalKnowledgeSnapshot(): Promise<GlobalKnowle
     const sourceLicense = stringProperty(row["sourceLicense"]);
     const retrievedAt = stringProperty(row["retrievedAt"]);
     const sourceFingerprint = stringProperty(row["sourceFingerprint"]);
-    if (
-      confidence === null ||
-      !sourceUri ||
-      !sourceLicense ||
-      !retrievedAt ||
-      !sourceFingerprint
-    ) {
+    if (confidence === null || !sourceUri || !sourceLicense || !retrievedAt || !sourceFingerprint) {
       throw new Error("Trusted global knowledge is missing required provenance.");
     }
 
