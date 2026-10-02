@@ -302,9 +302,28 @@ jobs:
         if: always()
         run: docker rm -f kide-shadow-janus >/dev/null 2>&1 || true
 
+  graph-synthesis-qualification-corpus:
+    name: Graph synthesis qualification and release equivalence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run graph synthesis qualification corpus
+        run: bunx vitest run src/lib/kide/graph-synthesis-qualification.test.ts
+
   production-container-e2e:
     name: Production container + Better Auth + browser E2E
-    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity, graph-synthesis-shadow-runtime]
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity, graph-synthesis-shadow-runtime, graph-synthesis-qualification-corpus]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
