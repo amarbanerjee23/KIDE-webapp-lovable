@@ -275,9 +275,36 @@ jobs:
         if: always()
         run: docker rm -f kide-janusgraph-ci >/dev/null 2>&1 || true
 
+  graph-synthesis-shadow-runtime:
+    name: Trusted graph synthesis shadow runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Prove trusted JanusGraph shadow retrieval
+        run: bash scripts/ci/test-graph-synthesis-shadow-runtime.sh
+
+      - name: Capture shadow graph diagnostics
+        if: failure()
+        run: docker logs kide-shadow-janus || true
+
+      - name: Stop shadow graph
+        if: always()
+        run: docker rm -f kide-shadow-janus >/dev/null 2>&1 || true
+
   production-container-e2e:
     name: Production container + Better Auth + browser E2E
-    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity]
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity, graph-synthesis-shadow-runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
