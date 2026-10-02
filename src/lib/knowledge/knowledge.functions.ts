@@ -84,7 +84,6 @@ export const publishProjectKnowledgeGraph = createServerFn({ method: "POST" })
     return { ok: true as const, ...result };
   });
 
-
 export const getTrustedGlobalKnowledgeSnapshot = createServerFn({ method: "GET" })
   .middleware([requireKideAuth])
   .handler(async () => readTrustedGlobalKnowledgeSnapshot());
