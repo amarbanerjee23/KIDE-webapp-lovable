@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -15,6 +15,12 @@ import { Button } from "@/components/ui/button";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { approveCandidate, selectCandidate, useApprovalState } from "@/lib/kide/approval-store";
 import { synthesize, type Candidate } from "@/lib/kide/synthesis";
+import {
+  evaluateGraphAssistance,
+  graphAssistanceEnabled,
+} from "@/lib/kide/graph-synthesis-assistance";
+import { getTrustedGlobalKnowledgeSnapshot } from "@/lib/knowledge/knowledge.functions";
+import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
 const title = "Synthesis Review — KIDE";
@@ -37,7 +43,42 @@ export const Route = createFileRoute("/synthesis")({
 
 function SynthesisReview() {
   const sources = useWorkspaceSources();
-  const report = useMemo(() => synthesize(linkFrom(sources)), [sources]);
+  const workspace = useMemo(() => linkFrom(sources), [sources]);
+  const report = useMemo(() => synthesize(workspace), [workspace]);
+  const graphEnabled = graphAssistanceEnabled(
+    import.meta.env.VITE_KIDE_GRAPH_ASSISTED_SYNTHESIS,
+  );
+  const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
+  const [graphError, setGraphError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!graphEnabled) {
+      setGraphSnapshot(null);
+      setGraphError(null);
+      return;
+    }
+
+    let active = true;
+    setGraphError(null);
+    void getTrustedGlobalKnowledgeSnapshot()
+      .then((snapshot) => {
+        if (active) setGraphSnapshot(snapshot);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setGraphSnapshot(null);
+        setGraphError(error instanceof Error ? error.message : "Trusted graph knowledge is unavailable.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [graphEnabled]);
+
+  const graphAssistance = useMemo(
+    () => evaluateGraphAssistance(workspace, report, graphSnapshot, graphEnabled, graphError ?? undefined),
+    [workspace, report, graphSnapshot, graphEnabled, graphError],
+  );
   const { selectedId: storedId } = useApprovalState();
   const [localId, setLocalId] = useState<string | null>(null);
   const selectedId = localId ?? storedId;
@@ -89,6 +130,22 @@ function SynthesisReview() {
                 candidateName: selected.name,
                 fingerprint: selected.generatedMnc,
                 approvedAt: new Date().toISOString(),
+                ...(graphAssistance.status === "active" && graphAssistance.shadow
+                  ? {
+                      graphAssistance: {
+                        graphSnapshotFingerprint: graphAssistance.shadow.graphSnapshotFingerprint,
+                        baselineSynthesisFingerprint:
+                          graphAssistance.shadow.baselineSynthesisFingerprint,
+                        sourceFingerprints: [
+                          ...new Set(
+                            graphAssistance.recommendations.flatMap((entry) =>
+                              entry.devices.map((device) => device.sourceFingerprint),
+                            ),
+                          ),
+                        ].sort(),
+                      },
+                    }
+                  : {}),
               });
               toast.success(`${selected.name} design approved`, {
                 description: "Recorded with its evidence ledger and generator version.",
@@ -132,6 +189,50 @@ function SynthesisReview() {
               ))}
             </ul>
           </section>
+
+          {graphEnabled && (
+            <section className="mt-5 rounded-lg border border-border bg-card p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold">Graph-assisted device recommendations</h2>
+                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground">
+                  {graphAssistance.status}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{graphAssistance.reason}</p>
+              {graphAssistance.shadow && (
+                <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                  graph {graphAssistance.shadow.graphSnapshotFingerprint.slice(0, 16)}… · baseline{" "}
+                  {graphAssistance.shadow.baselineSynthesisFingerprint.slice(0, 16)}…
+                </p>
+              )}
+              {graphAssistance.status === "active" && (
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {graphAssistance.recommendations.map((entry) => (
+                    <div
+                      key={entry.requiredCapability}
+                      className="rounded-md border border-border/70 bg-background p-3"
+                    >
+                      <p className="text-xs font-medium">{entry.requiredCapability}</p>
+                      <ul className="mt-1.5 space-y-1">
+                        {entry.devices.map((device) => (
+                          <li
+                            key={`${device.semanticId}:${device.capabilityId}`}
+                            className="text-[11px] text-muted-foreground"
+                          >
+                            <span className="font-medium text-foreground">{device.label}</span>{" "}
+                            · confidence {device.confidence.toFixed(2)} · source{" "}
+                            <span className="font-mono">
+                              {device.sourceFingerprint.slice(0, 12)}…
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {!report.ready ? (
             <p className="mt-5 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive">
