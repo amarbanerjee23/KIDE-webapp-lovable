@@ -169,10 +169,7 @@ describe("release-hardening mutation and fail-closed matrix", () => {
         mutate(
           (file) => file.kind === "activity",
           (source) =>
-            source.replace(
-              /requireCapability : Navigate/,
-              "requireCapability : MissingCapability",
-            ),
+            source.replace(/requireCapability : Navigate/, "requireCapability : MissingCapability"),
         ),
     },
     {
@@ -181,10 +178,7 @@ describe("release-hardening mutation and fail-closed matrix", () => {
         mutate(
           (file) => file.kind === "cap",
           (source) =>
-            source.replace(
-              /component interface Vehicle/,
-              "component interface MissingInterface",
-            ),
+            source.replace(/component interface Vehicle/, "component interface MissingInterface"),
         ),
     },
     {
