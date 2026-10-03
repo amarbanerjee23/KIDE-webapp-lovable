@@ -26,6 +26,8 @@ export interface ReleaseBundle {
   version: string;
   generator: string;
   design: string | null;
+  candidateFingerprint: string | null;
+  approvalFingerprint: string | null;
   releasable: boolean;
   blockedBy: string[];
   artifacts: ReleaseArtifact[];
@@ -59,14 +61,21 @@ function canonical(value: unknown): string {
   });
 }
 
+export interface ReleaseEvidenceContext {
+  evidenceContext?.graphSynthesisInputs?: GraphSynthesisInputEvidence | null;
+  approvalFingerprint?: string | null;
+}
+
 export function buildRelease(
   workspace: Workspace,
   report: SynthesisReport,
   assurance: AssuranceReport,
   version: string,
-  graphSynthesisInputs?: GraphSynthesisInputEvidence | null,
+  evidenceContext?: ReleaseEvidenceContext,
 ): ReleaseBundle {
   const candidate = assurance.candidate;
+  const candidateFingerprint = candidate ? sha256(candidate.generatedMnc) : null;
+  const approvalFingerprint = evidenceContext?.approvalFingerprint ?? null;
   const artifacts: ReleaseArtifact[] = [];
 
   for (const file of [...workspace.files].sort((a, b) => a.path.localeCompare(b.path))) {
@@ -90,12 +99,12 @@ export function buildRelease(
     );
   }
 
-  if (graphSynthesisInputs) {
+  if (evidenceContext?.graphSynthesisInputs) {
     artifacts.push(
       artifact(
         "evidence/graph-synthesis-inputs.json",
         "evidence",
-        canonical(graphSynthesisInputs),
+        canonical(evidenceContext?.graphSynthesisInputs),
       ),
     );
   }
@@ -116,6 +125,8 @@ export function buildRelease(
     version,
     generator: report.generator,
     design: candidate?.name ?? null,
+    candidateFingerprint,
+    approvalFingerprint,
     releasable: blockedBy.length === 0,
     blockedBy,
     tracedPercent: assurance.tracedPercent,
@@ -131,6 +142,8 @@ export function buildRelease(
     version,
     generator: report.generator,
     design: candidate?.name ?? null,
+    candidateFingerprint,
+    approvalFingerprint,
     releasable: blockedBy.length === 0,
     blockedBy,
     artifacts,
