@@ -31,7 +31,7 @@ done
 
 required_tables=(
   profiles organizations organization_roles projects model_versions audit_events
-  invitations model_checkpoints review_requests review_comments notifications
+  invitations model_checkpoints review_requests review_comments release_approvals notifications
   subscriptions payments
 )
 
@@ -43,7 +43,8 @@ done
 required_indexes=(
   projects_organization_idx model_versions_project_idx audit_events_scope_idx
   invitations_org_idx invitations_email_idx model_checkpoints_project_idx
-  review_requests_project_idx review_comments_review_idx notifications_user_idx
+  review_requests_project_idx review_comments_review_idx release_approvals_approved_at_idx
+  notifications_user_idx
 )
 
 for index in "${required_indexes[@]}"; do
