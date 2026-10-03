@@ -62,7 +62,7 @@ function canonical(value: unknown): string {
 }
 
 export interface ReleaseEvidenceContext {
-  evidenceContext?.graphSynthesisInputs?: GraphSynthesisInputEvidence | null;
+  graphSynthesisInputs?: GraphSynthesisInputEvidence | null;
   approvalFingerprint?: string | null;
 }
 
@@ -104,7 +104,7 @@ export function buildRelease(
       artifact(
         "evidence/graph-synthesis-inputs.json",
         "evidence",
-        canonical(evidenceContext?.graphSynthesisInputs),
+        canonical(evidenceContext.graphSynthesisInputs),
       ),
     );
   }
