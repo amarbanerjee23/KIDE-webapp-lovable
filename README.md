@@ -142,6 +142,24 @@ Operational procedures live in:
 - `docs/operations/database-backup-restore.md`
 - `docs/operations/observability.md`
 
+## Final launch acceptance evidence
+
+For an official release candidate, capture machine-readable acceptance evidence from the exact green
+commit after the restore drill has been completed:
+
+```sh
+PROJECT_ID=your-project-id \
+KIDE_URL=https://your-production-origin \
+OPERATOR=your-name-or-team \
+RESTORE_DRILL_REF=your-restore-drill-record \
+RELEASE_VERSION=1.0.0 \
+bash scripts/launch/capture-acceptance.sh
+```
+
+The collector runs the GCP launch preflight and live smoke test, hashes their outputs and verifies the
+resulting acceptance JSON. Runtime evidence is ignored by Git and should be retained with release
+operations records. See `docs/operations/launch-acceptance.md`.
+
 ## Quality gates
 
 ```sh
