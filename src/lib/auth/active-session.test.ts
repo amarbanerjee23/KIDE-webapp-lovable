@@ -28,6 +28,21 @@ describe("active browser session validation", () => {
     expect(result?.user).toBe(user);
   });
 
+  it("bypasses Better Auth cookie cache when validating the active session", async () => {
+    getSession.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    await getActiveBrowserSession();
+
+    expect(getSession).toHaveBeenCalledWith({
+      query: {
+        disableCookieCache: true,
+      },
+    });
+  });
+
   it("rejects an empty session", async () => {
     getSession.mockResolvedValue({
       data: null,
