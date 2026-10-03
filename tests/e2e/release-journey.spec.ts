@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
+import { signUpThroughUi } from "./auth-helpers";
 
 test.describe.configure({ timeout: 90_000 });
 
@@ -12,10 +13,7 @@ async function createProject(page: Page, prefix: string) {
   const email = `${emailPrefix}-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("Pr57-Release-Journey-Password!");
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, "Pr57-Release-Journey-Password!");
   await expect(page).toHaveURL("/projects");
 
   await page.getByPlaceholder("Acme Robotics").fill(`${prefix} Organization`);
@@ -211,7 +209,7 @@ test("core engineering journey remains usable on a compact viewport", async ({ p
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
-    expect(overflow).toBeLessThanOrEqual(1);
+    expect(overflow, `${route} should not overflow a 390px viewport`).toBeLessThanOrEqual(1);
   }
 
   await page.goto("/synthesis");
