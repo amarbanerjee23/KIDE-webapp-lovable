@@ -393,7 +393,7 @@ function SynthesisReview() {
           ) : (
             <>
               <section
-                className="mt-5 grid gap-3 lg:grid-cols-3"
+                className="mt-5 grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3"
                 role="radiogroup"
                 aria-label="Synthesis candidates"
               >
@@ -406,7 +406,7 @@ function SynthesisReview() {
                       role="radio"
                       aria-checked={active}
                       onClick={() => setSelectedId(candidate.id)}
-                      className={`min-h-11 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      className={`min-h-11 min-w-0 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         active
                           ? "border-primary bg-card"
                           : "border-border bg-card/60 hover:border-primary/40"
@@ -447,8 +447,8 @@ function SynthesisReview() {
               </section>
 
               {selected && (
-                <section className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                  <div className="rounded-lg border border-border bg-card p-4">
+                <section className="mt-5 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="min-w-0 rounded-lg border border-border bg-card p-4">
                     <h3 className="text-sm font-semibold">Why this design?</h3>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Each step, the performer chosen for it, and where the commands come from.
@@ -538,7 +538,7 @@ function SynthesisReview() {
                       {selected.controlNodes.length} control nodes · re-parsed by the language
                       validator, independently of the generator.
                     </p>
-                    <pre className="mt-3 max-h-[520px] overflow-auto rounded-md border border-border/70 bg-[#0E1117] p-3 font-mono text-[11px] leading-relaxed">
+                    <pre className="mt-3 max-h-[520px] w-full max-w-full overflow-auto rounded-md border border-border/70 bg-[#0E1117] p-3 font-mono text-[11px] leading-relaxed">
                       {selected.generatedMnc}
                     </pre>
                     {selected.validation.messages.length > 0 && (
