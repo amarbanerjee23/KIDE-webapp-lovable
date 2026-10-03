@@ -89,7 +89,6 @@ export const getTrustedGlobalKnowledgeSnapshot = createServerFn({ method: "GET" 
   .middleware([requireKideAuth])
   .handler(async () => readTrustedGlobalKnowledgeSnapshot());
 
-
 export const getGraphSynthesisProductionPolicy = createServerFn({ method: "GET" })
   .middleware([requireKideAuth])
   .handler(async () => resolveGraphSynthesisProductionPolicy(process.env));
