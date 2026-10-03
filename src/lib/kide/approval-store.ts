@@ -8,7 +8,9 @@ import {
 import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
 import { sha256 } from "./sha256";
 
-export interface Approval extends PersistedReleaseApproval {}
+export interface Approval extends Omit<PersistedReleaseApproval, "approvedBy"> {
+  approvedBy?: string;
+}
 
 interface ApprovalSnapshot {
   selectedId: string | null;
