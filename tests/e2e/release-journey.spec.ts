@@ -226,3 +226,36 @@ test("core engineering journey remains usable on a compact viewport", async ({ p
   await page.goto("/release");
   await expect(page.getByRole("button", { name: "Export bundle" })).toBeVisible();
 });
+
+
+test("approval remains scoped to the project that created it", async ({ page }) => {
+  await createProject(page, "Project A Approval");
+
+  await page.goto("/models");
+  const loadExample = page.getByRole("button", { name: /Load Autonomous warehouse fleet/i });
+  await expect(loadExample).toBeEnabled();
+  await loadExample.click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await page.goto("/synthesis");
+  const approve = page.getByRole("button", { name: "Approve design" });
+  await expect(approve).toBeEnabled();
+  await approve.click();
+
+  await page.goto("/release");
+  await expect(page.getByRole("button", { name: "Export bundle" })).toBeEnabled();
+
+  await page.goto("/projects");
+  await page.getByPlaceholder("New project name").fill("Project B Controller");
+  await page.getByRole("button", { name: /project/i }).click();
+  await expect(page.getByText("Project B Controller")).toBeVisible();
+
+  const projectB = page.getByText("Project B Controller").locator("..");
+  await projectB.getByRole("link", { name: "Open models" }).click();
+  await expect(page).toHaveURL("/models");
+  await expect(page.getByText("This project has no model files yet")).toBeVisible();
+
+  await page.goto("/release");
+  await expect(page.getByRole("button", { name: "Export bundle" })).toBeDisabled();
+  await expect(page.getByText("Approve a design in the synthesis review before releasing.")).toBeVisible();
+});
