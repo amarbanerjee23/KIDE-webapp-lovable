@@ -4,8 +4,12 @@ import {
   iso,
   recordAudit,
   requireProjectAccess,
+  EDIT_ROLES,
   REVIEW_ROLES,
+  type Role,
 } from "@/lib/data-access.server";
+
+const APPROVAL_ROLES: Role[] = [...new Set([...EDIT_ROLES, ...REVIEW_ROLES])];
 import type { GraphSynthesisInputEvidence } from "@/lib/kide/graph-synthesis-promotion";
 
 export interface PersistedReleaseApproval {
@@ -91,7 +95,7 @@ export const saveProjectReleaseApproval = createServerFn({ method: "POST" })
       context.db,
       context.userId,
       data.projectId,
-      REVIEW_ROLES,
+      APPROVAL_ROLES,
     );
 
     const candidateId = data.candidateId.trim().slice(0, 160);
