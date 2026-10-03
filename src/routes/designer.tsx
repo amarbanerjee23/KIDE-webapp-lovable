@@ -1,15 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import {
-  CircleAlert,
-  LayoutGrid,
-  Plus,
-  Redo2,
-  Trash2,
-  Undo2,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
+import { CircleAlert, LayoutGrid, Plus, Redo2, Trash2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { parseActivity } from "@/lib/dsl";
