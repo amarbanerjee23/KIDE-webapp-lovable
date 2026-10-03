@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, CircleAlert, FileCode2, Flag, Play, RotateCcw, SkipForward, Zap,
+  CircleAlert, FileCode2, Flag, Play, RotateCcw, SkipForward, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import {
   buildScenario, resolveTransition, type ScenarioStep, type TraceEntry,
 } from "@/lib/kide/scenario";
@@ -99,7 +100,7 @@ function ScenarioRunner() {
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-        <Button asChild variant="ghost" size="sm"><Link to="/"><ArrowLeft />Workbench</Link></Button>
+        <EngineeringBackButton />
         <div>
           <h1 className="text-sm font-semibold">Scenario runner</h1>
           <p className="text-[10px] text-muted-foreground">
