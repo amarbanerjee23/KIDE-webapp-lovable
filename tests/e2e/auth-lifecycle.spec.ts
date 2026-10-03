@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { signUpThroughUi } from "./auth-helpers";
 
 test("password auth rejects bad credentials and preserves workspace after re-login", async ({
   page,
@@ -9,10 +10,7 @@ test("password auth rejects bad credentials and preserves workspace after re-log
   const password = "Pr26-Lifecycle-Password!";
 
   await page.goto("/auth");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, password);
   await expect(page).toHaveURL("/projects");
 
   await page.getByPlaceholder("Acme Robotics").fill("Persistent Robotics");
@@ -55,10 +53,7 @@ test("explicit sign-out invalidates server session and protected navigation", as
   const email = `logout-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("Pr26-Logout-Password!");
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, "Pr26-Logout-Password!");
   await expect(page).toHaveURL("/projects");
 
   await page.goto("/profile");
@@ -81,10 +76,7 @@ test("authenticated user can traverse every protected product surface without pa
 
   const email = `navigation-${Date.now()}@example.com`;
   await page.goto("/auth");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("Pr26-Navigation-Password!");
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, "Pr26-Navigation-Password!");
   await expect(page).toHaveURL("/projects");
 
   await page.getByPlaceholder("Acme Robotics").fill("Navigation Robotics");
@@ -129,10 +121,7 @@ test("project UX keeps context truthful and confirms destructive example replace
   const email = `ux-flow-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("Pr39-Ux-Flow-Password!");
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, "Pr39-Ux-Flow-Password!");
   await expect(page).toHaveURL("/projects");
 
   await page.getByPlaceholder("Acme Robotics").fill("UX Aerospace");
@@ -194,10 +183,7 @@ test("saved UI preferences and designer persistence state survive real workflow 
   const email = `ux-preferences-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("Pr40-Ux-Preferences-Password!");
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, "Pr40-Ux-Preferences-Password!");
   await expect(page).toHaveURL("/projects");
 
   await page.getByPlaceholder("Acme Robotics").fill("Preference Systems");
@@ -262,10 +248,7 @@ test("engineering page Back control returns to the previous protected page", asy
   const email = `back-navigation-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("Pr55-Back-Navigation-Password!");
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, "Pr55-Back-Navigation-Password!");
   await expect(page).toHaveURL("/projects");
 
   await page.getByPlaceholder("Acme Robotics").fill("Back Navigation Systems");
