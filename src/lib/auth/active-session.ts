@@ -7,7 +7,11 @@ export async function getActiveBrowserSession(timeoutMs: number = BROWSER_SESSIO
 
   try {
     const result = await Promise.race([
-      authClient.getSession(),
+      authClient.getSession({
+        query: {
+          disableCookieCache: true,
+        },
+      }),
       new Promise<null>((resolve) => {
         timeoutId = setTimeout(() => resolve(null), timeoutMs);
       }),
