@@ -80,21 +80,27 @@ function SynthesisReview() {
     }
 
     let active = true;
-    setPolicyError(null);
-    void getGraphSynthesisProductionPolicy()
-      .then((policy) => {
-        if (active) setProductionPolicy(policy);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setProductionPolicy(null);
-        setPolicyError(
-          error instanceof Error ? error.message : "Production promotion policy is unavailable.",
-        );
-      });
+    const refreshPolicy = () => {
+      setPolicyError(null);
+      void getGraphSynthesisProductionPolicy()
+        .then((policy) => {
+          if (active) setProductionPolicy(policy);
+        })
+        .catch((error: unknown) => {
+          if (!active) return;
+          setProductionPolicy(null);
+          setPolicyError(
+            error instanceof Error ? error.message : "Production promotion policy is unavailable.",
+          );
+        });
+    };
+
+    refreshPolicy();
+    const timer = window.setInterval(refreshPolicy, 30_000);
 
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, [graphInputsCapabilityEnabled]);
 
@@ -106,21 +112,27 @@ function SynthesisReview() {
     }
 
     let active = true;
-    setGraphError(null);
-    void getTrustedGlobalKnowledgeSnapshot()
-      .then((snapshot) => {
-        if (active) setGraphSnapshot(snapshot);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setGraphSnapshot(null);
-        setGraphError(
-          error instanceof Error ? error.message : "Trusted graph knowledge is unavailable.",
-        );
-      });
+    const refreshGraph = () => {
+      setGraphError(null);
+      void getTrustedGlobalKnowledgeSnapshot()
+        .then((snapshot) => {
+          if (active) setGraphSnapshot(snapshot);
+        })
+        .catch((error: unknown) => {
+          if (!active) return;
+          setGraphSnapshot(null);
+          setGraphError(
+            error instanceof Error ? error.message : "Trusted graph knowledge is unavailable.",
+          );
+        });
+    };
+
+    refreshGraph();
+    const timer = window.setInterval(refreshGraph, 30_000);
 
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, [graphEnabled, graphInputsEnabled]);
 
