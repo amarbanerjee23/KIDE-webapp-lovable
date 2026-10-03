@@ -12,7 +12,7 @@ import {
   authReadinessSummary,
   type AuthRuntimeReadiness,
 } from "@/lib/auth/readiness";
-import { getActiveBrowserSession } from "@/lib/auth/active-session";
+import { waitForActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "Sign in — KIDE Systems Engineering";
@@ -44,7 +44,7 @@ function AuthPage() {
   const [readiness, setReadiness] = useState<AuthRuntimeReadiness | null>(null);
 
   const completeAuthentication = useCallback(async (showValidationError: boolean) => {
-    const activeSession = await getActiveBrowserSession();
+    const activeSession = await waitForActiveBrowserSession();
 
     if (!activeSession) {
       if (showValidationError) {
