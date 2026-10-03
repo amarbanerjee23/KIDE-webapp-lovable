@@ -204,7 +204,11 @@ describe("release-hardening mutation and fail-closed matrix", () => {
     const changed = linkWorkspace(
       mutate(
         (file) => file.kind === "activity",
-        (source) => source.replace("MoveToWaypoint", "MoveToWaypointUpdated"),
+        (source) =>
+          source.replace(
+            "requireCapability : Navigate { MoveTo, WaypointReached }",
+            "requireCapability : Navigate { Stop, WaypointReached }",
+          ),
       ),
     );
     const changedReport = synthesize(changed);
