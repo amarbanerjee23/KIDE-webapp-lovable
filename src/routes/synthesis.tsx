@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft,
   Check,
   CircleAlert,
   Copy,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import {
   approvalFingerprint,
@@ -175,12 +175,7 @@ function SynthesisReview() {
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/">
-            <ArrowLeft />
-            Workbench
-          </Link>
-        </Button>
+        <EngineeringBackButton />
         <div>
           <h1 className="text-sm font-semibold">Synthesis review</h1>
           <p className="text-[10px] text-muted-foreground">
