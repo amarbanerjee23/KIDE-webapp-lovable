@@ -6,7 +6,11 @@ import {
   type ExampleWorkspace,
   type WorkspaceFile,
 } from "@/lib/dsl";
-import { approvalFingerprint, approvalIsCurrentForSynthesisContext, type Approval } from "./approval-store";
+import {
+  approvalFingerprint,
+  approvalIsCurrentForSynthesisContext,
+  type Approval,
+} from "./approval-store";
 import { buildAssurance } from "./assurance";
 import { qualify } from "./qualification";
 import { buildRelease } from "./release";
@@ -105,7 +109,9 @@ describe("release-hardening example matrix", () => {
         const generated = bundle.artifacts.filter((artifact) => artifact.kind === "generated");
         expect(generated).toHaveLength(1);
         expect(generated[0]!.path.endsWith(".mncspec")).toBe(true);
-        expect(parseMnc(generated[0]!.content).diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+        expect(
+          parseMnc(generated[0]!.content).diagnostics.filter((d) => d.severity === "error"),
+        ).toEqual([]);
 
         for (const artifact of bundle.artifacts) {
           expect(artifact.sha256).toBe(sha256(artifact.content));
@@ -132,10 +138,7 @@ describe("release-hardening example matrix", () => {
 describe("release-hardening mutation and fail-closed matrix", () => {
   const baseline = EXAMPLE_WORKSPACES[0]!;
 
-  function mutate(
-    predicate: (file: WorkspaceFile) => boolean,
-    patch: (source: string) => string,
-  ) {
+  function mutate(predicate: (file: WorkspaceFile) => boolean, patch: (source: string) => string) {
     return baseline.files.map((file) =>
       predicate(file) ? { ...file, source: patch(file.source) } : { ...file },
     );
@@ -144,14 +147,22 @@ describe("release-hardening mutation and fail-closed matrix", () => {
   it.each([
     {
       name: "malformed activity syntax",
-      files: () => mutate((file) => file.kind === "activity", (source) => `${source}\n???`),
+      files: () =>
+        mutate(
+          (file) => file.kind === "activity",
+          (source) => `${source}\n???`,
+        ),
     },
     {
       name: "unknown required capability",
       files: () =>
         mutate(
           (file) => file.kind === "activity",
-          (source) => source.replace(/requireCapability : Navigate/, "requireCapability : MissingCapability"),
+          (source) =>
+            source.replace(
+              /requireCapability : Navigate/,
+              "requireCapability : MissingCapability",
+            ),
         ),
     },
     {
@@ -159,7 +170,11 @@ describe("release-hardening mutation and fail-closed matrix", () => {
       files: () =>
         mutate(
           (file) => file.kind === "cap",
-          (source) => source.replace(/component interface Vehicle/, "component interface MissingInterface"),
+          (source) =>
+            source.replace(
+              /component interface Vehicle/,
+              "component interface MissingInterface",
+            ),
         ),
     },
     {
@@ -167,7 +182,11 @@ describe("release-hardening mutation and fail-closed matrix", () => {
       files: () =>
         mutate(
           (file) => file.kind === "cap",
-          (source) => source.replace(/fireable commands : MoveTo, Stop/, "fireable commands : GhostCommand, Stop"),
+          (source) =>
+            source.replace(
+              /fireable commands : MoveTo, Stop/,
+              "fireable commands : GhostCommand, Stop",
+            ),
         ),
     },
   ])("blocks synthesis and release for $name", ({ files }) => {
