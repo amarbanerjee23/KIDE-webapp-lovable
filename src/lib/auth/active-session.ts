@@ -29,7 +29,6 @@ export async function getActiveBrowserSession(timeoutMs: number = BROWSER_SESSIO
   }
 }
 
-
 export interface ActiveSessionRetryOptions {
   attempts?: number;
   delayMs?: number;
