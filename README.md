@@ -160,6 +160,24 @@ The collector runs the GCP launch preflight and live smoke test, hashes their ou
 resulting acceptance JSON. Runtime evidence is ignored by Git and should be retained with release
 operations records. See `docs/operations/launch-acceptance.md`.
 
+## Official release publication
+
+Official release publication is manual and guarded. After production launch acceptance evidence has
+been captured for the exact green `main` commit, use the GitHub Actions workflow
+`Publish official release`.
+
+The workflow verifies:
+
+- acceptance evidence structure and release version;
+- acceptance commit equals current `main`;
+- a successful `main` CI run exists for that exact SHA;
+- the release tag and GitHub Release do not already exist;
+- explicit confirmation `PUBLISH v1.0.0`.
+
+It then creates the `v1.0.0` GitHub Release targeting the accepted commit and records the launch
+acceptance evidence SHA-256 in the release notes. See
+`docs/operations/release-publication.md`.
+
 ## Quality gates
 
 ```sh
