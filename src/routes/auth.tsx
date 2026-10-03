@@ -127,7 +127,26 @@ function AuthPage() {
         return;
       }
 
-      await completeAuthentication(true);
+      const authenticated = await completeAuthentication(false);
+      if (authenticated) return;
+
+      if (mode === "signup") {
+        const recovery = await authClient.signIn.email({
+          email: normalizedEmail,
+          password,
+        });
+        if (recovery.error) {
+          setMessage(
+            recovery.error.message ||
+              "Your account was created, but KIDE could not start the session. Please sign in.",
+          );
+          return;
+        }
+        await completeAuthentication(true);
+        return;
+      }
+
+      setMessage("Your sign-in session could not be validated. Please sign in again.");
     } finally {
       setBusy(false);
     }
