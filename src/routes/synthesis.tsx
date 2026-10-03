@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useActiveProject } from "@/lib/active-project";
 import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import {
@@ -35,6 +37,7 @@ import {
 import type { GraphSynthesisProductionPolicy } from "@/lib/knowledge/graph-synthesis-policy";
 import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
+import { saveProjectReleaseApproval } from "@/lib/release-approval.functions";
 
 const title = "Synthesis Review — KIDE";
 const description =
@@ -55,6 +58,9 @@ export const Route = createFileRoute("/synthesis")({
 });
 
 function SynthesisReview() {
+  const activeProject = useActiveProject();
+  const saveApproval = useServerFn(saveProjectReleaseApproval);
+  const [approving, setApproving] = useState(false);
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const report = useMemo(() => synthesize(workspace), [workspace]);
@@ -197,40 +203,68 @@ function SynthesisReview() {
           </Button>
           <Button
             size="sm"
-            disabled={!report.ready || !selected || selected.validation.errors > 0}
-            onClick={() => {
-              if (!selected) return;
-              approveCandidate({
-                candidateId: selected.id,
-                candidateName: selected.name,
-                fingerprint:
-                  graphPromotion.applied && graphPromotion.evidence
-                    ? approvalFingerprint(selected.generatedMnc, graphPromotion.evidence)
-                    : selected.generatedMnc,
-                approvedAt: new Date().toISOString(),
-                ...(graphPromotion.applied && graphPromotion.evidence
-                  ? { graphSynthesisInputs: graphPromotion.evidence }
-                  : {}),
-                ...(graphAssistance.status === "active" && graphAssistance.shadow
+            disabled={
+              approving ||
+              !activeProject ||
+              !report.ready ||
+              !selected ||
+              selected.validation.errors > 0
+            }
+            onClick={async () => {
+              if (!selected || !activeProject) return;
+
+              const graphSynthesisInputs =
+                graphPromotion.applied && graphPromotion.evidence
+                  ? graphPromotion.evidence
+                  : undefined;
+              const graphAssistanceEvidence =
+                graphAssistance.status === "active" && graphAssistance.shadow
                   ? {
-                      graphAssistance: {
-                        graphSnapshotFingerprint: graphAssistance.shadow.graphSnapshotFingerprint,
-                        baselineSynthesisFingerprint:
-                          graphAssistance.shadow.baselineSynthesisFingerprint,
-                        sourceFingerprints: [
-                          ...new Set(
-                            graphAssistance.recommendations.flatMap((entry) =>
-                              entry.devices.map((device) => device.sourceFingerprint),
-                            ),
+                      graphSnapshotFingerprint: graphAssistance.shadow.graphSnapshotFingerprint,
+                      baselineSynthesisFingerprint:
+                        graphAssistance.shadow.baselineSynthesisFingerprint,
+                      sourceFingerprints: [
+                        ...new Set(
+                          graphAssistance.recommendations.flatMap((entry) =>
+                            entry.devices.map((device) => device.sourceFingerprint),
                           ),
-                        ].sort(),
-                      },
+                        ),
+                      ].sort(),
                     }
-                  : {}),
-              });
-              toast.success(`${selected.name} design approved`, {
-                description: "Recorded with its evidence ledger and generator version.",
-              });
+                  : undefined;
+
+              setApproving(true);
+              try {
+                const persisted = await saveApproval({
+                  data: {
+                    projectId: activeProject.projectId,
+                    candidateId: selected.id,
+                    candidateName: selected.name,
+                    fingerprint: approvalFingerprint(
+                      selected.generatedMnc,
+                      graphSynthesisInputs ?? null,
+                    ),
+                    ...(graphSynthesisInputs ? { graphSynthesisInputs } : {}),
+                    ...(graphAssistanceEvidence
+                      ? { graphAssistance: graphAssistanceEvidence }
+                      : {}),
+                  },
+                });
+                approveCandidate(persisted);
+                toast.success(`${selected.name} design approved`, {
+                  description:
+                    "Persisted to the project audit record with its exact generated-design fingerprint.",
+                });
+              } catch (error) {
+                toast.error("Could not approve this design", {
+                  description:
+                    error instanceof Error
+                      ? error.message
+                      : "The project approval could not be persisted.",
+                });
+              } finally {
+                setApproving(false);
+              }
             }}
           >
             <ShieldCheck />
