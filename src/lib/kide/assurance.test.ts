@@ -50,7 +50,6 @@ describe("release", () => {
     expect(a.artifacts.length).toBeGreaterThan(SAMPLE_WORKSPACE.length);
   });
 
-
   it("checksums promoted graph inputs, candidate and approval fingerprints into the release manifest", () => {
     const ws = workspace();
     const report = synthesize(ws);
@@ -83,9 +82,9 @@ describe("release", () => {
 
     expect(bundle.candidateFingerprint).toBe(sha256(candidate.generatedMnc));
     expect(bundle.approvalFingerprint).toBe(approvalHash);
-    expect(bundle.artifacts.some((entry) => entry.path === "evidence/graph-synthesis-inputs.json")).toBe(
-      true,
-    );
+    expect(
+      bundle.artifacts.some((entry) => entry.path === "evidence/graph-synthesis-inputs.json"),
+    ).toBe(true);
     expect(bundle.manifest).toContain(approvalHash);
     expect(bundle.manifest).toContain(bundle.candidateFingerprint);
   });
@@ -114,7 +113,13 @@ describe("catalogue", () => {
   it("explains why a capability is not eligible", () => {
     const patched = SAMPLE_WORKSPACE.map((file) =>
       file.path.endsWith(".cap")
-        ? { ...file, source: file.source.replace("fireable commands : MoveTo", "fireable commands : NotARealCommand") }
+        ? {
+            ...file,
+            source: file.source.replace(
+              "fireable commands : MoveTo",
+              "fireable commands : NotARealCommand",
+            ),
+          }
         : { ...file },
     );
     const catalogue = buildCatalogue(linkWorkspace(patched));
@@ -126,11 +131,7 @@ describe("catalogue", () => {
 
 describe("sha256", () => {
   it("matches known digests", () => {
-    expect(sha256("abc")).toBe(
-      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    );
-    expect(sha256("")).toBe(
-      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    );
+    expect(sha256("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    expect(sha256("")).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
   });
 });
