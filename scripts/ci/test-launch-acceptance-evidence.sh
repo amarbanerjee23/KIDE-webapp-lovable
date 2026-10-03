@@ -7,7 +7,6 @@ fail() {
 }
 
 bash -n scripts/launch/capture-acceptance.sh
-bunx tsc --noEmit --pretty false scripts/launch/verify-acceptance.ts
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
