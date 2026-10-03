@@ -518,7 +518,7 @@ function SynthesisReview() {
                     </ul>
                   </div>
 
-                  <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="min-w-0 rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold">Generated control model</h3>
                       <Button
