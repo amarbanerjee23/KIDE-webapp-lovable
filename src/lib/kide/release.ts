@@ -12,6 +12,7 @@ import type { Workspace } from "@/lib/dsl";
 import type { SynthesisReport } from "./synthesis";
 import type { AssuranceReport } from "./assurance";
 import { sha256 } from "./sha256";
+import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
 
 export interface ReleaseArtifact {
   path: string;
@@ -25,6 +26,8 @@ export interface ReleaseBundle {
   version: string;
   generator: string;
   design: string | null;
+  candidateFingerprint: string | null;
+  approvalFingerprint: string | null;
   releasable: boolean;
   blockedBy: string[];
   artifacts: ReleaseArtifact[];
@@ -32,11 +35,7 @@ export interface ReleaseBundle {
   manifestHash: string;
 }
 
-function artifact(
-  path: string,
-  kind: ReleaseArtifact["kind"],
-  content: string,
-): ReleaseArtifact {
+function artifact(path: string, kind: ReleaseArtifact["kind"], content: string): ReleaseArtifact {
   return {
     path,
     kind,
@@ -58,13 +57,21 @@ function canonical(value: unknown): string {
   });
 }
 
+export interface ReleaseEvidenceContext {
+  graphSynthesisInputs?: GraphSynthesisInputEvidence | null;
+  approvalFingerprint?: string | null;
+}
+
 export function buildRelease(
   workspace: Workspace,
   report: SynthesisReport,
   assurance: AssuranceReport,
   version: string,
+  evidenceContext?: ReleaseEvidenceContext,
 ): ReleaseBundle {
   const candidate = assurance.candidate;
+  const candidateFingerprint = candidate ? sha256(candidate.generatedMnc) : null;
+  const approvalFingerprint = evidenceContext?.approvalFingerprint ?? null;
   const artifacts: ReleaseArtifact[] = [];
 
   for (const file of [...workspace.files].sort((a, b) => a.path.localeCompare(b.path))) {
@@ -88,11 +95,25 @@ export function buildRelease(
     );
   }
 
+  if (evidenceContext?.graphSynthesisInputs) {
+    artifacts.push(
+      artifact(
+        "evidence/graph-synthesis-inputs.json",
+        "evidence",
+        canonical(evidenceContext.graphSynthesisInputs),
+      ),
+    );
+  }
+
   artifacts.push(
     artifact("reports/traceability.json", "report", canonical(assurance.traceability)),
     artifact("reports/gates.json", "report", canonical(assurance.gates)),
     artifact("evidence/qualification.json", "evidence", canonical(assurance.qualification)),
-    artifact("evidence/desktop-conformance.json", "evidence", canonical(assurance.qualification.conformance)),
+    artifact(
+      "evidence/desktop-conformance.json",
+      "evidence",
+      canonical(assurance.qualification.conformance),
+    ),
     artifact("reports/findings.json", "report", canonical(assurance.findings)),
   );
 
@@ -104,6 +125,8 @@ export function buildRelease(
     version,
     generator: report.generator,
     design: candidate?.name ?? null,
+    candidateFingerprint,
+    approvalFingerprint,
     releasable: blockedBy.length === 0,
     blockedBy,
     tracedPercent: assurance.tracedPercent,
@@ -119,6 +142,8 @@ export function buildRelease(
     version,
     generator: report.generator,
     design: candidate?.name ?? null,
+    candidateFingerprint,
+    approvalFingerprint,
     releasable: blockedBy.length === 0,
     blockedBy,
     artifacts,

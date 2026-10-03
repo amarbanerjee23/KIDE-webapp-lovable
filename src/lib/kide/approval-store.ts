@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
+import { sha256 } from "./sha256";
 
 /**
  * Which design the team selected and approved, shared by the synthesis
@@ -16,6 +18,7 @@ export interface Approval {
     baselineSynthesisFingerprint: string;
     sourceFingerprints: string[];
   };
+  graphSynthesisInputs?: GraphSynthesisInputEvidence;
 }
 
 let selectedId: string | null = null;
@@ -60,4 +63,16 @@ export function useApprovalState() {
 /** An approval only counts while the generated design is byte-identical. */
 export function approvalIsCurrent(current: Approval | null, fingerprint: string | null) {
   return Boolean(current && fingerprint && current.fingerprint === fingerprint);
+}
+
+export function approvalFingerprint(
+  generatedMnc: string,
+  graphSynthesisInputs?: GraphSynthesisInputEvidence | null,
+) {
+  return sha256(
+    JSON.stringify({
+      generatedMnc,
+      graphSynthesisInputs: graphSynthesisInputs ?? null,
+    }),
+  );
 }

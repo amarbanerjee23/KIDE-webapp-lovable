@@ -5,6 +5,8 @@ import { buildAssurance } from "./assurance";
 import { buildRelease } from "./release";
 import { buildCatalogue } from "./catalogue";
 import { sha256 } from "./sha256";
+import { approvalFingerprint } from "./approval-store";
+import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
 
 const workspace = () => linkWorkspace(SAMPLE_WORKSPACE.map((f) => ({ ...f })));
 
@@ -48,6 +50,45 @@ describe("release", () => {
     expect(a.artifacts.length).toBeGreaterThan(SAMPLE_WORKSPACE.length);
   });
 
+  it("checksums promoted graph inputs, candidate and approval fingerprints into the release manifest", () => {
+    const ws = workspace();
+    const report = synthesize(ws);
+    const assurance = buildAssurance(ws, report, null);
+    const candidate = assurance.candidate!;
+    const graphEvidence: GraphSynthesisInputEvidence = {
+      mode: "graph-assisted-inputs",
+      workspaceFingerprint: "w".repeat(64),
+      graphSnapshotFingerprint: "g".repeat(64),
+      baselineSynthesisFingerprint: "b".repeat(64),
+      generatorVersion: report.generator,
+      qualificationVersion: assurance.qualification.qualificationVersion,
+      sourceFingerprints: ["source-a"],
+      bindings: [
+        {
+          requiredCapability: "Move",
+          deviceSemanticId: "urn:test:device",
+          deviceLabel: "Test Device",
+          capabilityId: "urn:test:capability",
+          sourceFingerprint: "source-a",
+          confidence: 0.99,
+        },
+      ],
+    };
+    const approvalHash = approvalFingerprint(candidate.generatedMnc, graphEvidence);
+    const bundle = buildRelease(ws, report, assurance, "1.0.0", {
+      graphSynthesisInputs: graphEvidence,
+      approvalFingerprint: approvalHash,
+    });
+
+    expect(bundle.candidateFingerprint).toBe(sha256(candidate.generatedMnc));
+    expect(bundle.approvalFingerprint).toBe(approvalHash);
+    expect(
+      bundle.artifacts.some((entry) => entry.path === "evidence/graph-synthesis-inputs.json"),
+    ).toBe(true);
+    expect(bundle.manifest).toContain(approvalHash);
+    expect(bundle.manifest).toContain(bundle.candidateFingerprint);
+  });
+
   it("marks the bundle blocked when gates fail", () => {
     const broken = SAMPLE_WORKSPACE.map((file) =>
       file.path.endsWith(".activity") ? { ...file, source: `${file.source}\n???` } : { ...file },
@@ -72,7 +113,13 @@ describe("catalogue", () => {
   it("explains why a capability is not eligible", () => {
     const patched = SAMPLE_WORKSPACE.map((file) =>
       file.path.endsWith(".cap")
-        ? { ...file, source: file.source.replace("fireable commands : MoveTo", "fireable commands : NotARealCommand") }
+        ? {
+            ...file,
+            source: file.source.replace(
+              "fireable commands : MoveTo",
+              "fireable commands : NotARealCommand",
+            ),
+          }
         : { ...file },
     );
     const catalogue = buildCatalogue(linkWorkspace(patched));
@@ -84,11 +131,7 @@ describe("catalogue", () => {
 
 describe("sha256", () => {
   it("matches known digests", () => {
-    expect(sha256("abc")).toBe(
-      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    );
-    expect(sha256("")).toBe(
-      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    );
+    expect(sha256("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    expect(sha256("")).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
   });
 });

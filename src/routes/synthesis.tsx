@@ -13,12 +13,21 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
-import { approveCandidate, selectCandidate, useApprovalState } from "@/lib/kide/approval-store";
+import {
+  approvalFingerprint,
+  approveCandidate,
+  selectCandidate,
+  useApprovalState,
+} from "@/lib/kide/approval-store";
 import { synthesize, type Candidate } from "@/lib/kide/synthesis";
 import {
   evaluateGraphAssistance,
   graphAssistanceEnabled,
 } from "@/lib/kide/graph-synthesis-assistance";
+import {
+  graphSynthesisInputsEnabled,
+  promoteGraphSynthesisInputs,
+} from "@/lib/kide/graph-synthesis-promotion";
 import { getTrustedGlobalKnowledgeSnapshot } from "@/lib/knowledge/knowledge.functions";
 import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
@@ -48,11 +57,14 @@ function SynthesisReview() {
   const graphEnabled = graphAssistanceEnabled(
     import.meta.env["VITE_KIDE_GRAPH_ASSISTED_SYNTHESIS"],
   );
+  const graphInputsEnabled = graphSynthesisInputsEnabled(
+    import.meta.env["VITE_KIDE_GRAPH_SYNTHESIS_INPUTS"],
+  );
   const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
   const [graphError, setGraphError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!graphEnabled) {
+    if (!graphEnabled && !graphInputsEnabled) {
       setGraphSnapshot(null);
       setGraphError(null);
       return;
@@ -75,7 +87,7 @@ function SynthesisReview() {
     return () => {
       active = false;
     };
-  }, [graphEnabled]);
+  }, [graphEnabled, graphInputsEnabled]);
 
   const graphAssistance = useMemo(
     () =>
@@ -88,6 +100,18 @@ function SynthesisReview() {
       ),
     [workspace, report, graphSnapshot, graphEnabled, graphError],
   );
+  const graphPromotion = useMemo(
+    () =>
+      promoteGraphSynthesisInputs(
+        workspace,
+        report,
+        graphSnapshot,
+        graphInputsEnabled,
+        graphError ?? undefined,
+      ),
+    [workspace, report, graphSnapshot, graphInputsEnabled, graphError],
+  );
+
   const { selectedId: storedId } = useApprovalState();
   const [localId, setLocalId] = useState<string | null>(null);
   const selectedId = localId ?? storedId;
@@ -137,8 +161,14 @@ function SynthesisReview() {
               approveCandidate({
                 candidateId: selected.id,
                 candidateName: selected.name,
-                fingerprint: selected.generatedMnc,
+                fingerprint:
+                  graphPromotion.applied && graphPromotion.evidence
+                    ? approvalFingerprint(selected.generatedMnc, graphPromotion.evidence)
+                    : selected.generatedMnc,
                 approvedAt: new Date().toISOString(),
+                ...(graphPromotion.applied && graphPromotion.evidence
+                  ? { graphSynthesisInputs: graphPromotion.evidence }
+                  : {}),
                 ...(graphAssistance.status === "active" && graphAssistance.shadow
                   ? {
                       graphAssistance: {
@@ -236,6 +266,36 @@ function SynthesisReview() {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {graphInputsEnabled && (
+            <section className="mt-5 rounded-lg border border-border bg-card p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold">Promoted graph synthesis inputs</h2>
+                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground">
+                  {graphPromotion.applied ? "active" : "fallback"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{graphPromotion.reason}</p>
+              {graphPromotion.evidence && (
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {graphPromotion.evidence.bindings.map((binding) => (
+                    <div
+                      key={binding.requiredCapability}
+                      className="rounded-md border border-border/70 bg-background p-3"
+                    >
+                      <p className="text-xs font-medium">{binding.requiredCapability}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {binding.deviceLabel} · confidence {binding.confidence.toFixed(2)}
+                      </p>
+                      <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                        {binding.deviceSemanticId}
+                      </p>
                     </div>
                   ))}
                 </div>
