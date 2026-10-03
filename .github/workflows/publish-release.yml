@@ -121,9 +121,9 @@ jobs:
             echo
             echo "---"
             echo
-            printf 'Release commit: \`%s\`\n' "$(git rev-parse HEAD)"
+            printf 'Release commit: `%s`\n' "$(git rev-parse HEAD)"
             echo
-            printf 'Launch acceptance evidence SHA-256: \`%s\`\n' "$acceptance_sha"
+            printf 'Launch acceptance evidence SHA-256: `%s`\n' "$acceptance_sha"
           } > /tmp/kide-release-notes.md
 
       - name: Publish GitHub Release
@@ -141,7 +141,7 @@ jobs:
           {
             echo "## KIDE ${RELEASE_VERSION} published"
             echo
-            printf -- '- Tag: \`%s\`\n' "$RELEASE_TAG"
-            printf -- '- Commit: \`%s\`\n' "$(git rev-parse HEAD)"
+            printf -- '- Tag: `%s`\n' "$RELEASE_TAG"
+            printf -- '- Commit: `%s`\n' "$(git rev-parse HEAD)"
             echo "- Acceptance evidence was validated against current main and a successful main CI run."
           } >> "$GITHUB_STEP_SUMMARY"
