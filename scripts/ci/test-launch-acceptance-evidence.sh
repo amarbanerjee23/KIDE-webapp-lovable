@@ -7,7 +7,7 @@ fail() {
 }
 
 bash -n scripts/launch/capture-acceptance.sh
-python3 -m py_compile scripts/launch/verify-acceptance.py
+bunx tsc --noEmit --pretty false scripts/launch/verify-acceptance.ts
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -36,7 +36,7 @@ cat >"$tmp/good.json" <<'JSON'
 }
 JSON
 
-python3 scripts/launch/verify-acceptance.py "$tmp/good.json"
+bun scripts/launch/verify-acceptance.ts "$tmp/good.json"
 
 python3 - "$tmp/good.json" "$tmp/bad.json" <<'PY'
 import json
@@ -47,7 +47,7 @@ payload["checks"]["liveSmoke"]["status"] = "failed"
 json.dump(payload, open(target, "w", encoding="utf-8"))
 PY
 
-if python3 scripts/launch/verify-acceptance.py "$tmp/bad.json" >/dev/null 2>&1; then
+if bun scripts/launch/verify-acceptance.ts "$tmp/bad.json" >/dev/null 2>&1; then
   fail "verifier accepted a failed smoke check"
 fi
 
