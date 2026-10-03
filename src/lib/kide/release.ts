@@ -35,11 +35,7 @@ export interface ReleaseBundle {
   manifestHash: string;
 }
 
-function artifact(
-  path: string,
-  kind: ReleaseArtifact["kind"],
-  content: string,
-): ReleaseArtifact {
+function artifact(path: string, kind: ReleaseArtifact["kind"], content: string): ReleaseArtifact {
   return {
     path,
     kind,
@@ -113,7 +109,11 @@ export function buildRelease(
     artifact("reports/traceability.json", "report", canonical(assurance.traceability)),
     artifact("reports/gates.json", "report", canonical(assurance.gates)),
     artifact("evidence/qualification.json", "evidence", canonical(assurance.qualification)),
-    artifact("evidence/desktop-conformance.json", "evidence", canonical(assurance.qualification.conformance)),
+    artifact(
+      "evidence/desktop-conformance.json",
+      "evidence",
+      canonical(assurance.qualification.conformance),
+    ),
     artifact("reports/findings.json", "report", canonical(assurance.findings)),
   );
 
