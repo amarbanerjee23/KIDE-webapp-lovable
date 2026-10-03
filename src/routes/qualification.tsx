@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { ArrowLeft, CircleAlert, CircleCheck, CircleSlash, ShieldCheck } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleSlash, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { synthesize } from "@/lib/kide/synthesis";
 import { qualify, VALIDATED_DEVICE_LIMIT } from "@/lib/kide/qualification";
@@ -42,12 +43,7 @@ function Qualification() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="flex min-h-14 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/">
-            <ArrowLeft />
-            Workbench
-          </Link>
-        </Button>
+        <EngineeringBackButton />
         <div>
           <h1 className="text-sm font-semibold">Synthesis qualification</h1>
           <p className="text-[10px] text-muted-foreground">
