@@ -1,0 +1,147 @@
+name: Publish official release
+
+on:
+  workflow_dispatch:
+    inputs:
+      acceptance_evidence_json:
+        description: Paste the verified launch acceptance JSON for the exact main commit
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH v1.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: official-release-publication
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Validate acceptance and publish v1.0.0
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Check confirmation
+        env:
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ "$RELEASE_CONFIRMATION" != "PUBLISH v1.0.0" ]]; then
+            echo "Release publication confirmation did not match exactly." >&2
+            exit 1
+          fi
+
+      - name: Check out current main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Materialize acceptance evidence
+        env:
+          ACCEPTANCE_EVIDENCE_JSON: ${{ inputs.acceptance_evidence_json }}
+        run: |
+          umask 077
+          printf '%s\n' "$ACCEPTANCE_EVIDENCE_JSON" > /tmp/kide-launch-acceptance.json
+
+      - name: Validate acceptance against current main
+        run: |
+          set -euo pipefail
+          main_sha="$(git rev-parse HEAD)"
+          ACCEPTANCE_FILE=/tmp/kide-launch-acceptance.json \
+            EXPECTED_COMMIT_SHA="$main_sha" \
+            bash scripts/release/validate-publication.sh
+
+      - name: Require successful main CI for accepted commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs?branch=main&event=push&per_page=50" \
+            > /tmp/main-runs.json
+
+          node - "$sha" /tmp/main-runs.json <<'JS'
+          const fs = require("fs");
+          const [sha, path] = process.argv.slice(2);
+          const payload = JSON.parse(fs.readFileSync(path, "utf8"));
+          const run = payload.workflow_runs?.find(
+            (entry) =>
+              entry.head_sha === sha &&
+              entry.name === "CI" &&
+              entry.status === "completed" &&
+              entry.conclusion === "success",
+          );
+          if (!run) {
+            throw new Error(`No successful main CI run found for ${sha}`);
+          }
+          console.log(`Verified successful main CI run #${run.run_number} (${run.html_url})`);
+          JS
+
+      - name: Resolve release metadata
+        run: |
+          set -euo pipefail
+          node - <<'JS' >> "$GITHUB_ENV"
+          const release = require("./release.json");
+          console.log(`RELEASE_VERSION=${release.releaseVersion}`);
+          console.log(`RELEASE_TAG=${release.tag}`);
+          JS
+
+      - name: Refuse to overwrite an existing release tag or release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Tag ${RELEASE_TAG} already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "GitHub Release ${RELEASE_TAG} already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+
+      - name: Build release publication notes
+        run: |
+          set -euo pipefail
+          acceptance_sha="$(sha256sum /tmp/kide-launch-acceptance.json | awk '{print $1}')"
+          {
+            cat "docs/releases/v${RELEASE_VERSION}.md"
+            echo
+            echo "---"
+            echo
+            printf 'Release commit: `%s`\n' "$(git rev-parse HEAD)"
+            echo
+            printf 'Launch acceptance evidence SHA-256: `%s`\n' "$acceptance_sha"
+          } > /tmp/kide-release-notes.md
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${RELEASE_TAG}" \
+            --target "$(git rev-parse HEAD)" \
+            --title "KIDE ${RELEASE_VERSION}" \
+            --notes-file /tmp/kide-release-notes.md
+
+      - name: Record publication summary
+        run: |
+          {
+            echo "## KIDE ${RELEASE_VERSION} published"
+            echo
+            printf -- '- Tag: `%s`\n' "$RELEASE_TAG"
+            printf -- '- Commit: `%s`\n' "$(git rev-parse HEAD)"
+            echo "- Acceptance evidence was validated against current main and a successful main CI run."
+          } >> "$GITHUB_STEP_SUMMARY"
