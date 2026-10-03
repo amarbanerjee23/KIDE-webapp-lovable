@@ -67,6 +67,16 @@ describe("release-hardening example matrix", () => {
           expect(parsed.ast).not.toBeNull();
           expect(parsed.diagnostics.filter((entry) => entry.severity === "error")).toEqual([]);
 
+          const reintegrated = linkWorkspace([
+            ...example.files.map((file) => ({ ...file })),
+            {
+              path: `Generated-${candidate.id}.mncspec`,
+              kind: "mncspec",
+              source: candidate.generatedMnc,
+            },
+          ]);
+          expect(reintegrated.errorCount).toBe(0);
+
           for (const node of candidate.controlNodes) {
             expect(declaredInterfaces.has(node.componentInterface)).toBe(true);
             expect(candidate.generatedMnc).toContain(
