@@ -115,6 +115,35 @@ psql -c "
   );
 " >/dev/null
 
+psql -c "
+  insert into public.release_approvals(
+    project_id, candidate_id, candidate_name, fingerprint, approved_by, approved_at
+  )
+  values (
+    '$project_id'::uuid,
+    'candidate-consolidated',
+    'Consolidated',
+    repeat('a', 64),
+    '$user_id'::uuid,
+    now()
+  );
+" >/dev/null
+
+expect_sql_failure "
+  insert into public.release_approvals(
+    project_id, candidate_id, candidate_name, fingerprint, approved_by, approved_at
+  )
+  values (
+    '$project_id'::uuid,
+    'candidate-invalid',
+    'Invalid',
+    'not-a-sha256',
+    '$user_id'::uuid,
+    now()
+  )
+  on conflict (project_id) do update set fingerprint = excluded.fingerprint;
+"
+
 expect_sql_failure "
   insert into public.invitations(
     organization_id, email, token, invited_by
@@ -126,7 +155,7 @@ expect_sql_failure "
 
 psql -c "delete from public.organizations where id = '$org_id'::uuid;" >/dev/null
 
-for table in organization_roles projects invitations; do
+for table in organization_roles projects invitations release_approvals; do
   remaining="$(psql -c "select count(*) from public.$table where organization_id = '$org_id'::uuid;")"
   [[ "$remaining" == "0" ]] || {
     echo "Cascade delete failed for $table" >&2
