@@ -132,7 +132,6 @@ CREATE TABLE IF NOT EXISTS public.review_comments (
 );
 CREATE INDEX IF NOT EXISTS review_comments_review_idx ON public.review_comments(review_id, created_at);
 
-
 CREATE TABLE IF NOT EXISTS public.release_approvals (
   project_id uuid PRIMARY KEY REFERENCES public.projects(id) ON DELETE CASCADE,
   candidate_id text NOT NULL CHECK (char_length(candidate_id) BETWEEN 1 AND 160),
