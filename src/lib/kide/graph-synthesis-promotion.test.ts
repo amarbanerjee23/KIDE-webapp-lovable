@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { linkWorkspace, SAMPLE_WORKSPACE, type ActivityFileNode } from "@/lib/dsl";
 import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
-import { promoteGraphSynthesisInputs, graphSynthesisInputsEnabled } from "./graph-synthesis-promotion";
+import {
+  promoteGraphSynthesisInputs,
+  graphSynthesisInputsEnabled,
+} from "./graph-synthesis-promotion";
 import { synthesize } from "./synthesis";
 
 function workspace() {
