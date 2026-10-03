@@ -265,7 +265,7 @@ function ReleaseCentre() {
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
               Manifest checksum{" "}
-              <span className="font-mono text-foreground">{bundle.manifestHash}</span>
+              <span className="break-all font-mono text-foreground">{bundle.manifestHash}</span>
             </p>
             <div className="mt-3 overflow-x-auto rounded-md border border-border/70">
               <table className="min-w-[640px] w-full text-left text-[11px]">
