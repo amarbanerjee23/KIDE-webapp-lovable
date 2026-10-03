@@ -156,6 +156,59 @@ function LandingPage() {
           </div>
         </div>
       </section>
+
+      <section id="privacy" className="mx-auto max-w-7xl border-t border-border px-5 py-12 lg:px-8">
+        <h2 className="text-lg font-semibold">Privacy</h2>
+        <div className="mt-3 max-w-3xl space-y-3 text-sm leading-6 text-muted-foreground">
+          <p>
+            KIDE processes account, organization and engineering-project information needed to
+            provide the service. Authentication credentials are handled through Better Auth and
+            production persistence is stored in PostgreSQL.
+          </p>
+          <p>
+            KIDE does not require a public service-role credential in the browser and does not store
+            payment-card numbers. Engineering models and generated evidence remain associated with
+            the organization and project that created them.
+          </p>
+          <p>
+            Production operators are responsible for retention, access-control and deletion policies
+            appropriate to their deployment and applicable agreements.
+          </p>
+        </div>
+      </section>
+
+      <section id="terms" className="mx-auto max-w-7xl border-t border-border px-5 py-12 lg:px-8">
+        <h2 className="text-lg font-semibold">Terms of use</h2>
+        <div className="mt-3 max-w-3xl space-y-3 text-sm leading-6 text-muted-foreground">
+          <p>
+            KIDE is an engineering-support environment. Users remain responsible for reviewing,
+            approving and validating designs before deployment into physical systems or regulated
+            environments.
+          </p>
+          <p>
+            Generated synthesis, qualification evidence and knowledge-graph recommendations are
+            decision-support artifacts and do not replace required engineering judgement,
+            certification, verification or safety processes.
+          </p>
+          <p>
+            Access must be used only for authorized organizations, projects and data. Production
+            commercial terms, support commitments and data-processing obligations are governed by
+            the applicable agreement for the deployment.
+          </p>
+        </div>
+      </section>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-5 py-6 text-xs text-muted-foreground lg:px-8">
+          <span>KIDE · Knowledge-integrated systems engineering</span>
+          <a href="/#privacy" className="ml-auto hover:text-foreground">
+            Privacy
+          </a>
+          <a href="/#terms" className="hover:text-foreground">
+            Terms
+          </a>
+        </div>
+      </footer>
     </main>
   );
 }

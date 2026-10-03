@@ -121,6 +121,27 @@ the configured existing instance and then attaches that instance to Cloud Run.
 Local development can continue to use the included Docker Compose PostgreSQL service at no
 software-license cost.
 
+## Production launch acceptance
+
+Before an official production launch, run the read-only GCP preflight and the live smoke test against
+the deployed origin:
+
+```sh
+PROJECT_ID=your-project-id bash deploy/gcp/launch-preflight.sh
+KIDE_URL=https://your-production-origin bash scripts/launch/live-smoke.sh
+```
+
+The launch preflight requires Cloud SQL automated backups and point-in-time recovery, active
+production secrets, a healthy Better Auth/PostgreSQL runtime, and correct production auth URL
+configuration. The live smoke creates a disposable test account, verifies session persistence and
+checks anonymous protected-route fail-closed behavior.
+
+Operational procedures live in:
+
+- `docs/operations/launch-runbook.md`
+- `docs/operations/database-backup-restore.md`
+- `docs/operations/observability.md`
+
 ## Quality gates
 
 ```sh
