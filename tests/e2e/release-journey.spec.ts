@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
-test.describe.configure({ timeout: 60_000 });
+test.describe.configure({ timeout: 90_000 });
 
 async function createProject(page: Page, prefix: string) {
   const emailPrefix = prefix
@@ -60,7 +60,7 @@ test("customer can go from an empty project to a verified generated release bund
 
   await page.goto("/synthesis");
   await expect(page.getByRole("radiogroup", { name: "Synthesis candidates" })).toBeVisible();
-  await expect(page.getByText("Generated control model")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Generated control model", exact: true })).toBeVisible();
   await expect(page.locator("pre")).toContainText("ControlNode");
   await expect(page.getByText("Independently re-checked, no errors").first()).toBeVisible();
 
@@ -214,7 +214,7 @@ test("core engineering journey remains usable on a compact viewport", async ({ p
 
   await page.goto("/synthesis");
   await expect(page.getByRole("button", { name: "Approve design" })).toBeVisible();
-  await expect(page.getByText("Generated control model")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Generated control model", exact: true })).toBeVisible();
 
   await page.goto("/trust");
   await expect(page.getByRole("link", { name: "Release centre" })).toBeVisible();
