@@ -206,6 +206,7 @@ test("saved UI preferences and designer persistence state survive real workflow 
   await page.getByRole("button", { name: /project/i }).click();
 
   await page.goto("/models");
+  await expect(page.getByText("This project has no model files yet")).toBeVisible();
   const loadExample = page.getByRole("button", { name: "Load selected" });
   await expect(loadExample).toBeEnabled();
   await loadExample.click();
