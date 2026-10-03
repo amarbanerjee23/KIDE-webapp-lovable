@@ -161,6 +161,7 @@ test("approval is invalidated after replacing the approved workspace", async ({ 
   await createProject(page, "Approval Drift");
 
   await page.goto("/models");
+  await expect(page.getByText("This project has no model files yet")).toBeVisible();
   const loadExample = page.getByRole("button", { name: /Load Autonomous warehouse fleet/i });
   await expect(loadExample).toBeEnabled();
   await loadExample.click();
@@ -193,6 +194,7 @@ test("core engineering journey remains usable on a compact viewport", async ({ p
   await createProject(page, "Compact CX");
 
   await page.goto("/models");
+  await expect(page.getByText("This project has no model files yet")).toBeVisible();
   const loadExample = page.getByRole("button", { name: /Load Autonomous warehouse fleet/i });
   await expect(loadExample).toBeEnabled();
   await loadExample.click();
