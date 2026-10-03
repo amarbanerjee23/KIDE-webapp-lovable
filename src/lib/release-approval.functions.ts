@@ -139,7 +139,7 @@ export const saveProjectReleaseApproval = createServerFn({ method: "POST" })
         ${candidateName},
         ${data.fingerprint},
         ${data.graphAssistance ? context.db.json(data.graphAssistance) : null},
-        ${data.graphSynthesisInputs ? context.db.json(data.graphSynthesisInputs) : null},
+        ${data.graphSynthesisInputs ? context.db.json(JSON.parse(JSON.stringify(data.graphSynthesisInputs))) : null},
         ${context.userId}::uuid,
         ${approvedAt}::timestamptz,
         ${approvedAt}::timestamptz
