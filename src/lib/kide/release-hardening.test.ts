@@ -216,7 +216,7 @@ describe("release-hardening mutation and fail-closed matrix", () => {
     const approval: Approval = {
       candidateId: originalCandidate.id,
       candidateName: originalCandidate.name,
-      fingerprint: originalCandidate.generatedMnc,
+      fingerprint: approvalFingerprint(originalCandidate.generatedMnc),
       approvedAt: "2026-10-03T00:00:00.000Z",
     };
 
