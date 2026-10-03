@@ -1,10 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-export async function signUpThroughUi(
-  page: Page,
-  email: string,
-  password: string,
-) {
+export async function signUpThroughUi(page: Page, email: string, password: string) {
   await page.getByRole("button", { name: "Create account" }).last().click();
   await page.getByLabel("Work email").fill(email);
   await page.getByLabel("Password").fill(password);
