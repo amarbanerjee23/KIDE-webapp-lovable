@@ -10,7 +10,25 @@ import {
 } from "@/lib/data-access.server";
 
 const APPROVAL_ROLES: Role[] = [...new Set([...EDIT_ROLES, ...REVIEW_ROLES])];
-import type { GraphSynthesisInputEvidence } from "@/lib/kide/graph-synthesis-promotion";
+export interface PersistedGraphInputBinding {
+  requiredCapability: string;
+  deviceSemanticId: string;
+  deviceLabel: string;
+  capabilityId: string;
+  sourceFingerprint: string;
+  confidence: number;
+}
+
+export interface PersistedGraphSynthesisInputEvidence {
+  mode: "graph-assisted-inputs";
+  workspaceFingerprint: string;
+  graphSnapshotFingerprint: string;
+  baselineSynthesisFingerprint: string;
+  generatorVersion: string;
+  qualificationVersion: string;
+  sourceFingerprints: string[];
+  bindings: PersistedGraphInputBinding[];
+}
 
 export interface PersistedReleaseApproval {
   candidateId: string;
@@ -23,7 +41,7 @@ export interface PersistedReleaseApproval {
     baselineSynthesisFingerprint: string;
     sourceFingerprints: string[];
   };
-  graphSynthesisInputs?: GraphSynthesisInputEvidence;
+  graphSynthesisInputs?: PersistedGraphSynthesisInputEvidence;
 }
 
 function assertFingerprint(value: string) {
@@ -44,7 +62,7 @@ export const loadProjectReleaseApproval = createServerFn({ method: "POST" })
         candidate_name: string;
         fingerprint: string;
         graph_assistance: PersistedReleaseApproval["graphAssistance"] | null;
-        graph_synthesis_inputs: GraphSynthesisInputEvidence | null;
+        graph_synthesis_inputs: PersistedGraphSynthesisInputEvidence | null;
         approved_by: string;
         approved_at: string | Date;
       }[]
@@ -87,7 +105,7 @@ export const saveProjectReleaseApproval = createServerFn({ method: "POST" })
       candidateName: string;
       fingerprint: string;
       graphAssistance?: PersistedReleaseApproval["graphAssistance"];
-      graphSynthesisInputs?: GraphSynthesisInputEvidence;
+      graphSynthesisInputs?: PersistedGraphSynthesisInputEvidence;
     }) => input,
   )
   .handler(async ({ data, context }): Promise<PersistedReleaseApproval> => {
