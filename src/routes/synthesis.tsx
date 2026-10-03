@@ -28,7 +28,11 @@ import {
   graphSynthesisInputsEnabled,
   promoteGraphSynthesisInputs,
 } from "@/lib/kide/graph-synthesis-promotion";
-import { getTrustedGlobalKnowledgeSnapshot } from "@/lib/knowledge/knowledge.functions";
+import {
+  getGraphSynthesisProductionPolicy,
+  getTrustedGlobalKnowledgeSnapshot,
+} from "@/lib/knowledge/knowledge.functions";
+import type { GraphSynthesisProductionPolicy } from "@/lib/knowledge/graph-synthesis-policy";
 import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
@@ -57,11 +61,42 @@ function SynthesisReview() {
   const graphEnabled = graphAssistanceEnabled(
     import.meta.env["VITE_KIDE_GRAPH_ASSISTED_SYNTHESIS"],
   );
-  const graphInputsEnabled = graphSynthesisInputsEnabled(
+  const graphInputsCapabilityEnabled = graphSynthesisInputsEnabled(
     import.meta.env["VITE_KIDE_GRAPH_SYNTHESIS_INPUTS"],
   );
+  const [productionPolicy, setProductionPolicy] =
+    useState<GraphSynthesisProductionPolicy | null>(null);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const graphInputsEnabled =
+    graphInputsCapabilityEnabled && productionPolicy?.enabled === true;
   const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
   const [graphError, setGraphError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!graphInputsCapabilityEnabled) {
+      setProductionPolicy(null);
+      setPolicyError(null);
+      return;
+    }
+
+    let active = true;
+    setPolicyError(null);
+    void getGraphSynthesisProductionPolicy()
+      .then((policy) => {
+        if (active) setProductionPolicy(policy);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setProductionPolicy(null);
+        setPolicyError(
+          error instanceof Error ? error.message : "Production promotion policy is unavailable.",
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [graphInputsCapabilityEnabled]);
 
   useEffect(() => {
     if (!graphEnabled && !graphInputsEnabled) {
@@ -273,14 +308,21 @@ function SynthesisReview() {
             </section>
           )}
 
-          {graphInputsEnabled && (
+          {graphInputsCapabilityEnabled && (
             <section className="mt-5 rounded-lg border border-border bg-card p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-semibold">Promoted graph synthesis inputs</h2>
                 <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground">
-                  {graphPromotion.applied ? "active" : "fallback"}
+                  {productionPolicy?.killSwitch
+                    ? "kill switch"
+                    : graphPromotion.applied
+                      ? "active"
+                      : "fallback"}
                 </span>
               </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {policyError ?? productionPolicy?.reason ?? "Checking runtime production policy…"}
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">{graphPromotion.reason}</p>
               {graphPromotion.evidence && (
                 <div className="mt-3 grid gap-2 md:grid-cols-2">
