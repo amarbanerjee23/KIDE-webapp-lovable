@@ -8,10 +8,7 @@ import { buildAssurance } from "@/lib/kide/assurance";
 import { buildRelease } from "@/lib/kide/release";
 import { synthesize } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
-import {
-  approvalIsCurrentForSynthesisContext,
-  useApprovalState,
-} from "@/lib/kide/approval-store";
+import { approvalIsCurrentForSynthesisContext, useApprovalState } from "@/lib/kide/approval-store";
 import {
   graphSynthesisInputsEnabled,
   promoteGraphSynthesisInputs,
@@ -48,8 +45,9 @@ function ReleaseCentre() {
   const graphInputsCapabilityEnabled = graphSynthesisInputsEnabled(
     import.meta.env["VITE_KIDE_GRAPH_SYNTHESIS_INPUTS"],
   );
-  const [productionPolicy, setProductionPolicy] =
-    useState<GraphSynthesisProductionPolicy | null>(null);
+  const [productionPolicy, setProductionPolicy] = useState<GraphSynthesisProductionPolicy | null>(
+    null,
+  );
   const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
@@ -80,7 +78,9 @@ function ReleaseCentre() {
           setProductionPolicy(null);
           setGraphSnapshot(null);
           setRuntimeError(
-            error instanceof Error ? error.message : "Graph synthesis runtime state is unavailable.",
+            error instanceof Error
+              ? error.message
+              : "Graph synthesis runtime state is unavailable.",
           );
         });
     };
@@ -113,7 +113,14 @@ function ReleaseCentre() {
         graphInputsCapabilityEnabled && productionPolicy?.enabled === true,
         runtimeError ?? undefined,
       ),
-    [workspace, report, graphSnapshot, graphInputsCapabilityEnabled, productionPolicy, runtimeError],
+    [
+      workspace,
+      report,
+      graphSnapshot,
+      graphInputsCapabilityEnabled,
+      productionPolicy,
+      runtimeError,
+    ],
   );
 
   const currentGraphInputs =
