@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireKideAuth } from "@/lib/auth-middleware";
 import { EDIT_ROLES, requireProjectAccess } from "@/lib/data-access.server";
 import type { KnowledgeProjection } from "@/lib/knowledge/contracts";
+import { resolveGraphSynthesisProductionPolicy } from "@/lib/knowledge/graph-synthesis-policy";
 import {
   knowledgeGraphStatus,
   pingKnowledgeGraph,
@@ -87,3 +88,7 @@ export const publishProjectKnowledgeGraph = createServerFn({ method: "POST" })
 export const getTrustedGlobalKnowledgeSnapshot = createServerFn({ method: "GET" })
   .middleware([requireKideAuth])
   .handler(async () => readTrustedGlobalKnowledgeSnapshot());
+
+export const getGraphSynthesisProductionPolicy = createServerFn({ method: "GET" })
+  .middleware([requireKideAuth])
+  .handler(async () => resolveGraphSynthesisProductionPolicy(process.env));

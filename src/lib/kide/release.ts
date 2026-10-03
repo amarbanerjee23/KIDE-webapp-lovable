@@ -60,6 +60,7 @@ function canonical(value: unknown): string {
 export interface ReleaseEvidenceContext {
   graphSynthesisInputs?: GraphSynthesisInputEvidence | null;
   approvalFingerprint?: string | null;
+  approvalCurrent?: boolean;
 }
 
 export function buildRelease(
@@ -120,6 +121,9 @@ export function buildRelease(
   const blockedBy = assurance.gates
     .filter((gate) => gate.status === "fail")
     .map((gate) => gate.label);
+  if (evidenceContext?.approvalCurrent === false) {
+    blockedBy.push("Current reviewer approval");
+  }
 
   const manifest = canonical({
     version,

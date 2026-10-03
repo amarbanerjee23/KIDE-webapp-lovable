@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, CircleAlert, Download, Package, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,17 @@ import { buildAssurance } from "@/lib/kide/assurance";
 import { buildRelease } from "@/lib/kide/release";
 import { synthesize } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
+import { approvalIsCurrentForSynthesisContext, useApprovalState } from "@/lib/kide/approval-store";
 import {
-  approvalFingerprint,
-  approvalIsCurrent,
-  useApprovalState,
-} from "@/lib/kide/approval-store";
+  graphSynthesisInputsEnabled,
+  promoteGraphSynthesisInputs,
+} from "@/lib/kide/graph-synthesis-promotion";
+import {
+  getGraphSynthesisProductionPolicy,
+  getTrustedGlobalKnowledgeSnapshot,
+} from "@/lib/knowledge/knowledge.functions";
+import type { GraphSynthesisProductionPolicy } from "@/lib/knowledge/graph-synthesis-policy";
+import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 
 const title = "Release Centre — KIDE";
 const description =
@@ -36,27 +42,105 @@ function ReleaseCentre() {
   const sources = useWorkspaceSources();
   const { selectedId, approval } = useApprovalState();
   const [version, setVersion] = useState("1.0.0");
+  const graphInputsCapabilityEnabled = graphSynthesisInputsEnabled(
+    import.meta.env["VITE_KIDE_GRAPH_SYNTHESIS_INPUTS"],
+  );
+  const [productionPolicy, setProductionPolicy] = useState<GraphSynthesisProductionPolicy | null>(
+    null,
+  );
+  const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
-  const { assurance, bundle } = useMemo(() => {
+  useEffect(() => {
+    if (!graphInputsCapabilityEnabled) {
+      setProductionPolicy(null);
+      setGraphSnapshot(null);
+      setRuntimeError(null);
+      return;
+    }
+
+    let active = true;
+    const refreshRuntime = () => {
+      setRuntimeError(null);
+      void getGraphSynthesisProductionPolicy()
+        .then(async (policy) => {
+          if (!active) return;
+          setProductionPolicy(policy);
+          if (!policy.enabled) {
+            setGraphSnapshot(null);
+            return;
+          }
+          const snapshot = await getTrustedGlobalKnowledgeSnapshot();
+          if (active) setGraphSnapshot(snapshot);
+        })
+        .catch((error: unknown) => {
+          if (!active) return;
+          setProductionPolicy(null);
+          setGraphSnapshot(null);
+          setRuntimeError(
+            error instanceof Error
+              ? error.message
+              : "Graph synthesis runtime state is unavailable.",
+          );
+        });
+    };
+
+    refreshRuntime();
+    const timer = window.setInterval(refreshRuntime, 30_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [graphInputsCapabilityEnabled]);
+
+  const { workspace, report, assurance } = useMemo(() => {
     const workspace = linkFrom(sources);
     const report = synthesize(workspace);
-    const built = buildAssurance(workspace, report, selectedId);
     return {
-      assurance: built,
-      bundle: buildRelease(workspace, report, built, version, {
-        graphSynthesisInputs: approval?.graphSynthesisInputs ?? null,
-        approvalFingerprint: approval?.fingerprint ?? null,
-      }),
+      workspace,
+      report,
+      assurance: buildAssurance(workspace, report, selectedId),
     };
-  }, [sources, selectedId, version, approval]);
+  }, [sources, selectedId]);
 
-  const currentApprovalFingerprint = assurance.candidate
-    ? approval?.graphSynthesisInputs
-      ? approvalFingerprint(assurance.candidate.generatedMnc, approval.graphSynthesisInputs)
-      : assurance.candidate.generatedMnc
-    : null;
-  const approvalCurrent = approvalIsCurrent(approval, currentApprovalFingerprint);
-  const canRelease = bundle.releasable && approvalCurrent;
+  const graphPromotion = useMemo(
+    () =>
+      promoteGraphSynthesisInputs(
+        workspace,
+        report,
+        graphSnapshot,
+        graphInputsCapabilityEnabled && productionPolicy?.enabled === true,
+        runtimeError ?? undefined,
+      ),
+    [
+      workspace,
+      report,
+      graphSnapshot,
+      graphInputsCapabilityEnabled,
+      productionPolicy,
+      runtimeError,
+    ],
+  );
+
+  const currentGraphInputs =
+    graphPromotion.applied && graphPromotion.evidence ? graphPromotion.evidence : null;
+  const approvalCurrent = approvalIsCurrentForSynthesisContext(
+    approval,
+    assurance.candidate?.generatedMnc ?? null,
+    currentGraphInputs,
+  );
+
+  const bundle = useMemo(
+    () =>
+      buildRelease(workspace, report, assurance, version, {
+        graphSynthesisInputs: currentGraphInputs,
+        approvalFingerprint: approval?.fingerprint ?? null,
+        approvalCurrent,
+      }),
+    [workspace, report, assurance, version, currentGraphInputs, approval, approvalCurrent],
+  );
+  const canRelease = bundle.releasable;
 
   const download = () => {
     const payload = JSON.stringify(
@@ -153,6 +237,20 @@ function ReleaseCentre() {
                 </p>
               </div>
             </div>
+            {approval?.graphSynthesisInputs && (
+              <div className="mt-3 rounded-md border border-border bg-background p-3 text-[11px]">
+                <p className="font-medium">Graph synthesis runtime approval status</p>
+                <p className="mt-1 text-muted-foreground">
+                  {runtimeError ??
+                    productionPolicy?.reason ??
+                    "Checking runtime production policy and current graph snapshot…"}
+                </p>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                  {approvalCurrent ? "approval-current" : "approval-invalidated"}
+                </p>
+              </div>
+            )}
+
             {!canRelease && (
               <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-[11px] text-destructive">
                 Release blocked. Resolve everything above — see the{" "}

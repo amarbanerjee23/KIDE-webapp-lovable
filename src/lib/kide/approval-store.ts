@@ -76,3 +76,22 @@ export function approvalFingerprint(
     }),
   );
 }
+
+export function approvalIsCurrentForSynthesisContext(
+  current: Approval | null,
+  generatedMnc: string | null,
+  graphSynthesisInputs: GraphSynthesisInputEvidence | null,
+) {
+  if (!current || !generatedMnc) return false;
+
+  if (graphSynthesisInputs) {
+    if (!current.graphSynthesisInputs) return false;
+    if (JSON.stringify(current.graphSynthesisInputs) !== JSON.stringify(graphSynthesisInputs)) {
+      return false;
+    }
+    return current.fingerprint === approvalFingerprint(generatedMnc, graphSynthesisInputs);
+  }
+
+  if (current.graphSynthesisInputs) return false;
+  return current.fingerprint === generatedMnc;
+}
