@@ -5,6 +5,8 @@ import { buildAssurance } from "./assurance";
 import { buildRelease } from "./release";
 import { buildCatalogue } from "./catalogue";
 import { sha256 } from "./sha256";
+import { approvalFingerprint } from "./approval-store";
+import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
 
 const workspace = () => linkWorkspace(SAMPLE_WORKSPACE.map((f) => ({ ...f })));
 
@@ -46,6 +48,46 @@ describe("release", () => {
     expect(a.manifestHash).toHaveLength(64);
     expect(a.releasable).toBe(true);
     expect(a.artifacts.length).toBeGreaterThan(SAMPLE_WORKSPACE.length);
+  });
+
+
+  it("checksums promoted graph inputs, candidate and approval fingerprints into the release manifest", () => {
+    const ws = workspace();
+    const report = synthesize(ws);
+    const assurance = buildAssurance(ws, report, null);
+    const candidate = assurance.candidate!;
+    const graphEvidence: GraphSynthesisInputEvidence = {
+      mode: "graph-assisted-inputs",
+      workspaceFingerprint: "w".repeat(64),
+      graphSnapshotFingerprint: "g".repeat(64),
+      baselineSynthesisFingerprint: "b".repeat(64),
+      generatorVersion: report.generator,
+      qualificationVersion: assurance.qualification.qualificationVersion,
+      sourceFingerprints: ["source-a"],
+      bindings: [
+        {
+          requiredCapability: "Move",
+          deviceSemanticId: "urn:test:device",
+          deviceLabel: "Test Device",
+          capabilityId: "urn:test:capability",
+          sourceFingerprint: "source-a",
+          confidence: 0.99,
+        },
+      ],
+    };
+    const approvalHash = approvalFingerprint(candidate.generatedMnc, graphEvidence);
+    const bundle = buildRelease(ws, report, assurance, "1.0.0", {
+      graphSynthesisInputs: graphEvidence,
+      approvalFingerprint: approvalHash,
+    });
+
+    expect(bundle.candidateFingerprint).toBe(sha256(candidate.generatedMnc));
+    expect(bundle.approvalFingerprint).toBe(approvalHash);
+    expect(bundle.artifacts.some((entry) => entry.path === "evidence/graph-synthesis-inputs.json")).toBe(
+      true,
+    );
+    expect(bundle.manifest).toContain(approvalHash);
+    expect(bundle.manifest).toContain(bundle.candidateFingerprint);
   });
 
   it("marks the bundle blocked when gates fail", () => {
