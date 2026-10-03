@@ -8,7 +8,11 @@ import { buildAssurance } from "@/lib/kide/assurance";
 import { buildRelease } from "@/lib/kide/release";
 import { synthesize } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
-import { approvalIsCurrent, useApprovalState } from "@/lib/kide/approval-store";
+import {
+  approvalFingerprint,
+  approvalIsCurrent,
+  useApprovalState,
+} from "@/lib/kide/approval-store";
 
 const title = "Release Centre — KIDE";
 const description =
@@ -37,10 +41,21 @@ function ReleaseCentre() {
     const workspace = linkFrom(sources);
     const report = synthesize(workspace);
     const built = buildAssurance(workspace, report, selectedId);
-    return { assurance: built, bundle: buildRelease(workspace, report, built, version) };
-  }, [sources, selectedId, version]);
+    return {
+      assurance: built,
+      bundle: buildRelease(workspace, report, built, version, {
+        graphSynthesisInputs: approval?.graphSynthesisInputs ?? null,
+        approvalFingerprint: approval?.fingerprint ?? null,
+      }),
+    };
+  }, [sources, selectedId, version, approval]);
 
-  const approvalCurrent = approvalIsCurrent(approval, assurance.candidate?.generatedMnc ?? null);
+  const currentApprovalFingerprint = assurance.candidate
+    ? approval?.graphSynthesisInputs
+      ? approvalFingerprint(assurance.candidate.generatedMnc, approval.graphSynthesisInputs)
+      : assurance.candidate.generatedMnc
+    : null;
+  const approvalCurrent = approvalIsCurrent(approval, currentApprovalFingerprint);
   const canRelease = bundle.releasable && approvalCurrent;
 
   const download = () => {
