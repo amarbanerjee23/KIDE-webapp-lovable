@@ -187,7 +187,6 @@ test("approval is invalidated after replacing the approved workspace", async ({ 
   ).toBeVisible();
 });
 
-
 test("core engineering journey remains usable on a compact viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await createProject(page, "Compact CX");
