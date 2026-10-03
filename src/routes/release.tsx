@@ -62,29 +62,35 @@ function ReleaseCentre() {
     }
 
     let active = true;
-    setRuntimeError(null);
-    void getGraphSynthesisProductionPolicy()
-      .then(async (policy) => {
-        if (!active) return;
-        setProductionPolicy(policy);
-        if (!policy.enabled) {
+    const refreshRuntime = () => {
+      setRuntimeError(null);
+      void getGraphSynthesisProductionPolicy()
+        .then(async (policy) => {
+          if (!active) return;
+          setProductionPolicy(policy);
+          if (!policy.enabled) {
+            setGraphSnapshot(null);
+            return;
+          }
+          const snapshot = await getTrustedGlobalKnowledgeSnapshot();
+          if (active) setGraphSnapshot(snapshot);
+        })
+        .catch((error: unknown) => {
+          if (!active) return;
+          setProductionPolicy(null);
           setGraphSnapshot(null);
-          return;
-        }
-        const snapshot = await getTrustedGlobalKnowledgeSnapshot();
-        if (active) setGraphSnapshot(snapshot);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setProductionPolicy(null);
-        setGraphSnapshot(null);
-        setRuntimeError(
-          error instanceof Error ? error.message : "Graph synthesis runtime state is unavailable.",
-        );
-      });
+          setRuntimeError(
+            error instanceof Error ? error.message : "Graph synthesis runtime state is unavailable.",
+          );
+        });
+    };
+
+    refreshRuntime();
+    const timer = window.setInterval(refreshRuntime, 30_000);
 
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, [graphInputsCapabilityEnabled]);
 
