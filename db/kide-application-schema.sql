@@ -136,60 +136,7 @@ CREATE TABLE IF NOT EXISTS public.release_approvals (
   project_id uuid PRIMARY KEY REFERENCES public.projects(id) ON DELETE CASCADE,
   candidate_id text NOT NULL CHECK (char_length(candidate_id) BETWEEN 1 AND 160),
   candidate_name text NOT NULL CHECK (char_length(candidate_name) BETWEEN 1 AND 160),
-  fingerprint text NOT NULL CHECK (fingerprint ~ '^[0-9a-f]{64}
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
-  kind text NOT NULL,
-  title text NOT NULL,
-  body text NOT NULL DEFAULT '',
-  link text,
-  read_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS notifications_user_idx ON public.notifications(user_id, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS public.subscriptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE UNIQUE,
-  plan text NOT NULL DEFAULT 'starter',
-  status text NOT NULL DEFAULT 'active',
-  current_period_end timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS public.payments (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  plan text NOT NULL,
-  amount integer NOT NULL,
-  currency text NOT NULL DEFAULT 'usd',
-  status text NOT NULL DEFAULT 'pending',
-  processor text NOT NULL DEFAULT 'hyperswitch',
-  processor_payment_id text UNIQUE,
-  created_by uuid,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE IF EXISTS public.payments DROP CONSTRAINT IF EXISTS payments_created_by_fkey;
-
-ALTER TABLE IF EXISTS public.profiles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.organizations DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.organization_roles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.projects DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.model_versions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.audit_events DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.invitations DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.model_checkpoints DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.review_requests DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.review_comments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.release_approvals DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.notifications DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.subscriptions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.payments DISABLE ROW LEVEL SECURITY;
-),
+  fingerprint text NOT NULL CHECK (char_length(fingerprint) = 64 AND fingerprint !~ '[^0-9a-f]'),
   graph_assistance jsonb,
   graph_synthesis_inputs jsonb,
   approved_by uuid NOT NULL,
@@ -198,7 +145,6 @@ ALTER TABLE IF EXISTS public.payments DISABLE ROW LEVEL SECURITY;
 );
 CREATE INDEX IF NOT EXISTS release_approvals_approved_at_idx
   ON public.release_approvals(approved_at DESC);
-
 CREATE TABLE IF NOT EXISTS public.notifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -248,6 +194,7 @@ ALTER TABLE IF EXISTS public.invitations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.model_checkpoints DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.review_requests DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.review_comments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.release_approvals DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.notifications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.subscriptions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.payments DISABLE ROW LEVEL SECURITY;
