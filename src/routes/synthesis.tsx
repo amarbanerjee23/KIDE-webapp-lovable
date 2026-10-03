@@ -64,11 +64,11 @@ function SynthesisReview() {
   const graphInputsCapabilityEnabled = graphSynthesisInputsEnabled(
     import.meta.env["VITE_KIDE_GRAPH_SYNTHESIS_INPUTS"],
   );
-  const [productionPolicy, setProductionPolicy] =
-    useState<GraphSynthesisProductionPolicy | null>(null);
+  const [productionPolicy, setProductionPolicy] = useState<GraphSynthesisProductionPolicy | null>(
+    null,
+  );
   const [policyError, setPolicyError] = useState<string | null>(null);
-  const graphInputsEnabled =
-    graphInputsCapabilityEnabled && productionPolicy?.enabled === true;
+  const graphInputsEnabled = graphInputsCapabilityEnabled && productionPolicy?.enabled === true;
   const [graphSnapshot, setGraphSnapshot] = useState<GlobalKnowledgeSnapshot | null>(null);
   const [graphError, setGraphError] = useState<string | null>(null);
 
