@@ -12,6 +12,7 @@ import type { Workspace } from "@/lib/dsl";
 import type { SynthesisReport } from "./synthesis";
 import type { AssuranceReport } from "./assurance";
 import { sha256 } from "./sha256";
+import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
 
 export interface ReleaseArtifact {
   path: string;
@@ -63,6 +64,7 @@ export function buildRelease(
   report: SynthesisReport,
   assurance: AssuranceReport,
   version: string,
+  graphSynthesisInputs?: GraphSynthesisInputEvidence | null,
 ): ReleaseBundle {
   const candidate = assurance.candidate;
   const artifacts: ReleaseArtifact[] = [];
@@ -84,6 +86,16 @@ export function buildRelease(
           scores: candidate.scores,
           independentValidation: candidate.validation,
         }),
+      ),
+    );
+  }
+
+  if (graphSynthesisInputs) {
+    artifacts.push(
+      artifact(
+        "evidence/graph-synthesis-inputs.json",
+        "evidence",
+        canonical(graphSynthesisInputs),
       ),
     );
   }
