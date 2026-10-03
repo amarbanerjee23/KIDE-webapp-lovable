@@ -250,7 +250,7 @@ test("approval remains scoped to the project that created it", async ({ page }) 
   await page.getByRole("button", { name: /project/i }).click();
   await expect(page.getByText("Project B Controller")).toBeVisible();
 
-  const projectB = page.getByText("Project B Controller").locator("..");
+  const projectB = page.getByRole("listitem").filter({ hasText: "Project B Controller" });
   await projectB.getByRole("link", { name: "Open models" }).click();
   await expect(page).toHaveURL("/models");
   await expect(page.getByText("This project has no model files yet")).toBeVisible();
