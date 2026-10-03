@@ -1,13 +1,10 @@
 import { useSyncExternalStore } from "react";
+import { getActiveProject, useActiveProject } from "@/lib/active-project";
 import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
 import { sha256 } from "./sha256";
 
-/**
- * Which design the team selected and approved, shared by the synthesis
- * review, the Trust Centre and the Release Centre. Approvals are recorded
- * against the design name and the exact generated control model, so an
- * edit to the models invalidates them.
- */
+const STORAGE_KEY = "kide:approval-state:v1";
+
 export interface Approval {
   candidateId: string;
   candidateName: string;
@@ -21,42 +18,117 @@ export interface Approval {
   graphSynthesisInputs?: GraphSynthesisInputEvidence;
 }
 
-let selectedId: string | null = null;
-let approval: Approval | null = null;
-const listeners = new Set<() => void>();
-let snapshot: { selectedId: string | null; approval: Approval | null } = { selectedId, approval };
+interface ApprovalSnapshot {
+  selectedId: string | null;
+  approval: Approval | null;
+}
 
-function emit() {
-  snapshot = { selectedId, approval };
+const EMPTY_SNAPSHOT: ApprovalSnapshot = { selectedId: null, approval: null };
+const listeners = new Set<() => void>();
+const snapshots = new Map<string, ApprovalSnapshot>();
+let hydrated = false;
+
+function readStored(): Record<string, ApprovalSnapshot> {
+  if (typeof window === "undefined") return {};
+  const value = window.localStorage.getItem(STORAGE_KEY);
+  if (!value) return {};
+
+  try {
+    const parsed = JSON.parse(value) as Record<string, ApprovalSnapshot>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    window.localStorage.removeItem(STORAGE_KEY);
+    return {};
+  }
+}
+
+function hydrate() {
+  if (hydrated || typeof window === "undefined") return;
+  hydrated = true;
+
+  for (const [projectId, entry] of Object.entries(readStored())) {
+    if (!entry || typeof entry !== "object") continue;
+    snapshots.set(projectId, {
+      selectedId: typeof entry.selectedId === "string" ? entry.selectedId : null,
+      approval: entry.approval ?? null,
+    });
+  }
+}
+
+function writeStored() {
+  if (typeof window === "undefined") return;
+  const payload = Object.fromEntries(snapshots.entries());
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+function activeProjectId() {
+  return getActiveProject()?.projectId ?? null;
+}
+
+function snapshotFor(projectId: string | null): ApprovalSnapshot {
+  hydrate();
+  if (!projectId) return EMPTY_SNAPSHOT;
+  return snapshots.get(projectId) ?? EMPTY_SNAPSHOT;
+}
+
+function updateActiveProject(next: ApprovalSnapshot) {
+  hydrate();
+  const projectId = activeProjectId();
+  if (!projectId) return;
+
+  snapshots.set(projectId, next);
+  writeStored();
   for (const listener of listeners) listener();
 }
 
 export function selectCandidate(id: string | null) {
-  selectedId = id;
-  emit();
+  const current = snapshotFor(activeProjectId());
+  updateActiveProject({ ...current, selectedId: id });
 }
 
 export function approveCandidate(entry: Approval) {
-  approval = entry;
-  selectedId = entry.candidateId;
-  emit();
+  updateActiveProject({
+    selectedId: entry.candidateId,
+    approval: entry,
+  });
 }
 
 export function revokeApproval() {
-  approval = null;
-  emit();
+  const current = snapshotFor(activeProjectId());
+  updateActiveProject({ ...current, approval: null });
 }
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key !== STORAGE_KEY) return;
+    hydrated = false;
+    snapshots.clear();
+    hydrate();
+    for (const current of listeners) current();
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", handleStorage);
+  }
+
+  return () => {
+    listeners.delete(listener);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", handleStorage);
+    }
+  };
 }
 
 export function useApprovalState() {
+  const project = useActiveProject();
+  const projectId = project?.projectId ?? null;
+
   return useSyncExternalStore(
     subscribe,
-    () => snapshot,
-    () => snapshot,
+    () => snapshotFor(projectId),
+    () => EMPTY_SNAPSHOT,
   );
 }
 
