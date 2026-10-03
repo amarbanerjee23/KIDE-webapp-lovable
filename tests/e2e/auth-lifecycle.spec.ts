@@ -256,3 +256,33 @@ test("saved UI preferences and designer persistence state survive real workflow 
     accessibility.violations.filter((item) => ["serious", "critical"].includes(item.impact ?? "")),
   ).toEqual([]);
 });
+
+test("engineering page Back control returns to the previous protected page", async ({ page }) => {
+  const email = `back-navigation-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await page.getByRole("button", { name: "Create account" }).last().click();
+  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Password").fill("Pr55-Back-Navigation-Password!");
+  await page.getByRole("button", { name: "Create account" }).first().click();
+  await expect(page).toHaveURL("/projects");
+
+  await page.getByPlaceholder("Acme Robotics").fill("Back Navigation Systems");
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.getByPlaceholder("New project name").fill("Navigation Controller");
+  await page.getByRole("button", { name: /project/i }).click();
+  await expect(page.getByText("Navigation Controller")).toBeVisible();
+
+  await page.goto("/models");
+  await expect(page).toHaveURL("/models");
+  await page.goto("/scenario");
+  await expect(page).toHaveURL("/scenario");
+
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL("/models");
+
+  await page.goto("/qualification");
+  await expect(page).toHaveURL("/qualification");
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL("/models");
+});

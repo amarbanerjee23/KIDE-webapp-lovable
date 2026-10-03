@@ -1,17 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  CircleAlert,
-  LayoutGrid,
-  Plus,
-  Redo2,
-  Trash2,
-  Undo2,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
+import { CircleAlert, LayoutGrid, Plus, Redo2, Trash2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { parseActivity } from "@/lib/dsl";
 import { printActivityFile } from "@/lib/dsl/activity-printer";
 import type { ActivityFileNode } from "@/lib/dsl/ast";
@@ -244,12 +235,7 @@ function Designer() {
   return (
     <main className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/workbench">
-            <ArrowLeft />
-            Workbench
-          </Link>
-        </Button>
+        <EngineeringBackButton />
         <div>
           <h1 className="text-sm font-semibold">Activity designer</h1>
           <p className="text-[10px] text-muted-foreground">

@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  ArrowLeft, CircleAlert, FileCode2, Flag, Play, RotateCcw, SkipForward, Zap,
-} from "lucide-react";
+import { CircleAlert, FileCode2, Flag, Play, RotateCcw, SkipForward, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import {
-  buildScenario, resolveTransition, type ScenarioStep, type TraceEntry,
+  buildScenario,
+  resolveTransition,
+  type ScenarioStep,
+  type TraceEntry,
 } from "@/lib/kide/scenario";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 
@@ -99,7 +101,7 @@ function ScenarioRunner() {
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-        <Button asChild variant="ghost" size="sm"><Link to="/"><ArrowLeft />Workbench</Link></Button>
+        <EngineeringBackButton />
         <div>
           <h1 className="text-sm font-semibold">Scenario runner</h1>
           <p className="text-[10px] text-muted-foreground">
@@ -107,23 +109,39 @@ function ScenarioRunner() {
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button asChild variant="outline" size="sm"><Link to="/models"><FileCode2 />Edit models</Link></Button>
-          <Button variant="outline" size="sm" onClick={reset}><RotateCcw />Reset</Button>
-          <Button size="sm" onClick={start} disabled={!scenario.startActivity}><Play />Start run</Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/models">
+              <FileCode2 />
+              Edit models
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={reset}>
+            <RotateCcw />
+            Reset
+          </Button>
+          <Button size="sm" onClick={start} disabled={!scenario.startActivity}>
+            <Play />
+            Start run
+          </Button>
         </div>
       </header>
 
       {scenario.problems.length > 0 && (
         <ul className="border-b border-destructive/40 bg-destructive/10 px-5 py-2 text-xs text-destructive">
           {scenario.problems.map((problem) => (
-            <li key={problem} className="flex items-center gap-2"><CircleAlert className="size-3.5" />{problem}</li>
+            <li key={problem} className="flex items-center gap-2">
+              <CircleAlert className="size-3.5" />
+              {problem}
+            </li>
           ))}
         </ul>
       )}
 
       <div className="mx-auto grid w-full max-w-7xl gap-4 p-5 lg:grid-cols-[260px_minmax(0,1fr)_minmax(0,360px)]">
         <section className="rounded-lg border border-border bg-card p-3">
-          <p className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase">Workflow steps</p>
+          <p className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase">
+            Workflow steps
+          </p>
           {scenario.steps.map((entry) => {
             const visited = trace.some((item) => item.activity === entry.activity);
             const active = entry.activity === current;
@@ -176,17 +194,27 @@ function ScenarioRunner() {
 
           {step && (
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase">Current step</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase">
+                Current step
+              </p>
               <h2 className="text-lg font-semibold">{step.activity}</h2>
-              {step.description && <p className="text-xs text-muted-foreground">{step.description}</p>}
+              {step.description && (
+                <p className="text-xs text-muted-foreground">{step.description}</p>
+              )}
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-md border border-border/70 bg-background p-3">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase">Performed by</p>
-                  <p className="font-mono text-xs text-capability">{step.capability ?? step.operation ?? "unassigned"}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase">
+                    Performed by
+                  </p>
+                  <p className="font-mono text-xs text-capability">
+                    {step.capability ?? step.operation ?? "unassigned"}
+                  </p>
                 </div>
                 <div className="rounded-md border border-border/70 bg-background p-3">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase">Commands issued</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase">
+                    Commands issued
+                  </p>
                   <p className="font-mono text-xs">{step.commands.join(", ") || "none"}</p>
                 </div>
               </div>
@@ -194,12 +222,19 @@ function ScenarioRunner() {
               <p className="mt-4 text-xs font-medium">What does the device report?</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {step.possibleOutcomes.map((outcome) => (
-                  <Button key={outcome} variant="outline" size="sm" onClick={() => advance(outcome)}>
-                    <Zap />{outcome}
+                  <Button
+                    key={outcome}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => advance(outcome)}
+                  >
+                    <Zap />
+                    {outcome}
                   </Button>
                 ))}
                 <Button variant="secondary" size="sm" onClick={() => advance(null)}>
-                  <SkipForward />Completes normally
+                  <SkipForward />
+                  Completes normally
                 </Button>
               </div>
             </div>
@@ -207,13 +242,18 @@ function ScenarioRunner() {
         </section>
 
         <section className="rounded-lg border border-border bg-card p-3">
-          <p className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase">Execution trace</p>
+          <p className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase">
+            Execution trace
+          </p>
           {trace.length === 0 ? (
             <p className="text-xs text-muted-foreground">No events yet.</p>
           ) : (
             <ol className="space-y-2">
               {trace.map((entry) => (
-                <li key={`${entry.index}-${entry.activity}`} className="rounded-md border border-border/70 bg-background p-2.5">
+                <li
+                  key={`${entry.index}-${entry.activity}`}
+                  className="rounded-md border border-border/70 bg-background p-2.5"
+                >
                   <p className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
                     #{entry.index + 1} · {entry.activity} · {entry.kind}
                   </p>

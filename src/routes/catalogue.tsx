@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, CircleAlert, Cpu, Network, Search, UploadCloud } from "lucide-react";
+import { Check, CircleAlert, Cpu, Network, Search, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { useActiveProject } from "@/lib/active-project";
 import { buildCatalogue } from "@/lib/kide/catalogue";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
@@ -98,12 +99,7 @@ function Catalogue() {
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/">
-            <ArrowLeft />
-            Workbench
-          </Link>
-        </Button>
+        <EngineeringBackButton />
         <div>
           <h1 className="text-sm font-semibold">Capability catalogue</h1>
           <p className="text-[10px] text-muted-foreground">
