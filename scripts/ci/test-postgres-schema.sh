@@ -155,12 +155,18 @@ expect_sql_failure "
 
 psql -c "delete from public.organizations where id = '$org_id'::uuid;" >/dev/null
 
-for table in organization_roles projects invitations release_approvals; do
+for table in organization_roles projects invitations; do
   remaining="$(psql -c "select count(*) from public.$table where organization_id = '$org_id'::uuid;")"
   [[ "$remaining" == "0" ]] || {
     echo "Cascade delete failed for $table" >&2
     exit 1
   }
 done
+
+remaining_approvals="$(psql -c "select count(*) from public.release_approvals where project_id = '$project_id'::uuid;")"
+[[ "$remaining_approvals" == "0" ]] || {
+  echo "Cascade delete failed for release_approvals" >&2
+  exit 1
+}
 
 echo "PostgreSQL schema is idempotent, indexed, constrained and cascade-safe."
