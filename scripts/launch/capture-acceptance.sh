@@ -91,7 +91,7 @@ with open(path, "w", encoding="utf-8") as handle:
     handle.write("\n")
 PY
 
-python3 scripts/launch/verify-acceptance.py "${evidence_file}"
+bun scripts/launch/verify-acceptance.ts "${evidence_file}"
 
 echo
 echo "Launch acceptance evidence created:"
