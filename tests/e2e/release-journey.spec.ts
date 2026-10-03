@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
+test.describe.configure({ timeout: 60_000 });
+
 async function createProject(page: Page, prefix: string) {
   const email = `${prefix}-${Date.now()}@example.com`;
 
@@ -183,4 +185,35 @@ test("approval is invalidated after replacing the approved workspace", async ({ 
   await expect(
     page.getByText("The models changed after approval, so the approval no longer applies."),
   ).toBeVisible();
+});
+
+
+test("core engineering journey remains usable on a compact viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createProject(page, "Compact CX");
+
+  await page.goto("/models");
+  const loadExample = page.getByRole("button", { name: /Load Autonomous warehouse fleet/i });
+  await expect(loadExample).toBeEnabled();
+  await loadExample.click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  for (const route of ["/models", "/synthesis", "/trust", "/release"]) {
+    await page.goto(route);
+    await expect(page).toHaveURL(route);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+
+  await page.goto("/synthesis");
+  await expect(page.getByRole("button", { name: "Approve design" })).toBeVisible();
+  await expect(page.getByText("Generated control model")).toBeVisible();
+
+  await page.goto("/trust");
+  await expect(page.getByRole("link", { name: "Release centre" })).toBeVisible();
+
+  await page.goto("/release");
+  await expect(page.getByRole("button", { name: "Export bundle" })).toBeVisible();
 });
