@@ -48,9 +48,7 @@ describe("graph synthesis production approval safety", () => {
     const graphEvidence = evidence();
     const current = approval(generatedMnc, graphEvidence);
 
-    expect(
-      approvalIsCurrentForSynthesisContext(current, generatedMnc, graphEvidence),
-    ).toBe(true);
+    expect(approvalIsCurrentForSynthesisContext(current, generatedMnc, graphEvidence)).toBe(true);
   });
 
   it("invalidates approval when the graph snapshot fingerprint changes", () => {
@@ -89,13 +87,9 @@ describe("graph synthesis production approval safety", () => {
       approvedAt: "2026-10-03T00:00:00.000Z",
     };
 
-    expect(
-      approvalIsCurrentForSynthesisContext(
-        baselineApproval,
-        generatedMnc,
-        evidence(),
-      ),
-    ).toBe(false);
+    expect(approvalIsCurrentForSynthesisContext(baselineApproval, generatedMnc, evidence())).toBe(
+      false,
+    );
   });
 
   it("marks a release bundle blocked when current approval validation fails", () => {
