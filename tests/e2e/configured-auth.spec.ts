@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { signUpThroughUi } from "./auth-helpers";
 
 const protectedRoutes = [
   "/projects",
@@ -55,11 +56,8 @@ test("new user can sign up, create organization/project, open it, and sign out",
   await page.getByRole("link", { name: /sign in/i }).click();
   await expect(page).toHaveURL("/auth");
 
-  await page.getByRole("button", { name: "Create account" }).last().click();
   const email = `ci-${Date.now()}@example.com`;
-  await page.getByLabel("Work email").fill(email);
-  await page.getByLabel("Password").fill("Pr26-Enterprise-Test-Password!");
-  await page.getByRole("button", { name: "Create account" }).first().click();
+  await signUpThroughUi(page, email, "Pr26-Enterprise-Test-Password!");
 
   await expect(page).toHaveURL("/projects");
   await expect(page.getByRole("heading", { name: "Your projects" })).toBeVisible();

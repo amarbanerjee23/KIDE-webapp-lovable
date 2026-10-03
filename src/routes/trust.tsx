@@ -46,16 +46,16 @@ function TrustCentre() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card px-4 py-2">
         <EngineeringBackButton />
-        <div>
-          <h1 className="text-sm font-semibold">Trust Centre</h1>
+        <div className="min-w-0">
+          <h1 className="truncate text-sm font-semibold">Trust Centre</h1>
           <p className="text-[10px] text-muted-foreground">
             {assurance.blockers} blockers · {assurance.warnings} warnings ·{" "}
             {assurance.tracedPercent}% traced
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0 max-sm:w-full">
           <span
             className={`rounded-md px-2 py-1 text-xs font-medium ${
               assurance.releasable

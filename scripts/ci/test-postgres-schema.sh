@@ -31,7 +31,7 @@ done
 
 required_tables=(
   profiles organizations organization_roles projects model_versions audit_events
-  invitations model_checkpoints review_requests review_comments notifications
+  invitations model_checkpoints review_requests review_comments release_approvals notifications
   subscriptions payments
 )
 
@@ -43,7 +43,8 @@ done
 required_indexes=(
   projects_organization_idx model_versions_project_idx audit_events_scope_idx
   invitations_org_idx invitations_email_idx model_checkpoints_project_idx
-  review_requests_project_idx review_comments_review_idx notifications_user_idx
+  review_requests_project_idx review_comments_review_idx release_approvals_approved_at_idx
+  notifications_user_idx
 )
 
 for index in "${required_indexes[@]}"; do
@@ -114,6 +115,35 @@ psql -c "
   );
 " >/dev/null
 
+psql -c "
+  insert into public.release_approvals(
+    project_id, candidate_id, candidate_name, fingerprint, approved_by, approved_at
+  )
+  values (
+    '$project_id'::uuid,
+    'candidate-consolidated',
+    'Consolidated',
+    repeat('a', 64),
+    '$user_id'::uuid,
+    now()
+  );
+" >/dev/null
+
+expect_sql_failure "
+  insert into public.release_approvals(
+    project_id, candidate_id, candidate_name, fingerprint, approved_by, approved_at
+  )
+  values (
+    '$project_id'::uuid,
+    'candidate-invalid',
+    'Invalid',
+    'not-a-sha256',
+    '$user_id'::uuid,
+    now()
+  )
+  on conflict (project_id) do update set fingerprint = excluded.fingerprint;
+"
+
 expect_sql_failure "
   insert into public.invitations(
     organization_id, email, token, invited_by
@@ -132,5 +162,11 @@ for table in organization_roles projects invitations; do
     exit 1
   }
 done
+
+remaining_approvals="$(psql -c "select count(*) from public.release_approvals where project_id = '$project_id'::uuid;")"
+[[ "$remaining_approvals" == "0" ]] || {
+  echo "Cascade delete failed for release_approvals" >&2
+  exit 1
+}
 
 echo "PostgreSQL schema is idempotent, indexed, constrained and cascade-safe."

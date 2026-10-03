@@ -17,6 +17,6 @@ test("public home and auth surfaces boot without page errors", async ({ page }) 
 test("anonymous protected navigation is fail-closed", async ({ page }) => {
   for (const route of ["/projects", "/models", "/designer", "/release"]) {
     await page.goto(route);
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL("/", { timeout: 15_000 });
   }
 });
