@@ -227,7 +227,6 @@ test("core engineering journey remains usable on a compact viewport", async ({ p
   await expect(page.getByRole("button", { name: "Export bundle" })).toBeVisible();
 });
 
-
 test("approval remains scoped to the project that created it", async ({ page }) => {
   await createProject(page, "Project A Approval");
 
@@ -257,5 +256,7 @@ test("approval remains scoped to the project that created it", async ({ page }) 
 
   await page.goto("/release");
   await expect(page.getByRole("button", { name: "Export bundle" })).toBeDisabled();
-  await expect(page.getByText("Approve a design in the synthesis review before releasing.")).toBeVisible();
+  await expect(
+    page.getByText("Approve a design in the synthesis review before releasing."),
+  ).toBeVisible();
 });
