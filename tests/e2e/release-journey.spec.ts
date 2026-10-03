@@ -5,7 +5,10 @@ import { expect, test, type Page } from "@playwright/test";
 test.describe.configure({ timeout: 60_000 });
 
 async function createProject(page: Page, prefix: string) {
-  const emailPrefix = prefix.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const emailPrefix = prefix
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
   const email = `${emailPrefix}-${Date.now()}@example.com`;
 
   await page.goto("/auth");
