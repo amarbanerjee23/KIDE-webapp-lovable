@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Check, CircleAlert, Rocket, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Check, CircleAlert, Rocket, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { buildAssurance, type Finding } from "@/lib/kide/assurance";
 import { synthesize } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
@@ -46,12 +47,7 @@ function TrustCentre() {
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/">
-            <ArrowLeft />
-            Workbench
-          </Link>
-        </Button>
+        <EngineeringBackButton />
         <div>
           <h1 className="text-sm font-semibold">Trust Centre</h1>
           <p className="text-[10px] text-muted-foreground">
