@@ -77,7 +77,6 @@ export function approvalFingerprint(
   );
 }
 
-
 export function approvalIsCurrentForSynthesisContext(
   current: Approval | null,
   generatedMnc: string | null,
