@@ -90,9 +90,7 @@ export const loadProjectReleaseApproval = createServerFn({ method: "POST" })
       approvedAt: iso(row.approved_at) ?? "",
       approvedBy: row.approved_by,
       ...(row.graph_assistance ? { graphAssistance: row.graph_assistance } : {}),
-      ...(row.graph_synthesis_inputs
-        ? { graphSynthesisInputs: row.graph_synthesis_inputs }
-        : {}),
+      ...(row.graph_synthesis_inputs ? { graphSynthesisInputs: row.graph_synthesis_inputs } : {}),
     };
   });
 
@@ -179,9 +177,7 @@ export const saveProjectReleaseApproval = createServerFn({ method: "POST" })
       approvedAt,
       approvedBy: context.userId,
       ...(data.graphAssistance ? { graphAssistance: data.graphAssistance } : {}),
-      ...(data.graphSynthesisInputs
-        ? { graphSynthesisInputs: data.graphSynthesisInputs }
-        : {}),
+      ...(data.graphSynthesisInputs ? { graphSynthesisInputs: data.graphSynthesisInputs } : {}),
     };
   });
 
