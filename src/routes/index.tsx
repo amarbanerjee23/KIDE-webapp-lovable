@@ -157,10 +157,7 @@ function LandingPage() {
         </div>
       </section>
 
-      <section
-        id="privacy"
-        className="mx-auto max-w-7xl border-t border-border px-5 py-12 lg:px-8"
-      >
+      <section id="privacy" className="mx-auto max-w-7xl border-t border-border px-5 py-12 lg:px-8">
         <h2 className="text-lg font-semibold">Privacy</h2>
         <div className="mt-3 max-w-3xl space-y-3 text-sm leading-6 text-muted-foreground">
           <p>
@@ -180,10 +177,7 @@ function LandingPage() {
         </div>
       </section>
 
-      <section
-        id="terms"
-        className="mx-auto max-w-7xl border-t border-border px-5 py-12 lg:px-8"
-      >
+      <section id="terms" className="mx-auto max-w-7xl border-t border-border px-5 py-12 lg:px-8">
         <h2 className="text-lg font-semibold">Terms of use</h2>
         <div className="mt-3 max-w-3xl space-y-3 text-sm leading-6 text-muted-foreground">
           <p>
