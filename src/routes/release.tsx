@@ -135,7 +135,8 @@ function ReleaseCentre() {
   );
 
   const codegenBundle = useMemo(
-    () => (assurance.candidate ? generateCode(workspace, assurance.candidate, codegenTarget) : null),
+    () =>
+      assurance.candidate ? generateCode(workspace, assurance.candidate, codegenTarget) : null,
     [workspace, assurance.candidate, codegenTarget],
   );
 
