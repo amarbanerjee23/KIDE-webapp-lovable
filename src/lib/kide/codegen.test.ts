@@ -101,7 +101,9 @@ describe("semantic multi-target code generation", () => {
     const commandNames = new Set(
       workspace.files.flatMap((file) =>
         file.result.ast?.node === "Model"
-          ? file.result.ast.interfaces.flatMap((iface) => iface.commands.map((command) => command.name))
+          ? file.result.ast.interfaces.flatMap((iface) =>
+              iface.commands.map((command) => command.name),
+            )
           : [],
       ),
     );
@@ -168,5 +170,4 @@ describe("semantic multi-target code generation", () => {
     expect(release.releasable).toBe(false);
     expect(release.blockedBy).toContain("Generated deployment code");
   });
-
 });
