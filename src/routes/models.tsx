@@ -388,7 +388,7 @@ function ModelLanguages() {
             ) : null}
           </div>
 
-          <div className="h-48 shrink-0 overflow-auto border-t border-border bg-card px-4 py-3">
+          <div className="h-28 shrink-0 overflow-auto border-t border-border bg-card px-4 py-3 sm:h-48">
             <div className="flex items-center gap-3 text-[11px]">
               <span className="font-semibold">Problems</span>
               <span className={workspace.errorCount ? "text-destructive" : "text-muted-foreground"}>

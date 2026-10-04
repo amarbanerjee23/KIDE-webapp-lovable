@@ -83,7 +83,7 @@ describe("graph synthesis production approval safety", () => {
     const baselineApproval: Approval = {
       candidateId: "candidate-consolidated",
       candidateName: "Consolidated",
-      fingerprint: generatedMnc,
+      fingerprint: approvalFingerprint(generatedMnc),
       approvedAt: "2026-10-03T00:00:00.000Z",
     };
 

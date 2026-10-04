@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useActiveProject } from "@/lib/active-project";
 import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import {
@@ -35,6 +37,7 @@ import {
 import type { GraphSynthesisProductionPolicy } from "@/lib/knowledge/graph-synthesis-policy";
 import type { GlobalKnowledgeSnapshot } from "@/lib/knowledge/contracts";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
+import { saveProjectReleaseApproval } from "@/lib/release-approval.functions";
 
 const title = "Synthesis Review — KIDE";
 const description =
@@ -55,6 +58,9 @@ export const Route = createFileRoute("/synthesis")({
 });
 
 function SynthesisReview() {
+  const activeProject = useActiveProject();
+  const saveApproval = useServerFn(saveProjectReleaseApproval);
+  const [approving, setApproving] = useState(false);
   const sources = useWorkspaceSources();
   const workspace = useMemo(() => linkFrom(sources), [sources]);
   const report = useMemo(() => synthesize(workspace), [workspace]);
@@ -197,40 +203,68 @@ function SynthesisReview() {
           </Button>
           <Button
             size="sm"
-            disabled={!report.ready || !selected || selected.validation.errors > 0}
-            onClick={() => {
-              if (!selected) return;
-              approveCandidate({
-                candidateId: selected.id,
-                candidateName: selected.name,
-                fingerprint:
-                  graphPromotion.applied && graphPromotion.evidence
-                    ? approvalFingerprint(selected.generatedMnc, graphPromotion.evidence)
-                    : selected.generatedMnc,
-                approvedAt: new Date().toISOString(),
-                ...(graphPromotion.applied && graphPromotion.evidence
-                  ? { graphSynthesisInputs: graphPromotion.evidence }
-                  : {}),
-                ...(graphAssistance.status === "active" && graphAssistance.shadow
+            disabled={
+              approving ||
+              !activeProject ||
+              !report.ready ||
+              !selected ||
+              selected.validation.errors > 0
+            }
+            onClick={async () => {
+              if (!selected || !activeProject) return;
+
+              const graphSynthesisInputs =
+                graphPromotion.applied && graphPromotion.evidence
+                  ? graphPromotion.evidence
+                  : undefined;
+              const graphAssistanceEvidence =
+                graphAssistance.status === "active" && graphAssistance.shadow
                   ? {
-                      graphAssistance: {
-                        graphSnapshotFingerprint: graphAssistance.shadow.graphSnapshotFingerprint,
-                        baselineSynthesisFingerprint:
-                          graphAssistance.shadow.baselineSynthesisFingerprint,
-                        sourceFingerprints: [
-                          ...new Set(
-                            graphAssistance.recommendations.flatMap((entry) =>
-                              entry.devices.map((device) => device.sourceFingerprint),
-                            ),
+                      graphSnapshotFingerprint: graphAssistance.shadow.graphSnapshotFingerprint,
+                      baselineSynthesisFingerprint:
+                        graphAssistance.shadow.baselineSynthesisFingerprint,
+                      sourceFingerprints: [
+                        ...new Set(
+                          graphAssistance.recommendations.flatMap((entry) =>
+                            entry.devices.map((device) => device.sourceFingerprint),
                           ),
-                        ].sort(),
-                      },
+                        ),
+                      ].sort(),
                     }
-                  : {}),
-              });
-              toast.success(`${selected.name} design approved`, {
-                description: "Recorded with its evidence ledger and generator version.",
-              });
+                  : undefined;
+
+              setApproving(true);
+              try {
+                const persisted = await saveApproval({
+                  data: {
+                    projectId: activeProject.projectId,
+                    candidateId: selected.id,
+                    candidateName: selected.name,
+                    fingerprint: approvalFingerprint(
+                      selected.generatedMnc,
+                      graphSynthesisInputs ?? null,
+                    ),
+                    ...(graphSynthesisInputs ? { graphSynthesisInputs } : {}),
+                    ...(graphAssistanceEvidence
+                      ? { graphAssistance: graphAssistanceEvidence }
+                      : {}),
+                  },
+                });
+                approveCandidate(persisted);
+                toast.success(`${selected.name} design approved`, {
+                  description:
+                    "Persisted to the project audit record with its exact generated-design fingerprint.",
+                });
+              } catch (error) {
+                toast.error("Could not approve this design", {
+                  description:
+                    error instanceof Error
+                      ? error.message
+                      : "The project approval could not be persisted.",
+                });
+              } finally {
+                setApproving(false);
+              }
             }}
           >
             <ShieldCheck />
@@ -359,7 +393,7 @@ function SynthesisReview() {
           ) : (
             <>
               <section
-                className="mt-5 grid gap-3 lg:grid-cols-3"
+                className="mt-5 grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3"
                 role="radiogroup"
                 aria-label="Synthesis candidates"
               >
@@ -372,7 +406,7 @@ function SynthesisReview() {
                       role="radio"
                       aria-checked={active}
                       onClick={() => setSelectedId(candidate.id)}
-                      className={`min-h-11 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      className={`min-h-11 min-w-0 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         active
                           ? "border-primary bg-card"
                           : "border-border bg-card/60 hover:border-primary/40"
@@ -413,8 +447,8 @@ function SynthesisReview() {
               </section>
 
               {selected && (
-                <section className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                  <div className="rounded-lg border border-border bg-card p-4">
+                <section className="mt-5 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="min-w-0 rounded-lg border border-border bg-card p-4">
                     <h3 className="text-sm font-semibold">Why this design?</h3>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Each step, the performer chosen for it, and where the commands come from.
@@ -484,7 +518,7 @@ function SynthesisReview() {
                     </ul>
                   </div>
 
-                  <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="min-w-0 rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold">Generated control model</h3>
                       <Button
@@ -504,7 +538,7 @@ function SynthesisReview() {
                       {selected.controlNodes.length} control nodes · re-parsed by the language
                       validator, independently of the generator.
                     </p>
-                    <pre className="mt-3 max-h-[520px] overflow-auto rounded-md border border-border/70 bg-[#0E1117] p-3 font-mono text-[11px] leading-relaxed">
+                    <pre className="mt-3 max-h-[520px] w-full max-w-full overflow-auto rounded-md border border-border/70 bg-[#0E1117] p-3 font-mono text-[11px] leading-relaxed">
                       {selected.generatedMnc}
                     </pre>
                     {selected.validation.messages.length > 0 && (

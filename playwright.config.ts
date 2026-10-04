@@ -22,7 +22,11 @@ export default defineConfig({
   projects: [
     {
       name: "configured-auth",
-      testMatch: ["**/configured-auth.spec.ts", "**/auth-lifecycle.spec.ts"],
+      testMatch: [
+        "**/configured-auth.spec.ts",
+        "**/auth-lifecycle.spec.ts",
+        "**/release-journey.spec.ts",
+      ],
       use: { ...devices["Desktop Chrome"], baseURL: configuredBase },
     },
     {

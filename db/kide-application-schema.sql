@@ -132,6 +132,19 @@ CREATE TABLE IF NOT EXISTS public.review_comments (
 );
 CREATE INDEX IF NOT EXISTS review_comments_review_idx ON public.review_comments(review_id, created_at);
 
+CREATE TABLE IF NOT EXISTS public.release_approvals (
+  project_id uuid PRIMARY KEY REFERENCES public.projects(id) ON DELETE CASCADE,
+  candidate_id text NOT NULL CHECK (char_length(candidate_id) BETWEEN 1 AND 160),
+  candidate_name text NOT NULL CHECK (char_length(candidate_name) BETWEEN 1 AND 160),
+  fingerprint text NOT NULL CHECK (char_length(fingerprint) = 64 AND fingerprint !~ '[^0-9a-f]'),
+  graph_assistance jsonb,
+  graph_synthesis_inputs jsonb,
+  approved_by uuid NOT NULL,
+  approved_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS release_approvals_approved_at_idx
+  ON public.release_approvals(approved_at DESC);
 CREATE TABLE IF NOT EXISTS public.notifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -181,6 +194,7 @@ ALTER TABLE IF EXISTS public.invitations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.model_checkpoints DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.review_requests DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.review_comments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.release_approvals DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.notifications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.subscriptions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.payments DISABLE ROW LEVEL SECURITY;

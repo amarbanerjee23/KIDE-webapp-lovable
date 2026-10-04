@@ -1,50 +1,61 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { getActiveProject, useActiveProject } from "@/lib/active-project";
+import {
+  loadProjectReleaseApproval,
+  type PersistedReleaseApproval,
+} from "@/lib/release-approval.functions";
 import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
 import { sha256 } from "./sha256";
 
-/**
- * Which design the team selected and approved, shared by the synthesis
- * review, the Trust Centre and the Release Centre. Approvals are recorded
- * against the design name and the exact generated control model, so an
- * edit to the models invalidates them.
- */
-export interface Approval {
-  candidateId: string;
-  candidateName: string;
-  fingerprint: string;
-  approvedAt: string;
-  graphAssistance?: {
-    graphSnapshotFingerprint: string;
-    baselineSynthesisFingerprint: string;
-    sourceFingerprints: string[];
-  };
-  graphSynthesisInputs?: GraphSynthesisInputEvidence;
+export interface Approval extends Omit<PersistedReleaseApproval, "approvedBy"> {
+  approvedBy?: string;
 }
 
-let selectedId: string | null = null;
-let approval: Approval | null = null;
-const listeners = new Set<() => void>();
-let snapshot: { selectedId: string | null; approval: Approval | null } = { selectedId, approval };
+interface ApprovalSnapshot {
+  selectedId: string | null;
+  approval: Approval | null;
+}
 
-function emit() {
-  snapshot = { selectedId, approval };
+const EMPTY_SNAPSHOT: ApprovalSnapshot = { selectedId: null, approval: null };
+const listeners = new Set<() => void>();
+const snapshots = new Map<string, ApprovalSnapshot>();
+
+function activeProjectId() {
+  return getActiveProject()?.projectId ?? null;
+}
+
+function snapshotFor(projectId: string | null): ApprovalSnapshot {
+  if (!projectId) return EMPTY_SNAPSHOT;
+  return snapshots.get(projectId) ?? EMPTY_SNAPSHOT;
+}
+
+function setProjectSnapshot(projectId: string, next: ApprovalSnapshot) {
+  snapshots.set(projectId, next);
   for (const listener of listeners) listener();
 }
 
 export function selectCandidate(id: string | null) {
-  selectedId = id;
-  emit();
+  const projectId = activeProjectId();
+  if (!projectId) return;
+  const current = snapshotFor(projectId);
+  setProjectSnapshot(projectId, { ...current, selectedId: id });
 }
 
 export function approveCandidate(entry: Approval) {
-  approval = entry;
-  selectedId = entry.candidateId;
-  emit();
+  const projectId = activeProjectId();
+  if (!projectId) return;
+  setProjectSnapshot(projectId, {
+    selectedId: entry.candidateId,
+    approval: entry,
+  });
 }
 
 export function revokeApproval() {
-  approval = null;
-  emit();
+  const projectId = activeProjectId();
+  if (!projectId) return;
+  const current = snapshotFor(projectId);
+  setProjectSnapshot(projectId, { ...current, approval: null });
 }
 
 function subscribe(listener: () => void) {
@@ -53,14 +64,42 @@ function subscribe(listener: () => void) {
 }
 
 export function useApprovalState() {
+  const project = useActiveProject();
+  const projectId = project?.projectId ?? null;
+  const load = useServerFn(loadProjectReleaseApproval);
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    let active = true;
+    void load({ data: { projectId } })
+      .then((approval) => {
+        if (!active) return;
+        setProjectSnapshot(projectId, {
+          selectedId: approval?.candidateId ?? null,
+          approval,
+        });
+      })
+      .catch((error) => {
+        console.warn(
+          "[Approval] Could not load persisted release approval:",
+          error instanceof Error ? error.message : String(error),
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [load, projectId]);
+
   return useSyncExternalStore(
     subscribe,
-    () => snapshot,
-    () => snapshot,
+    () => snapshotFor(projectId),
+    () => EMPTY_SNAPSHOT,
   );
 }
 
-/** An approval only counts while the generated design is byte-identical. */
+/** An approval only counts while the generated design identity is unchanged. */
 export function approvalIsCurrent(current: Approval | null, fingerprint: string | null) {
   return Boolean(current && fingerprint && current.fingerprint === fingerprint);
 }
@@ -93,5 +132,5 @@ export function approvalIsCurrentForSynthesisContext(
   }
 
   if (current.graphSynthesisInputs) return false;
-  return current.fingerprint === generatedMnc;
+  return current.fingerprint === approvalFingerprint(generatedMnc);
 }

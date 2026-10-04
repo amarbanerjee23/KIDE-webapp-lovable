@@ -6,7 +6,7 @@ vi.mock("@/lib/auth-client", () => ({
   authClient: { getSession },
 }));
 
-import { getActiveBrowserSession } from "./active-session";
+import { getActiveBrowserSession, waitForActiveBrowserSession } from "./active-session";
 
 describe("active browser session validation", () => {
   beforeEach(() => {
@@ -28,6 +28,21 @@ describe("active browser session validation", () => {
     expect(result?.user).toBe(user);
   });
 
+  it("bypasses Better Auth cookie cache when validating the active session", async () => {
+    getSession.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    await getActiveBrowserSession();
+
+    expect(getSession).toHaveBeenCalledWith({
+      query: {
+        disableCookieCache: true,
+      },
+    });
+  });
+
   it("rejects an empty session", async () => {
     getSession.mockResolvedValue({
       data: null,
@@ -44,5 +59,36 @@ describe("active browser session validation", () => {
     });
 
     await expect(getActiveBrowserSession()).resolves.toBeNull();
+  });
+
+  it("retries transient empty session reads after successful authentication", async () => {
+    const session = { id: "session-2", userId: "user-2" };
+    const user = { id: "user-2", email: "eventual@example.com" };
+    getSession
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: { session, user }, error: null });
+
+    const result = await waitForActiveBrowserSession({
+      attempts: 3,
+      delayMs: 0,
+      attemptTimeoutMs: 100,
+    });
+
+    expect(result?.session).toBe(session);
+    expect(getSession).toHaveBeenCalledTimes(3);
+  });
+
+  it("fails closed when session readiness never arrives", async () => {
+    getSession.mockResolvedValue({ data: null, error: null });
+
+    await expect(
+      waitForActiveBrowserSession({
+        attempts: 3,
+        delayMs: 0,
+        attemptTimeoutMs: 100,
+      }),
+    ).resolves.toBeNull();
+    expect(getSession).toHaveBeenCalledTimes(3);
   });
 });
