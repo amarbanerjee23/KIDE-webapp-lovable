@@ -252,6 +252,19 @@ function stType(type: string): string {
   }
 }
 
+function zettaType(type: string): string {
+  if (type.endsWith("[]")) return "string";
+  switch (type) {
+    case "int":
+    case "float":
+      return "number";
+    case "boolean":
+      return "boolean";
+    default:
+      return "string";
+  }
+}
+
 function artifact(path: string, mediaType: string, content: string): CodegenArtifact {
   return {
     path,
@@ -490,7 +503,10 @@ function zettaArtifacts(model: SemanticCodegenModel): CodegenArtifact[] {
       const entry = commandMethods[index]!;
       const prefix = index === 0 ? "    .when('ready', {" : "    .when('ready', {";
       const params = entry.command.parameters
-        .map((parameter) => `${safeIdentifier(parameter.name)}: { type: '${parameter.type}' }`)
+        .map(
+          (parameter) =>
+            `${safeIdentifier(parameter.name)}: { type: '${zettaType(parameter.type)}' }`,
+        )
         .join(", ");
       lines.push(
         `${prefix} ${entry.method}: { handler: this.${entry.method}, inputs: { ${params} } } })`,
@@ -512,6 +528,24 @@ function zettaArtifacts(model: SemanticCodegenModel): CodegenArtifact[] {
       "};",
       "",
     );
+  }
+
+  for (const node of model.nodes) {
+    for (const [category, signals] of [
+      ["event", node.events],
+      ["response", node.responses],
+      ["alarm", node.alarms],
+    ] as const) {
+      for (const item of signals) {
+        const method = safeIdentifier(`on_${node.name}_${item.name}`);
+        lines.push(
+          `${driverName}.prototype.${method} = function ${method}(payload) {`,
+          `  this.emit('${category}:${item.name}', payload);`,
+          "};",
+          "",
+        );
+      }
+    }
   }
 
   const packageJson = JSON.stringify(
