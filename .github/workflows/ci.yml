@@ -451,9 +451,28 @@ jobs:
       - name: Validate cross-domain generation, release integrity and customer journeys
         run: bash scripts/ci/test-release-hardening.sh
 
+  semantic-codegen:
+    name: Semantic multi-target code generation toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate generated ROS 2, PLC and Zetta artifacts
+        run: bash scripts/ci/test-semantic-codegen.sh
+
   production-container-e2e:
     name: Production container + Better Auth + browser E2E
-    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity, graph-synthesis-shadow-runtime, graph-synthesis-qualification-corpus, graph-assistance-feature-flag, graph-synthesis-promotion, graph-synthesis-production-promotion, production-launch-readiness, launch-acceptance-evidence, release-candidate-integrity, release-publication-safety, release-hardening]
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity, graph-synthesis-shadow-runtime, graph-synthesis-qualification-corpus, graph-assistance-feature-flag, graph-synthesis-promotion, graph-synthesis-production-promotion, production-launch-readiness, launch-acceptance-evidence, release-candidate-integrity, release-publication-safety, release-hardening, semantic-codegen]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
