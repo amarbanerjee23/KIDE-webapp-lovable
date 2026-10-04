@@ -6,13 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient, notifyAuthChanged } from "@/lib/auth-client";
-import { getAuthReadiness } from "@/lib/auth.functions";
+import { getAuthReadiness, getServerSession } from "@/lib/auth.functions";
 import {
   authReadinessIssues,
   authReadinessSummary,
   type AuthRuntimeReadiness,
 } from "@/lib/auth/readiness";
-import { waitForActiveBrowserSession } from "@/lib/auth/active-session";
 import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 
 const title = "Sign in — KIDE Systems Engineering";
@@ -36,6 +35,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const readAuthReadiness = useServerFn(getAuthReadiness);
+  const readServerSession = useServerFn(getServerSession);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,21 +43,29 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [readiness, setReadiness] = useState<AuthRuntimeReadiness | null>(null);
 
-  const completeAuthentication = useCallback(async (showValidationError: boolean) => {
-    const activeSession = await waitForActiveBrowserSession();
+  const completeAuthentication = useCallback(
+    async (showValidationError: boolean) => {
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const activeSession = await readServerSession();
+        if (activeSession?.session && activeSession.user) {
+          window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
+          notifyAuthChanged();
+          window.location.replace(consumePostAuthRedirect());
+          return true;
+        }
 
-    if (!activeSession) {
+        if (attempt < 5) {
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+        }
+      }
+
       if (showValidationError) {
         setMessage("Your sign-in session could not be validated. Please sign in again.");
       }
       return false;
-    }
-
-    window.sessionStorage.removeItem(OAUTH_PENDING_KEY);
-    notifyAuthChanged();
-    window.location.replace(consumePostAuthRedirect());
-    return true;
-  }, []);
+    },
+    [readServerSession],
+  );
 
   useEffect(() => {
     let active = true;

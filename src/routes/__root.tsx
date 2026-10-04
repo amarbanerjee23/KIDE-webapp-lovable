@@ -3,6 +3,7 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  redirect,
   useLocation,
   useRouter,
   HeadContent,
@@ -19,6 +20,7 @@ import { useWorkspacePersistence } from "@/lib/kide/useWorkspacePersistence";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { getUiPreferences } from "@/lib/teams.functions";
+import { getServerSession } from "@/lib/auth.functions";
 import { applyUiPreferences, normalizeUiPreferences } from "@/lib/ui-preferences";
 
 function NotFoundComponent() {
@@ -82,6 +84,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: async ({ location }) => {
+    if (!requiresActiveSession(location.pathname)) return;
+
+    const session = await getServerSession();
+    if (!session?.session || !session.user) {
+      throw redirect({ to: "/" });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
