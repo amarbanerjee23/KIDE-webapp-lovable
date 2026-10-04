@@ -1,8 +1,4 @@
-import type {
-  InterfaceDescriptionNode,
-  ParameterNode,
-  Workspace,
-} from "@/lib/dsl";
+import type { InterfaceDescriptionNode, ParameterNode, Workspace } from "@/lib/dsl";
 import { parseMnc } from "@/lib/dsl";
 import { sha256 } from "./sha256";
 import type { Candidate } from "./synthesis";
@@ -193,7 +189,9 @@ export function buildSemanticCodegenModel(
     });
   }
 
-  if (nodes.length === 0) errors.push("No generated control nodes are available for code generation.");
+  if (nodes.length === 0) {
+    errors.push("No generated control nodes are available for code generation.");
+  }
   if (errors.length > 0) return { model: null, validation: { ready: false, errors, warnings } };
 
   const material = {
@@ -312,9 +310,7 @@ function ros2Artifacts(model: SemanticCodegenModel): CodegenArtifact[] {
           ? "response"
           : "event";
       const topic = `/${safeIdentifier(node.componentInterface)}/${category}/${safeIdentifier(event.name)}`;
-      nodeLines.push(
-        `        self.create_subscription(String, "${topic}", self.${method}, 10)`,
-      );
+      nodeLines.push(`        self.create_subscription(String, "${topic}", self.${method}, 10)`);
     }
   }
 
@@ -393,7 +389,7 @@ function ros2Artifacts(model: SemanticCodegenModel): CodegenArtifact[] {
     `  <name>${packageName}</name>`,
     "  <version>1.0.0</version>",
     `  <description>KIDE generated ROS 2 controller for ${model.candidateName}</description>`,
-    "  <maintainer email=\"engineering@example.invalid\">KIDE Generated</maintainer>",
+    '  <maintainer email="engineering@example.invalid">KIDE Generated</maintainer>',
     "  <license>Apache-2.0</license>",
     "  <exec_depend>rclpy</exec_depend>",
     "  <exec_depend>std_msgs</exec_depend>",
@@ -459,11 +455,7 @@ function plcArtifacts(model: SemanticCodegenModel): CodegenArtifact[] {
   }
 
   return [
-    artifact(
-      `plc/${safeIdentifier(model.candidateName)}.st`,
-      "text/x-iec61131",
-      lines.join("\n"),
-    ),
+    artifact(`plc/${safeIdentifier(model.candidateName)}.st`, "text/x-iec61131", lines.join("\n")),
   ];
 }
 
@@ -595,7 +587,9 @@ function validateArtifacts(target: CodegenTarget, artifacts: CodegenArtifact[]):
     const source = artifacts.find((entry) => entry.path.endsWith(".st"))?.content ?? "";
     const starts = (source.match(/\bFUNCTION_BLOCK\b/g) ?? []).length;
     const ends = (source.match(/\bEND_FUNCTION_BLOCK\b/g) ?? []).length;
-    if (starts === 0 || starts !== ends) errors.push("Structured Text function blocks are unbalanced.");
+    if (starts === 0 || starts !== ends) {
+      errors.push("Structured Text function blocks are unbalanced.");
+    }
   } else {
     if (!artifacts.some((entry) => entry.path.endsWith("index.js"))) {
       errors.push("Zetta bundle is missing index.js.");
