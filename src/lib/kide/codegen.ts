@@ -369,7 +369,10 @@ function ros2Artifacts(model: SemanticCodegenModel): CodegenArtifact[] {
     "    name=package_name,",
     `    version="1.0.0",`,
     "    packages=[package_name],",
-    "    data_files=[],",
+    "    data_files=[",
+    "        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),",
+    "        ('share/' + package_name, ['package.xml']),",
+    "    ],",
     "    install_requires=['setuptools'],",
     "    zip_safe=True,",
     `    description="KIDE generated ROS 2 controller for ${model.candidateName}",`,
@@ -391,15 +394,26 @@ function ros2Artifacts(model: SemanticCodegenModel): CodegenArtifact[] {
     `  <description>KIDE generated ROS 2 controller for ${model.candidateName}</description>`,
     '  <maintainer email="engineering@example.invalid">KIDE Generated</maintainer>',
     "  <license>Apache-2.0</license>",
+    "  <buildtool_depend>ament_python</buildtool_depend>",
     "  <exec_depend>rclpy</exec_depend>",
     "  <exec_depend>std_msgs</exec_depend>",
     "</package>",
     "",
   ].join("\n");
 
+  const setupCfg = [
+    "[develop]",
+    `script_dir=$base/lib/${packageName}`,
+    "[install]",
+    `install_scripts=$base/lib/${packageName}`,
+    "",
+  ].join("\n");
+
   return [
     artifact(`ros2/${packageName}/package.xml`, "application/xml", packageXml),
     artifact(`ros2/${packageName}/setup.py`, "text/x-python", setup),
+    artifact(`ros2/${packageName}/setup.cfg`, "text/plain", setupCfg),
+    artifact(`ros2/${packageName}/resource/${packageName}`, "text/plain", ""),
     artifact(`ros2/${packageName}/${packageName}/__init__.py`, "text/x-python", ""),
     artifact(
       `ros2/${packageName}/${packageName}/controller.py`,
@@ -491,17 +505,17 @@ function zettaArtifacts(model: SemanticCodegenModel): CodegenArtifact[] {
   if (commandMethods.length === 0) {
     lines.push("    ;");
   } else {
-    for (let index = 0; index < commandMethods.length; index += 1) {
-      const entry = commandMethods[index]!;
-      const prefix = index === 0 ? "    .when('ready', {" : "    .when('ready', {";
-      const params = entry.command.parameters
+    const allowed = commandMethods.map((entry) => `'${entry.method}'`).join(", ");
+    lines.push(`    .when('ready', { allow: [${allowed}] })`);
+    for (const entry of commandMethods) {
+      const fields = entry.command.parameters
         .map(
           (parameter) =>
-            `${safeIdentifier(parameter.name)}: { type: '${zettaType(parameter.type)}' }`,
+            `{ name: '${safeIdentifier(parameter.name)}', type: '${zettaType(parameter.type)}' }`,
         )
         .join(", ");
       lines.push(
-        `${prefix} ${entry.method}: { handler: this.${entry.method}, inputs: { ${params} } } })`,
+        `    .map('${entry.method}', this.${entry.method}${fields ? `, [${fields}]` : ""})`,
       );
     }
     lines.push("    ;");
@@ -547,7 +561,7 @@ function zettaArtifacts(model: SemanticCodegenModel): CodegenArtifact[] {
       private: true,
       main: "index.js",
       dependencies: {
-        "zetta-device": "^0.22.0",
+        "zetta-device": "^1.0.0",
       },
     },
     null,
