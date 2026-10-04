@@ -470,9 +470,29 @@ jobs:
       - name: Validate generated ROS 2, PLC and Zetta artifacts
         run: bash scripts/ci/test-semantic-codegen.sh
 
+  generated-runtime-conformance:
+    name: Generated deployment runtime conformance
+    needs: [semantic-codegen]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Execute generated ROS 2, Zetta and PLC runtime contracts
+        run: bash scripts/ci/test-generated-runtime-conformance.sh
+
   production-container-e2e:
     name: Production container + Better Auth + browser E2E
-    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity, graph-synthesis-shadow-runtime, graph-synthesis-qualification-corpus, graph-assistance-feature-flag, graph-synthesis-promotion, graph-synthesis-production-promotion, production-launch-readiness, launch-acceptance-evidence, release-candidate-integrity, release-publication-safety, release-hardening, semantic-codegen]
+    needs: [static-unit-and-coverage, database-and-deployment-contracts, knowledge-graph-runtime, python-semantic-knowledge, knowledge-backend-parity, graph-synthesis-shadow-runtime, graph-synthesis-qualification-corpus, graph-assistance-feature-flag, graph-synthesis-promotion, graph-synthesis-production-promotion, production-launch-readiness, launch-acceptance-evidence, release-candidate-integrity, release-publication-safety, release-hardening, semantic-codegen, generated-runtime-conformance]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
