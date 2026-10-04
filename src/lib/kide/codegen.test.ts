@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_WORKSPACES, linkWorkspace } from "@/lib/dsl";
+import { buildAssurance } from "./assurance";
+import { buildRelease } from "./release";
 import { sha256 } from "./sha256";
 import { synthesize } from "./synthesis";
 import {
@@ -110,4 +112,61 @@ describe("semantic multi-target code generation", () => {
       expect(commandNames.has(command.name)).toBe(true);
     }
   });
+  it("binds generated target code into the checksummed release manifest", () => {
+    const example = EXAMPLE_WORKSPACES[0]!;
+    const workspace = linkWorkspace(example.files.map((file) => ({ ...file })));
+    const report = synthesize(workspace);
+    const candidate = report.candidates[0]!;
+    const assurance = buildAssurance(workspace, report, candidate.id);
+    const codegen = generateCode(workspace, candidate, "ros2-python");
+
+    const release = buildRelease(workspace, report, assurance, "1.0.0", {
+      codegenBundles: [codegen],
+      approvalCurrent: true,
+    });
+
+    expect(release.releasable).toBe(true);
+    expect(release.artifacts.some((entry) => entry.kind === "code")).toBe(true);
+    expect(
+      release.artifacts.some((entry) => entry.path === "evidence/codegen-ros2-python.json"),
+    ).toBe(true);
+
+    const manifest = JSON.parse(release.manifest) as {
+      codegen: Array<{ target: string; bundleFingerprint: string; ready: boolean }>;
+    };
+    expect(manifest.codegen).toEqual([
+      expect.objectContaining({
+        target: "ros2-python",
+        bundleFingerprint: codegen.bundleFingerprint,
+        ready: true,
+      }),
+    ]);
+    expect(release.manifestHash).toBe(sha256(release.manifest));
+  });
+
+  it("blocks release when generated deployment code is invalid", () => {
+    const example = EXAMPLE_WORKSPACES[0]!;
+    const workspace = linkWorkspace(example.files.map((file) => ({ ...file })));
+    const report = synthesize(workspace);
+    const candidate = report.candidates[0]!;
+    const assurance = buildAssurance(workspace, report, candidate.id);
+    const codegen = generateCode(workspace, candidate, "ros2-python");
+    const invalidCodegen = {
+      ...codegen,
+      validation: {
+        ...codegen.validation,
+        ready: false,
+        errors: ["synthetic codegen failure"],
+      },
+    };
+
+    const release = buildRelease(workspace, report, assurance, "1.0.0", {
+      codegenBundles: [invalidCodegen],
+      approvalCurrent: true,
+    });
+
+    expect(release.releasable).toBe(false);
+    expect(release.blockedBy).toContain("Generated deployment code");
+  });
+
 });
