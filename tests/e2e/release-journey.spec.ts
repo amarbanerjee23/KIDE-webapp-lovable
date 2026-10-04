@@ -74,8 +74,34 @@ test("customer can go from an empty project to a verified generated release bund
 
   await page.goto("/release");
   const exportBundle = page.getByRole("button", { name: "Export bundle" });
+  const downloadCode = page.getByRole("button", { name: "Download code" });
   await expect(exportBundle).toBeEnabled();
+  await expect(downloadCode).toBeEnabled();
+  await expect(page.getByLabel("Deployment target")).toHaveValue("ros2-python");
+  await expect(page.getByText("Generated deployment code")).toBeVisible();
+  await expect(page.getByText("validated", { exact: true })).toBeVisible();
   await expect(page.getByText("A reviewer approved this exact design")).toBeVisible();
+
+  const codeDownloadPromise = page.waitForEvent("download");
+  await downloadCode.click();
+  const codeDownload = await codeDownloadPromise;
+  expect(codeDownload.suggestedFilename()).toBe("kide-code-ros2-python-1.0.0.json");
+  const codePath = await codeDownload.path();
+  expect(codePath).not.toBeNull();
+  const codePayload = JSON.parse(await readFile(codePath!, "utf8")) as {
+    target: string;
+    modelFingerprint: string;
+    bundleFingerprint: string;
+    artifacts: Array<{ path: string; sha256: string; bytes: number; content: string }>;
+  };
+  expect(codePayload.target).toBe("ros2-python");
+  expect(codePayload.modelFingerprint).toHaveLength(64);
+  expect(codePayload.bundleFingerprint).toHaveLength(64);
+  expect(codePayload.artifacts.some((entry) => entry.path.endsWith("/controller.py"))).toBe(true);
+  for (const artifact of codePayload.artifacts) {
+    expect(artifact.sha256).toBe(sha256(artifact.content));
+    expect(artifact.bytes).toBe(Buffer.byteLength(artifact.content, "utf8"));
+  }
 
   const downloadPromise = page.waitForEvent("download");
   await exportBundle.click();
@@ -89,6 +115,12 @@ test("customer can go from an empty project to a verified generated release bund
       releasable: boolean;
       blockedBy: string[];
       design: string | null;
+      codegen: Array<{
+        target: string;
+        bundleFingerprint: string;
+        modelFingerprint: string;
+        ready: boolean;
+      }>;
       artifacts: Array<{ path: string; kind: string; bytes: number; sha256: string }>;
     };
     manifestSha256: string;
@@ -105,6 +137,14 @@ test("customer can go from an empty project to a verified generated release bund
   expect(payload.manifest.releasable).toBe(true);
   expect(payload.manifest.blockedBy).toEqual([]);
   expect(payload.manifest.design).toBeTruthy();
+  expect(payload.manifest.codegen).toEqual([
+    expect.objectContaining({
+      target: "ros2-python",
+      bundleFingerprint: codePayload.bundleFingerprint,
+      modelFingerprint: codePayload.modelFingerprint,
+      ready: true,
+    }),
+  ]);
   expect(payload.approvedBy?.candidateId).toBeTruthy();
   expect(payload.approvedBy?.candidateName).toBe(payload.manifest.design);
   expect(payload.manifestSha256).toHaveLength(64);
@@ -122,6 +162,23 @@ test("customer can go from an empty project to a verified generated release bund
   expect(generated).toBeDefined();
   expect(generated!.content).toContain("ControlNode");
   expect(generated!.content).toContain("implements interface");
+
+  const generatedCode = payload.artifacts.find(
+    (artifact) => artifact.kind === "code" && artifact.path.endsWith("/controller.py"),
+  );
+  expect(generatedCode).toBeDefined();
+  expect(generatedCode!.content).toContain("class ");
+  expect(generatedCode!.content).toContain("create_publisher");
+
+  const codegenEvidence = payload.artifacts.find(
+    (artifact) => artifact.path === "evidence/codegen-ros2-python.json",
+  );
+  expect(codegenEvidence).toBeDefined();
+  expect(JSON.parse(codegenEvidence!.content)).toMatchObject({
+    target: "ros2-python",
+    bundleFingerprint: codePayload.bundleFingerprint,
+    validation: { ready: true, errors: [] },
+  });
 
   const validation = payload.artifacts.find(
     (artifact) => artifact.path === "evidence/validation.json",
@@ -157,6 +214,7 @@ test("empty or unapproved projects fail closed and cannot export a release", asy
   await page.goto("/release");
   await expect(page.getByText("Release blocked", { exact: false })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export bundle" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Download code" })).toBeDisabled();
   await expect(page.getByText("A reviewer approved this exact design")).toBeVisible();
 });
 
