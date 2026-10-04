@@ -26,6 +26,7 @@ export interface CodegenNode {
   componentInterface: string;
   commands: CodegenSignal[];
   events: CodegenSignal[];
+  responses: CodegenSignal[];
   alarms: CodegenSignal[];
 }
 
@@ -154,6 +155,10 @@ export function buildSemanticCodegenModel(
       .filter((item) => requested.events.has(item.name))
       .map((item) => signal(item.name, item.parameters))
       .sort((a, b) => a.name.localeCompare(b.name));
+    const responses = iface.responses
+      .filter((item) => requested.events.has(item.name))
+      .map((item) => signal(item.name, item.parameters))
+      .sort((a, b) => a.name.localeCompare(b.name));
     const alarms = iface.alarms
       .filter((item) => requested.alarms.has(item.name))
       .map((item) => signal(item.name, item.parameters))
@@ -167,11 +172,9 @@ export function buildSemanticCodegenModel(
     for (const name of requested.events) {
       if (
         !events.some((item) => item.name === name) &&
-        !iface.responses.some((item) => item.name === name)
+        !responses.some((item) => item.name === name)
       ) {
-        warnings.push(
-          `Observation '${name}' is not an event on interface '${iface.name}'; it may be a response-only signal.`,
-        );
+        errors.push(`Observation '${name}' is not declared on interface '${iface.name}'.`);
       }
     }
     for (const name of requested.alarms) {
@@ -185,6 +188,7 @@ export function buildSemanticCodegenModel(
       componentInterface: controlNode.componentInterface,
       commands,
       events,
+      responses,
       alarms,
     });
   }
@@ -287,9 +291,13 @@ function ros2Artifacts(model: SemanticCodegenModel): CodegenArtifact[] {
         `        self._publishers["${key}"] = self.${attr}`,
       );
     }
-    for (const event of [...node.events, ...node.alarms]) {
+    for (const event of [...node.events, ...node.responses, ...node.alarms]) {
       const method = safeIdentifier(`on_${node.name}_${event.name}`);
-      const category = node.alarms.some((alarm) => alarm.name === event.name) ? "alarm" : "event";
+      const category = node.alarms.some((alarm) => alarm.name === event.name)
+        ? "alarm"
+        : node.responses.some((response) => response.name === event.name)
+          ? "response"
+          : "event";
       const topic = `/${safeIdentifier(node.componentInterface)}/${category}/${safeIdentifier(event.name)}`;
       nodeLines.push(
         `        self.create_subscription(String, "${topic}", self.${method}, 10)`,
@@ -316,7 +324,7 @@ function ros2Artifacts(model: SemanticCodegenModel): CodegenArtifact[] {
         "",
       );
     }
-    for (const event of [...node.events, ...node.alarms]) {
+    for (const event of [...node.events, ...node.responses, ...node.alarms]) {
       const method = safeIdentifier(`on_${node.name}_${event.name}`);
       nodeLines.push(
         `    def ${method}(self, message: String) -> None:`,
@@ -414,10 +422,13 @@ function plcArtifacts(model: SemanticCodegenModel): CodegenArtifact[] {
     for (const event of node.events) {
       lines.push(`    EVT_${safeIdentifier(event.name, "upper")} : BOOL;`);
     }
+    for (const response of node.responses) {
+      lines.push(`    RSP_${safeIdentifier(response.name, "upper")} : BOOL;`);
+    }
     for (const alarm of node.alarms) {
       lines.push(`    ALM_${safeIdentifier(alarm.name, "upper")} : BOOL;`);
     }
-    if (node.events.length === 0 && node.alarms.length === 0) {
+    if (node.events.length === 0 && node.responses.length === 0 && node.alarms.length === 0) {
       lines.push("    READY : BOOL;");
     }
     lines.push("END_VAR", "");
