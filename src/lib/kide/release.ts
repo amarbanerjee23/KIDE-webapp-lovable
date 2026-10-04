@@ -13,10 +13,11 @@ import type { SynthesisReport } from "./synthesis";
 import type { AssuranceReport } from "./assurance";
 import { sha256 } from "./sha256";
 import type { GraphSynthesisInputEvidence } from "./graph-synthesis-promotion";
+import type { CodegenBundle } from "./codegen";
 
 export interface ReleaseArtifact {
   path: string;
-  kind: "model" | "generated" | "evidence" | "report";
+  kind: "model" | "generated" | "code" | "evidence" | "report";
   bytes: number;
   sha256: string;
   content: string;
@@ -61,6 +62,7 @@ export interface ReleaseEvidenceContext {
   graphSynthesisInputs?: GraphSynthesisInputEvidence | null;
   approvalFingerprint?: string | null;
   approvalCurrent?: boolean;
+  codegenBundles?: CodegenBundle[];
 }
 
 export function buildRelease(
@@ -106,6 +108,32 @@ export function buildRelease(
     );
   }
 
+  for (const bundle of evidenceContext?.codegenBundles ?? []) {
+    for (const generated of bundle.artifacts) {
+      artifacts.push(artifact(`deploy/${generated.path}`, "code", generated.content));
+    }
+    artifacts.push(
+      artifact(
+        `evidence/codegen-${bundle.target}.json`,
+        "evidence",
+        canonical({
+          target: bundle.target,
+          label: bundle.label,
+          generator: bundle.generator,
+          modelFingerprint: bundle.modelFingerprint,
+          bundleFingerprint: bundle.bundleFingerprint,
+          validation: bundle.validation,
+          artifacts: bundle.artifacts.map(({ path, mediaType, bytes, sha256: hash }) => ({
+            path,
+            mediaType,
+            bytes,
+            sha256: hash,
+          })),
+        }),
+      ),
+    );
+  }
+
   artifacts.push(
     artifact("reports/traceability.json", "report", canonical(assurance.traceability)),
     artifact("reports/gates.json", "report", canonical(assurance.gates)),
@@ -124,6 +152,9 @@ export function buildRelease(
   if (evidenceContext?.approvalCurrent === false) {
     blockedBy.push("Current reviewer approval");
   }
+  if ((evidenceContext?.codegenBundles ?? []).some((bundle) => !bundle.validation.ready)) {
+    blockedBy.push("Generated deployment code");
+  }
 
   const manifest = canonical({
     version,
@@ -134,6 +165,13 @@ export function buildRelease(
     releasable: blockedBy.length === 0,
     blockedBy,
     tracedPercent: assurance.tracedPercent,
+    codegen: (evidenceContext?.codegenBundles ?? []).map((bundle) => ({
+      target: bundle.target,
+      generator: bundle.generator,
+      modelFingerprint: bundle.modelFingerprint,
+      bundleFingerprint: bundle.bundleFingerprint,
+      ready: bundle.validation.ready,
+    })),
     artifacts: artifacts.map(({ path, kind, bytes, sha256: hash }) => ({
       path,
       kind,
