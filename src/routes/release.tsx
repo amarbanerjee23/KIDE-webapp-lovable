@@ -7,12 +7,7 @@ import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { buildAssurance } from "@/lib/kide/assurance";
 import { buildRelease } from "@/lib/kide/release";
-import {
-  CODEGEN_TARGETS,
-  generateCode,
-  targetLabel,
-  type CodegenTarget,
-} from "@/lib/kide/codegen";
+import { CODEGEN_TARGETS, generateCode, targetLabel, type CodegenTarget } from "@/lib/kide/codegen";
 import { synthesize } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { approvalIsCurrentForSynthesisContext, useApprovalState } from "@/lib/kide/approval-store";
@@ -140,10 +135,7 @@ function ReleaseCentre() {
   );
 
   const codegenBundle = useMemo(
-    () =>
-      assurance.candidate
-        ? generateCode(workspace, assurance.candidate, codegenTarget)
-        : null,
+    () => (assurance.candidate ? generateCode(workspace, assurance.candidate, codegenTarget) : null),
     [workspace, assurance.candidate, codegenTarget],
   );
 
@@ -341,7 +333,7 @@ function ReleaseCentre() {
               </h2>
               {codegenBundle && (
                 <span
-                  className={`rounded border px-2 py-0.5 text-[10px] font-medium ${ 
+                  className={`rounded border px-2 py-0.5 text-[10px] font-medium ${
                     codegenBundle.validation.ready
                       ? "border-primary/30 bg-primary/10 text-primary"
                       : "border-destructive/40 bg-destructive/10 text-destructive"
