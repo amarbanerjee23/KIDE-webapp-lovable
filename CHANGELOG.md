@@ -11,6 +11,8 @@ KIDE 1.0.0 is the first official release candidate of the self-hosted, browser-c
 - ranked candidate designs with independent generated-model validation;
 - qualification corpus, assurance gates, traceability and evidence ledgers;
 - release bundles with SHA-256 checksums and manifest integrity;
+- semantic multi-target code generation for ROS 2 Python, IEC 61131-3 Structured Text and Zetta Node.js;
+- generated deployment-code provenance and release-manifest binding;
 - project working-copy persistence, autosave, conflict handling and recovery;
 - authenticated project/team/workspace flows.
 

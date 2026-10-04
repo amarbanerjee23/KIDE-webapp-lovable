@@ -23,6 +23,7 @@ export default defineConfig({
         "src/lib/kide/qualification.ts",
         "src/lib/kide/assurance.ts",
         "src/lib/kide/release.ts",
+        "src/lib/kide/codegen.ts",
         "src/lib/kide/catalogue.ts",
         "src/lib/kide/scenario.ts",
         "src/lib/kide/activity-graph.ts",

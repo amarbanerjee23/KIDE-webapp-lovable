@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Check, CircleAlert, Download, Package, ShieldCheck } from "lucide-react";
+import { Check, CircleAlert, Code2, Download, Package, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { buildAssurance } from "@/lib/kide/assurance";
 import { buildRelease } from "@/lib/kide/release";
+import { CODEGEN_TARGETS, generateCode, targetLabel, type CodegenTarget } from "@/lib/kide/codegen";
 import { synthesize } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
 import { approvalIsCurrentForSynthesisContext, useApprovalState } from "@/lib/kide/approval-store";
@@ -43,6 +44,7 @@ function ReleaseCentre() {
   const sources = useWorkspaceSources();
   const { selectedId, approval } = useApprovalState();
   const [version, setVersion] = useState("1.0.0");
+  const [codegenTarget, setCodegenTarget] = useState<CodegenTarget>("ros2-python");
   const graphInputsCapabilityEnabled = graphSynthesisInputsEnabled(
     import.meta.env["VITE_KIDE_GRAPH_SYNTHESIS_INPUTS"],
   );
@@ -132,16 +134,58 @@ function ReleaseCentre() {
     currentGraphInputs,
   );
 
+  const codegenBundle = useMemo(
+    () =>
+      assurance.candidate ? generateCode(workspace, assurance.candidate, codegenTarget) : null,
+    [workspace, assurance.candidate, codegenTarget],
+  );
+
   const bundle = useMemo(
     () =>
       buildRelease(workspace, report, assurance, version, {
         graphSynthesisInputs: currentGraphInputs,
         approvalFingerprint: approval?.fingerprint ?? null,
         approvalCurrent,
+        codegenBundles: codegenBundle ? [codegenBundle] : [],
       }),
-    [workspace, report, assurance, version, currentGraphInputs, approval, approvalCurrent],
+    [
+      workspace,
+      report,
+      assurance,
+      version,
+      currentGraphInputs,
+      approval,
+      approvalCurrent,
+      codegenBundle,
+    ],
   );
   const canRelease = bundle.releasable;
+
+  const downloadCode = () => {
+    if (!codegenBundle?.validation.ready) return;
+
+    const payload = JSON.stringify(
+      {
+        target: codegenBundle.target,
+        label: codegenBundle.label,
+        generator: codegenBundle.generator,
+        modelFingerprint: codegenBundle.modelFingerprint,
+        bundleFingerprint: codegenBundle.bundleFingerprint,
+        artifacts: codegenBundle.artifacts,
+      },
+      null,
+      2,
+    );
+    const url = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `kide-code-${codegenBundle.target}-${version}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${codegenBundle.label} code package exported`, {
+      description: `${codegenBundle.artifacts.length} files · ${codegenBundle.bundleFingerprint.slice(0, 12)}…`,
+    });
+  };
 
   const download = () => {
     const payload = JSON.stringify(
@@ -184,6 +228,30 @@ function ReleaseCentre() {
               className="h-8 w-24 rounded-md border border-input bg-background px-2 font-mono text-xs"
             />
           </label>
+          <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            Target
+            <select
+              aria-label="Deployment target"
+              value={codegenTarget}
+              onChange={(event) => setCodegenTarget(event.target.value as CodegenTarget)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            >
+              {CODEGEN_TARGETS.map((target) => (
+                <option key={target} value={target}>
+                  {targetLabel(target)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!canRelease || !codegenBundle?.validation.ready}
+            onClick={downloadCode}
+          >
+            <Code2 />
+            Download code
+          </Button>
           <Button size="sm" disabled={!canRelease} onClick={download}>
             <Download />
             Export bundle
@@ -254,6 +322,66 @@ function ReleaseCentre() {
                   Trust Centre
                 </Link>{" "}
                 for the repair steps.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-lg border border-border bg-card p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Code2 className="size-4 text-primary" />
+                Generated deployment code
+              </h2>
+              {codegenBundle && (
+                <span
+                  className={`rounded border px-2 py-0.5 text-[10px] font-medium ${
+                    codegenBundle.validation.ready
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-destructive/40 bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {codegenBundle.validation.ready ? "validated" : "blocked"}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {targetLabel(codegenTarget)} · deterministic model-to-text generation from the
+              approved synthesized design.
+            </p>
+            {codegenBundle ? (
+              <>
+                <p className="mt-2 break-all font-mono text-[10px] text-muted-foreground">
+                  Bundle fingerprint {codegenBundle.bundleFingerprint || "unavailable"}
+                </p>
+                {codegenBundle.validation.errors.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-[11px] text-destructive">
+                    {codegenBundle.validation.errors.map((error) => (
+                      <li key={error}>{error}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {codegenBundle.artifacts.map((entry) => (
+                    <div
+                      key={entry.path}
+                      className="min-w-0 rounded-md border border-border/70 bg-background p-3"
+                    >
+                      <p className="truncate font-mono text-[11px]">{entry.path}</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {entry.bytes} B · {entry.sha256.slice(0, 16)}…
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {codegenBundle.artifacts[0] && (
+                  <pre className="mt-3 max-h-80 w-full max-w-full overflow-auto rounded-md border border-border/70 bg-[#0E1117] p-3 font-mono text-[11px] leading-relaxed">
+                    {codegenBundle.artifacts[0].content}
+                  </pre>
+                )}
+              </>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Select and approve a synthesis candidate before generating deployment code.
               </p>
             )}
           </section>
