@@ -10,10 +10,12 @@ test -f cloudbuild.yaml || fail "cloudbuild.yaml missing"
 test -f Dockerfile || fail "Dockerfile missing"
 test -f compose.yaml || fail "compose.yaml missing"
 test -f deploy/gcp/bootstrap-auth-secrets.sh || fail "GCP auth bootstrap script missing"
+test -f deploy/gcp/verify-cloud-run-auth-config.sh || fail "GCP runtime auth verifier missing"
 test -f 'src/routes/api/auth/$.ts' || fail "auth catch-all route missing"
 grep -q '/api/auth/health' 'src/routes/api/auth/$.ts' || fail "auth runtime health endpoint missing"
 
 bash -n deploy/gcp/bootstrap-auth-secrets.sh
+bash -n deploy/gcp/verify-cloud-run-auth-config.sh
 docker compose -f compose.yaml config --quiet
 
 python3 - <<'PY'
@@ -88,6 +90,10 @@ grep -Fq "ERROR: Could not determine the Cloud Run runtime service account." clo
 grep -Fq 'CLOUD_SQL_CONNECTION="$$(cat /workspace/.kide-cloud-sql-connection)"' cloudbuild.yaml || fail "Cloud SQL runtime connection variable must use double-dollar escaping"
 grep -Fq '"--add-cloudsql-instances=$$CLOUD_SQL_CONNECTION"' cloudbuild.yaml || fail "Cloud SQL deploy arg must preserve the runtime variable"
 grep -Fq 'INSTANCE_UNIX_SOCKET=/cloudsql/$$CLOUD_SQL_CONNECTION' cloudbuild.yaml || fail "Cloud SQL socket env must preserve the runtime variable"
+grep -q 'verify-cloud-run-auth-config.sh' cloudbuild.yaml || fail "Cloud Build must verify persisted runtime auth configuration"
+grep -q 'EXPECTED_TRUSTED_AUTH_ORIGINS=' cloudbuild.yaml || fail "Cloud Build must pass the intended trusted-origin contract to the verifier"
+grep -q 'EXPECTED_AUTH_DEPLOYMENT_STATE=' cloudbuild.yaml || fail "Cloud Build must verify the intended auth deployment state"
+grep -q 'EXPECTED_CLOUD_SQL_CONNECTION=' cloudbuild.yaml || fail "Cloud Build must verify the intended Cloud SQL attachment"
 grep -q '/api/auth/health' cloudbuild.yaml || fail "Cloud Build must verify live Better Auth health"
 grep -Fq 'host: socketPath' src/lib/database.server.ts || fail "postgres.js must receive the Cloud SQL Unix socket directory as host"
 ! grep -Fq 'path: socketPath' src/lib/database.server.ts || fail "postgres.js must not connect directly to the Cloud SQL socket directory"

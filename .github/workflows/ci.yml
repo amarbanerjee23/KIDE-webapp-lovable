@@ -113,6 +113,9 @@ jobs:
       - name: Simulate GCP auth-secret bootstrap
         run: bash scripts/ci/test-gcp-bootstrap.sh
 
+      - name: Verify persisted Cloud Run authentication configuration
+        run: bash scripts/ci/test-gcp-runtime-config-verification.sh
+
       - name: Validate PostgreSQL schema, constraints and cascades
         run: bash scripts/ci/test-postgres-schema.sh
 
