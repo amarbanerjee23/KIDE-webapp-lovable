@@ -90,6 +90,35 @@ grep -Fq "ERROR: Could not determine the Cloud Run runtime service account." clo
 grep -Fq 'CLOUD_SQL_CONNECTION="$$(cat /workspace/.kide-cloud-sql-connection)"' cloudbuild.yaml || fail "Cloud SQL runtime connection variable must use double-dollar escaping"
 grep -Fq '"--add-cloudsql-instances=$$CLOUD_SQL_CONNECTION"' cloudbuild.yaml || fail "Cloud SQL deploy arg must preserve the runtime variable"
 grep -Fq 'INSTANCE_UNIX_SOCKET=/cloudsql/$$CLOUD_SQL_CONNECTION' cloudbuild.yaml || fail "Cloud SQL socket env must preserve the runtime variable"
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+text = Path("cloudbuild.yaml").read_text()
+custom = set(re.findall(r"^  (_[A-Z0-9_]+):", text, flags=re.MULTILINE))
+builtins = {
+    "PROJECT_ID", "PROJECT_NUMBER", "BUILD_ID", "LOCATION", "TRIGGER_NAME",
+    "COMMIT_SHA", "REVISION_ID", "SHORT_SHA", "REPO_NAME", "REPO_FULL_NAME",
+    "BRANCH_NAME", "TAG_NAME", "REF_NAME", "TRIGGER_BUILD_CONFIG_PATH",
+    "SERVICE_ACCOUNT_EMAIL", "SERVICE_ACCOUNT",
+}
+pattern = re.compile(r"(?<!\\$)\\$(?:\\{([A-Z_][A-Z0-9_]*)\\}|([A-Z_][A-Z0-9_]*))")
+invalid = []
+for braced, plain in pattern.findall(text):
+    name = braced or plain
+    if name.startswith("_"):
+        if name not in custom:
+            invalid.append(name)
+    elif name not in builtins:
+        invalid.append(name)
+if invalid:
+    raise SystemExit(
+        "Unescaped runtime shell variables would be parsed as Cloud Build substitutions: "
+        + ", ".join(sorted(set(invalid)))
+    )
+print("Cloud Build substitution contract validated.")
+PY
+
 grep -q 'verify-cloud-run-auth-config.sh' cloudbuild.yaml || fail "Cloud Build must verify persisted runtime auth configuration"
 grep -q 'EXPECTED_TRUSTED_AUTH_ORIGINS=' cloudbuild.yaml || fail "Cloud Build must pass the intended trusted-origin contract to the verifier"
 grep -q 'EXPECTED_AUTH_DEPLOYMENT_STATE=' cloudbuild.yaml || fail "Cloud Build must verify the intended auth deployment state"

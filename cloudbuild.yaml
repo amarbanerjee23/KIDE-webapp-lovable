@@ -250,27 +250,27 @@ steps:
         gcloud run services update "${_SERVICE}" \
           --project="${PROJECT_ID}" \
           --region="${_REGION}" \
-          --update-env-vars "BETTER_AUTH_URL=$SERVICE_URL,BETTER_AUTH_TRUSTED_ORIGINS=$TRUSTED_AUTH_ORIGINS"
+          --update-env-vars "BETTER_AUTH_URL=$$SERVICE_URL,BETTER_AUTH_TRUSTED_ORIGINS=$$TRUSTED_AUTH_ORIGINS"
 
         EXPECTED_AUTH_DEPLOYMENT_STATE=unconfigured
         EXPECTED_CLOUD_SQL_CONNECTION=""
         if [[ -f /workspace/.kide-auth-secrets-ready ]]; then
           EXPECTED_AUTH_DEPLOYMENT_STATE=configured
           if [[ -s /workspace/.kide-cloud-sql-connection ]]; then
-            EXPECTED_CLOUD_SQL_CONNECTION="$(cat /workspace/.kide-cloud-sql-connection)"
+            EXPECTED_CLOUD_SQL_CONNECTION="$$(cat /workspace/.kide-cloud-sql-connection)"
           fi
         fi
 
         PROJECT_ID="${PROJECT_ID}" \
         REGION="${_REGION}" \
         SERVICE_NAME="${_SERVICE}" \
-        EXPECTED_SERVICE_URL="$SERVICE_URL" \
-        EXPECTED_TRUSTED_AUTH_ORIGINS="$TRUSTED_AUTH_ORIGINS" \
-        EXPECTED_AUTH_DEPLOYMENT_STATE="$EXPECTED_AUTH_DEPLOYMENT_STATE" \
-        EXPECTED_CLOUD_SQL_CONNECTION="$EXPECTED_CLOUD_SQL_CONNECTION" \
+        EXPECTED_SERVICE_URL="$$SERVICE_URL" \
+        EXPECTED_TRUSTED_AUTH_ORIGINS="$$TRUSTED_AUTH_ORIGINS" \
+        EXPECTED_AUTH_DEPLOYMENT_STATE="$$EXPECTED_AUTH_DEPLOYMENT_STATE" \
+        EXPECTED_CLOUD_SQL_CONNECTION="$$EXPECTED_CLOUD_SQL_CONNECTION" \
           bash deploy/gcp/verify-cloud-run-auth-config.sh
 
-        echo "KIDE deployed at $SERVICE_URL"
+        echo "KIDE deployed at $$SERVICE_URL"
 
         if [[ -f /workspace/.kide-auth-secrets-ready ]]; then
           ready=0
