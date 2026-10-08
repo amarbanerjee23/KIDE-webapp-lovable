@@ -8,6 +8,8 @@ required=(
   EXPECTED_SERVICE_URL
   EXPECTED_TRUSTED_AUTH_ORIGINS
   EXPECTED_AUTH_DEPLOYMENT_STATE
+  EXPECTED_BUILD_COMMIT_SHA
+  EXPECTED_BUILD_IMAGE
 )
 for name in "${required[@]}"; do
   if [[ -z "${!name:-}" ]]; then
@@ -41,7 +43,14 @@ region = os.environ["REGION"]
 expected_url = os.environ["EXPECTED_SERVICE_URL"]
 expected_origins = os.environ["EXPECTED_TRUSTED_AUTH_ORIGINS"]
 expected_state = os.environ["EXPECTED_AUTH_DEPLOYMENT_STATE"]
+expected_build_commit = os.environ["EXPECTED_BUILD_COMMIT_SHA"]
+expected_build_image = os.environ["EXPECTED_BUILD_IMAGE"]
 expected_cloud_sql = os.environ.get("EXPECTED_CLOUD_SQL_CONNECTION", "").strip()
+
+if len(expected_build_commit) != 40 or any(ch not in "0123456789abcdef" for ch in expected_build_commit):
+    print("Cloud Run authentication configuration verification failed.", file=sys.stderr)
+    print("EXPECTED_BUILD_COMMIT_SHA must be a lowercase full Git SHA.", file=sys.stderr)
+    raise SystemExit(2)
 
 try:
     payload = json.loads(os.environ["KIDE_SERVICE_JSON"])
@@ -81,6 +90,8 @@ checks = {
     "BETTER_AUTH_URL": expected_url,
     "BETTER_AUTH_TRUSTED_ORIGINS": expected_origins,
     "KIDE_AUTH_DEPLOYMENT_STATE": expected_state,
+    "KIDE_BUILD_COMMIT_SHA": expected_build_commit,
+    "KIDE_BUILD_IMAGE": expected_build_image,
 }
 for key, expected in checks.items():
     if env_values.get(key) != expected:

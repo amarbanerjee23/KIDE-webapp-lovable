@@ -116,6 +116,9 @@ jobs:
       - name: Verify persisted Cloud Run authentication configuration
         run: bash scripts/ci/test-gcp-runtime-config-verification.sh
 
+      - name: Validate exact-commit live deployment qualification contracts
+        run: bash scripts/ci/test-live-deployment-qualification.sh
+
       - name: Validate PostgreSQL schema, constraints and cascades
         run: bash scripts/ci/test-postgres-schema.sh
 

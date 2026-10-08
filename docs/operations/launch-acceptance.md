@@ -30,9 +30,12 @@ The command:
 1. records the exact Git commit;
 2. runs the read-only GCP launch preflight;
 3. runs the live deployed-environment smoke test;
-4. hashes the outputs;
-5. creates a machine-readable acceptance JSON;
-6. verifies that the evidence is structurally complete.
+4. verifies the deployed Cloud Run service carries that exact commit and commit-tagged image;
+5. verifies 100% traffic is on the latest ready revision and records its immutable image digest;
+6. re-verifies Better Auth runtime configuration and the Cloud SQL attachment;
+7. hashes the qualification outputs;
+8. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity;
+9. verifies that the evidence is internally consistent.
 
 It deliberately does not record credentials, secret values, database connection strings or payment data.
 
@@ -43,9 +46,10 @@ Retain together:
 - `launch-acceptance-<sha>.json`;
 - matching preflight log;
 - matching smoke log;
+- matching deployment qualification log and JSON;
 - restore-drill evidence;
 - Cloud Build run;
-- Cloud Run revision.
+- Cloud Run revision and immutable image digest.
 
 Runtime launch evidence should be stored with the release/operations records rather than committed to source control.
 
@@ -54,6 +58,8 @@ Runtime launch evidence should be stored with the release/operations records rat
 Tag `v<releaseVersion>` only when:
 
 - main CI is green for the same commit;
+- the manual `Production deployment qualification` workflow succeeded on that exact `main` SHA;
+- the official release workflow downloads acceptance evidence from that qualification run rather than accepting pasted JSON;
 - launch acceptance evidence verifies successfully;
 - the restore drill reference is valid;
 - alerts have named owners;
@@ -61,3 +67,22 @@ Tag `v<releaseVersion>` only when:
 - no unresolved launch-blocking incident is open.
 
 The release tag must point to the same `commitSha` recorded in acceptance evidence.
+
+
+## GitHub production qualification
+
+For the official release path, dispatch **Production deployment qualification** from the
+`main` branch. The protected `production` GitHub environment must provide:
+
+- variable `GCP_PROJECT_ID`;
+- optional variables `GCP_REGION` and `GCP_SERVICE_NAME` (defaults are `us-central1` and `kide-webapp`);
+- secret `GCP_WORKLOAD_IDENTITY_PROVIDER`;
+- secret `GCP_PRODUCTION_SERVICE_ACCOUNT`.
+
+The workflow uses short-lived Workload Identity Federation credentials, uploads a
+90-day `production-qualification-<sha>` artifact, and refuses to qualify a commit
+that is not current `main`.
+
+When publishing, provide the successful qualification workflow run ID. The publication
+workflow validates the run identity, commit, branch and conclusion, downloads the
+commit-scoped evidence artifact, and only then evaluates the release gates.

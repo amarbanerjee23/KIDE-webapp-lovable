@@ -212,18 +212,18 @@ steps:
             CLOUD_SQL_CONNECTION="$$(cat /workspace/.kide-cloud-sql-connection)"
             DEPLOY_ARGS+=(
               "--add-cloudsql-instances=$$CLOUD_SQL_CONNECTION"
-              "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured,INSTANCE_UNIX_SOCKET=/cloudsql/$$CLOUD_SQL_CONNECTION"
+              "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured,INSTANCE_UNIX_SOCKET=/cloudsql/$$CLOUD_SQL_CONNECTION,KIDE_BUILD_COMMIT_SHA=${COMMIT_SHA},KIDE_BUILD_IMAGE=${_IMAGE}:${COMMIT_SHA}"
             )
           else
             DEPLOY_ARGS+=(
-              "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured"
+              "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=configured,KIDE_BUILD_COMMIT_SHA=${COMMIT_SHA},KIDE_BUILD_IMAGE=${_IMAGE}:${COMMIT_SHA}"
               "--remove-env-vars=INSTANCE_UNIX_SOCKET"
             )
           fi
         else
           DEPLOY_ARGS+=(
             "--remove-secrets=DATABASE_URL,BETTER_AUTH_SECRET"
-            "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=unconfigured"
+            "--update-env-vars=KIDE_AUTH_DEPLOYMENT_STATE=unconfigured,KIDE_BUILD_COMMIT_SHA=${COMMIT_SHA},KIDE_BUILD_IMAGE=${_IMAGE}:${COMMIT_SHA}"
           )
         fi
 
@@ -267,6 +267,8 @@ steps:
         EXPECTED_SERVICE_URL="$$SERVICE_URL" \
         EXPECTED_TRUSTED_AUTH_ORIGINS="$$TRUSTED_AUTH_ORIGINS" \
         EXPECTED_AUTH_DEPLOYMENT_STATE="$$EXPECTED_AUTH_DEPLOYMENT_STATE" \
+        EXPECTED_BUILD_COMMIT_SHA="${COMMIT_SHA}" \
+        EXPECTED_BUILD_IMAGE="${_IMAGE}:${COMMIT_SHA}" \
         EXPECTED_CLOUD_SQL_CONNECTION="$$EXPECTED_CLOUD_SQL_CONNECTION" \
           bash deploy/gcp/verify-cloud-run-auth-config.sh
 

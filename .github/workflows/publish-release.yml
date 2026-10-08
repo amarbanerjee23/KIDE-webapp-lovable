@@ -3,8 +3,8 @@ name: Publish official release
 on:
   workflow_dispatch:
     inputs:
-      acceptance_evidence_json:
-        description: Paste the verified launch acceptance JSON for the exact main commit
+      qualification_run_id:
+        description: Successful Production deployment qualification workflow run ID for current main
         required: true
         type: string
       confirmation:
@@ -46,12 +46,60 @@ jobs:
         with:
           bun-version: 1.4.2
 
-      - name: Materialize acceptance evidence
+      - name: Load exact production qualification evidence
         env:
-          ACCEPTANCE_EVIDENCE_JSON: ${{ inputs.acceptance_evidence_json }}
+          GH_TOKEN: ${{ github.token }}
+          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
         run: |
-          umask 077
-          printf '%s\n' "$ACCEPTANCE_EVIDENCE_JSON" > /tmp/kide-launch-acceptance.json
+          set -euo pipefail
+          main_sha="$(git rev-parse HEAD)"
+
+          [[ "$QUALIFICATION_RUN_ID" =~ ^[0-9]+$ ]] || {
+            echo "qualification_run_id must be a numeric GitHub Actions run ID." >&2
+            exit 1
+          }
+
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs/${QUALIFICATION_RUN_ID}" \
+            > /tmp/qualification-run.json
+
+          node - "$main_sha" /tmp/qualification-run.json <<'JS'
+          const fs = require("fs");
+          const [expectedSha, path] = process.argv.slice(2);
+          const run = JSON.parse(fs.readFileSync(path, "utf8"));
+          if (run.name !== "Production deployment qualification") {
+            throw new Error(`Run ${run.id} is not the production qualification workflow`);
+          }
+          if (run.event !== "workflow_dispatch" || run.head_branch !== "main") {
+            throw new Error("Production qualification must be manually dispatched from main");
+          }
+          if (run.head_sha !== expectedSha) {
+            throw new Error(
+              `Qualification commit ${run.head_sha} does not match current main ${expectedSha}`,
+            );
+          }
+          if (run.status !== "completed" || run.conclusion !== "success") {
+            throw new Error(`Production qualification run ${run.id} did not succeed`);
+          }
+          console.log(`Verified production qualification run #${run.run_number} (${run.html_url})`);
+          JS
+
+          rm -rf /tmp/qualification-evidence
+          mkdir -p /tmp/qualification-evidence
+          gh run download "$QUALIFICATION_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "production-qualification-$main_sha" \
+            --dir /tmp/qualification-evidence
+
+          mapfile -t evidence_files < <(
+            find /tmp/qualification-evidence -type f -name "launch-acceptance-$main_sha.json" -print
+          )
+          if (( ${#evidence_files[@]} != 1 )); then
+            echo "Expected exactly one launch acceptance JSON in qualification evidence." >&2
+            exit 1
+          fi
+          cp "${evidence_files[0]}" /tmp/kide-launch-acceptance.json
 
       - name: Validate acceptance against current main
         run: |
@@ -143,5 +191,5 @@ jobs:
             echo
             printf -- '- Tag: `%s`\n' "$RELEASE_TAG"
             printf -- '- Commit: `%s`\n' "$(git rev-parse HEAD)"
-            echo "- Acceptance evidence was validated against current main and a successful main CI run."
+            echo "- Acceptance evidence came from a successful production qualification run for current main and was validated alongside successful main CI."
           } >> "$GITHUB_STEP_SUMMARY"
