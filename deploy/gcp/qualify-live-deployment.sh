@@ -111,7 +111,11 @@ if not revision_image:
 image_digest = str(revision.get("status", {}).get("imageDigest", "")).strip()
 if not image_digest and "@sha256:" in revision_image:
     image_digest = revision_image.split("@", 1)[1]
-if image_digest and not image_digest.startswith("sha256:"):
+if not image_digest:
+    raise SystemExit(
+        "LIVE DEPLOYMENT QUALIFICATION FAILED: latest revision does not expose an immutable image digest."
+    )
+if not image_digest.startswith("sha256:") or len(image_digest) != 71:
     raise SystemExit(
         "LIVE DEPLOYMENT QUALIFICATION FAILED: revision image digest has an unexpected format."
     )
