@@ -3,5 +3,6 @@
   "tag": "v1.0.0",
   "status": "release-candidate",
   "requiresLaunchAcceptanceEvidence": true,
-  "graphSynthesisDefaultOn": false
+  "graphSynthesisDefaultOn": false,
+  "requiresProductionQualification": true
 }
