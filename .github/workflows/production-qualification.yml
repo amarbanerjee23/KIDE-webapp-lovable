@@ -100,14 +100,16 @@ jobs:
       - name: Capture exact-commit launch acceptance evidence
         env:
           PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-          REGION: ${{ env.KIDE_PRODUCTION_REGION }}
-          SERVICE_NAME: ${{ env.KIDE_PRODUCTION_SERVICE }}
-          KIDE_URL: ${{ env.KIDE_PRODUCTION_URL }}
           OPERATOR: github-actions:${{ github.actor }}
           RESTORE_DRILL_REF: ${{ inputs.restore_drill_reference }}
           KIDE_ACCEPTANCE_BRANCH: main
           OUTPUT_DIR: launch-evidence
-        run: bash scripts/launch/capture-acceptance.sh
+        shell: bash
+        run: |
+          REGION="$KIDE_PRODUCTION_REGION" \
+          SERVICE_NAME="$KIDE_PRODUCTION_SERVICE" \
+          KIDE_URL="$KIDE_PRODUCTION_URL" \
+            bash scripts/launch/capture-acceptance.sh
 
       - name: Upload immutable production qualification evidence
         uses: actions/upload-artifact@v4
