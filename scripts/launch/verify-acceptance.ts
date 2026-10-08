@@ -37,11 +37,7 @@ if (!payload["restoreDrillReference"]) fail("restoreDrillReference is required")
 if (payload["secretsCaptured"] !== false) fail("secretsCaptured must be false");
 
 const checks = record(payload["checks"], "checks");
-for (const key of [
-  "gcpLaunchPreflight",
-  "liveSmoke",
-  "deploymentQualification",
-] as const) {
+for (const key of ["gcpLaunchPreflight", "liveSmoke", "deploymentQualification"] as const) {
   const check = record(checks[key], `${key} check`);
   if (check["status"] !== "passed") fail(`${key} did not pass`);
   if (!HEX64.test(String(check["outputSha256"] ?? ""))) {
