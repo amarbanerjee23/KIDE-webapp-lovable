@@ -32,6 +32,9 @@ if (release.status !== "release-candidate") {
 if (release.requiresLaunchAcceptanceEvidence !== true) {
   fail("release must require launch acceptance evidence");
 }
+if (release.requiresProductionQualification !== true) {
+  fail("release must require production deployment qualification");
+}
 if (release.graphSynthesisDefaultOn !== false) {
   fail("graph-assisted synthesis must remain default-off for v1.0.0");
 }
