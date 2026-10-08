@@ -1,0 +1,130 @@
+name: Production deployment qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      restore_drill_reference:
+        description: Reference to the completed production database restore drill
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-deployment-qualification
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    name: Qualify exact main commit in production
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Require workflow dispatch from main
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Production qualification must be dispatched from main, not $GITHUB_REF." >&2
+            exit 1
+          fi
+
+      - name: Check out exact dispatched commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Prove dispatched commit is current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          current_main="$(git rev-parse origin/main)"
+          current_head="$(git rev-parse HEAD)"
+          if [[ "$current_head" != "$current_main" ]]; then
+            echo "Production qualification commit $current_head is not current main $current_main." >&2
+            exit 1
+          fi
+
+      - name: Require production GCP identity configuration
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_PRODUCTION_SERVICE_ACCOUNT: ${{ secrets.GCP_PRODUCTION_SERVICE_ACCOUNT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$GCP_PROJECT_ID" ]] || { echo "Production variable GCP_PROJECT_ID is required." >&2; exit 1; }
+          [[ -n "$GCP_WORKLOAD_IDENTITY_PROVIDER" ]] || { echo "Production secret GCP_WORKLOAD_IDENTITY_PROVIDER is required." >&2; exit 1; }
+          [[ -n "$GCP_PRODUCTION_SERVICE_ACCOUNT" ]] || { echo "Production secret GCP_PRODUCTION_SERVICE_ACCOUNT is required." >&2; exit 1; }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_PRODUCTION_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          version: ">= 390.0.0"
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Resolve production service
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_SERVICE_NAME: ${{ vars.GCP_SERVICE_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          region="${GCP_REGION:-us-central1}"
+          service="${GCP_SERVICE_NAME:-kide-webapp}"
+          url="$(gcloud run services describe "$service"             --project="$GCP_PROJECT_ID"             --region="$region"             --format='value(status.url)')"
+          [[ -n "$url" ]] || { echo "Production Cloud Run service has no URL." >&2; exit 1; }
+          {
+            echo "KIDE_PRODUCTION_REGION=$region"
+            echo "KIDE_PRODUCTION_SERVICE=$service"
+            echo "KIDE_PRODUCTION_URL=$url"
+          } >> "$GITHUB_ENV"
+
+      - name: Capture exact-commit launch acceptance evidence
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          REGION: ${{ env.KIDE_PRODUCTION_REGION }}
+          SERVICE_NAME: ${{ env.KIDE_PRODUCTION_SERVICE }}
+          KIDE_URL: ${{ env.KIDE_PRODUCTION_URL }}
+          OPERATOR: github-actions:${{ github.actor }}
+          RESTORE_DRILL_REF: ${{ inputs.restore_drill_reference }}
+          KIDE_ACCEPTANCE_BRANCH: main
+          OUTPUT_DIR: launch-evidence
+        run: bash scripts/launch/capture-acceptance.sh
+
+      - name: Upload immutable production qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-qualification-${{ github.sha }}
+          path: launch-evidence
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record production qualification summary
+        shell: bash
+        run: |
+          {
+            echo "## Production deployment qualified"
+            echo
+            printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
+            printf -- '- Service: `%s`\n' "$KIDE_PRODUCTION_SERVICE"
+            printf -- '- Origin: %s\n' "$KIDE_PRODUCTION_URL"
+            echo "- Launch preflight, live auth/session smoke, exact revision identity, Cloud SQL attachment and 100% latest-revision traffic passed."
+          } >> "$GITHUB_STEP_SUMMARY"
