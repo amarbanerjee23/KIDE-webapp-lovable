@@ -6,10 +6,22 @@ import { Download, History, Save, Upload } from "lucide-react";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { useProjectSelection } from "@/components/kide/useProjectSelection";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
+import { useWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
 import { createProject, listCheckpoints, saveCheckpoint } from "@/lib/projects.functions";
 import { WORKING_COPY_LABEL } from "@/lib/project-working-copy";
-import { linkFrom, setSource, useWorkspaceSources } from "@/lib/kide/workspace-store";
-import { exportModelSet, importModelSet } from "@/lib/kide/model-exchange";
+import { linkFrom, replaceWorkspaceSources, useWorkspaceSources } from "@/lib/kide/workspace-store";
+import { exportModelSet, importModelSet, type ImportOutcome } from "@/lib/kide/model-exchange";
 
 const title = "Checkpoints & model exchange — KIDE";
 const description =
@@ -34,6 +46,8 @@ type Checkpoint = Awaited<ReturnType<typeof listCheckpoints>>[number];
 function CheckpointsPage() {
   const sources = useWorkspaceSources();
   const selection = useProjectSelection();
+  const access = useWorkspaceAccess();
+  const saveState = useWorkspaceSaveState();
   const save = useServerFn(saveCheckpoint);
   const list = useServerFn(listCheckpoints);
   const addProject = useServerFn(createProject);
@@ -42,6 +56,15 @@ function CheckpointsPage() {
   const [label, setLabel] = useState("");
   const [projectName, setProjectName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingRestore, setPendingRestore] = useState<Checkpoint | null>(null);
+  const [pendingImport, setPendingImport] = useState<ImportOutcome | null>(null);
+  const canEdit =
+    !!selection.projectId &&
+    access.status === "ready" &&
+    access.projectId === selection.projectId &&
+    access.canEdit &&
+    saveState.projectId === selection.projectId &&
+    saveState.status === "saved";
 
   const counts = useMemo(() => {
     const workspace = linkFrom(sources);
@@ -80,9 +103,20 @@ function CheckpointsPage() {
     }
   };
 
-  const restore = (checkpoint: Checkpoint) => {
-    for (const [path, source] of Object.entries(checkpoint.sources ?? {})) setSource(path, source);
-    toast.success(`Restored "${checkpoint.label}".`);
+  const applyReplacement = () => {
+    if (!canEdit) {
+      toast.error("Wait for the active project to finish saving before replacing its models.");
+      return;
+    }
+    if (pendingRestore) {
+      replaceWorkspaceSources(pendingRestore.sources ?? {});
+      toast.success(`Restored "${pendingRestore.label}".`);
+    } else if (pendingImport) {
+      replaceWorkspaceSources(pendingImport.sources);
+      toast.success(`Imported ${pendingImport.fileCount} models.`);
+    }
+    setPendingRestore(null);
+    setPendingImport(null);
   };
 
   const exportSet = () => {
@@ -104,8 +138,11 @@ function CheckpointsPage() {
       toast.error(outcome.problems[0] ?? "This model set could not be imported.");
       return;
     }
-    for (const [path, source] of Object.entries(outcome.sources)) setSource(path, source);
-    toast.success(`Imported ${outcome.fileCount} models.`);
+    if (!canEdit) {
+      toast.error("This project is read-only or has unsaved changes.");
+      return;
+    }
+    setPendingImport(outcome);
   };
 
   return (
@@ -129,6 +166,7 @@ function CheckpointsPage() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <select
                 className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+                aria-label="Checkpoint organization"
                 value={selection.orgId ?? ""}
                 onChange={(event) => selection.setOrgId(event.target.value)}
               >
@@ -140,6 +178,7 @@ function CheckpointsPage() {
               </select>
               <select
                 className="h-9 min-w-48 rounded-md border border-border bg-background px-2 text-xs"
+                aria-label="Checkpoint project"
                 value={selection.projectId ?? ""}
                 onChange={(event) => selection.setProjectId(event.target.value || null)}
               >
@@ -156,6 +195,7 @@ function CheckpointsPage() {
               </select>
               <input
                 className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+                aria-label="New checkpoint project name"
                 placeholder="New project name"
                 value={projectName}
                 onChange={(event) => setProjectName(event.target.value)}
@@ -196,7 +236,7 @@ function CheckpointsPage() {
             />
             <Button
               size="sm"
-              disabled={busy || !selection.projectId}
+              disabled={busy || !canEdit}
               onClick={() =>
                 void run("Checkpoint saved.", async () => {
                   await save({
@@ -215,16 +255,17 @@ function CheckpointsPage() {
             >
               Save checkpoint
             </Button>
-            <Button size="sm" variant="secondary" onClick={exportSet}>
+            <Button size="sm" variant="secondary" onClick={exportSet} disabled={!selection.projectId || !access.projectId || access.projectId !== selection.projectId}>
               <Download className="size-4" /> Export model set
             </Button>
-            <Button size="sm" variant="secondary" asChild>
+            <Button size="sm" variant="secondary" asChild disabled={!canEdit}>
               <label className="cursor-pointer">
                 <Upload className="size-4" /> Import model set
                 <input
                   type="file"
                   accept="application/json"
                   className="hidden"
+                  aria-label="Choose model set JSON file"
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = "";
@@ -259,7 +300,12 @@ function CheckpointsPage() {
                       {checkpoint.error_count} errors · {checkpoint.warning_count} warnings
                     </p>
                   </div>
-                  <Button size="sm" variant="secondary" onClick={() => restore(checkpoint)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={!canEdit}
+                    onClick={() => setPendingRestore(checkpoint)}
+                  >
                     Restore
                   </Button>
                 </li>
@@ -267,6 +313,34 @@ function CheckpointsPage() {
             </ul>
           )}
         </section>
+        <AlertDialog
+          open={Boolean(pendingRestore || pendingImport)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPendingRestore(null);
+              setPendingImport(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Replace this project workspace?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {pendingRestore
+                  ? `Restore "${pendingRestore.label}" exactly as saved?`
+                  : `Import ${pendingImport?.fileCount ?? 0} verified model files?`}{" "}
+                All current model files will be replaced, including any files not present in the selected set.
+                This cannot be undone unless you have a previous checkpoint.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep current workspace</AlertDialogCancel>
+              <AlertDialogAction disabled={!canEdit} onClick={applyReplacement}>
+                Replace workspace
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </main>
   );
