@@ -12,7 +12,9 @@ const examples = [
   { title: "Autonomous warehouse fleet", file: "Ecre.dml", level: "5" },
 ];
 
-test("new and existing projects plus five prebuilt examples persist in PostgreSQL", async ({ page }) => {
+test("new and existing projects plus five prebuilt examples persist in PostgreSQL", async ({
+  page,
+}) => {
   const id = randomBytes(8).toString("hex");
   const org = `Example gallery QA ${id}`;
 
@@ -22,7 +24,9 @@ test("new and existing projects plus five prebuilt examples persist in PostgreSQ
   await page.getByRole("textbox", { name: "Organization name" }).fill(org);
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByRole("heading", { name: org })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Explore five real-world control systems" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Explore five real-world control systems" }),
+  ).toBeVisible();
 
   // The original defect: project creation must also work in an existing org.
   for (const name of [`First blank ${id}`, `Second blank ${id}`]) {
@@ -38,9 +42,13 @@ test("new and existing projects plus five prebuilt examples persist in PostgreSQ
     await expect(page.getByText(`Project created: ${template.title}`)).toBeVisible();
     await page.getByRole("link", { name: "Open new project" }).click();
     await expect(page).toHaveURL("/models");
-    await expect(page.getByRole("button", { name: new RegExp(`^${template.file.replace(".", "\\.")}`) })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: new RegExp(`^${template.file.replace(".", "\\.")}`) }),
+    ).toBeVisible();
     await page.reload();
-    await expect(page.getByRole("button", { name: new RegExp(`^${template.file.replace(".", "\\.")}`) })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: new RegExp(`^${template.file.replace(".", "\\.")}`) }),
+    ).toBeVisible();
     await page.goto("/overview");
     await expect(page.getByRole("heading", { name: template.title })).toBeVisible();
     await page.goto("/projects");
