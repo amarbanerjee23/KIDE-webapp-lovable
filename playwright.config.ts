@@ -28,6 +28,8 @@ export default defineConfig({
         "**/release-journey.spec.ts",
         "**/production-release-journey.spec.ts",
         "**/checkpoint-integrity.spec.ts",
+        "**/team-and-billing.spec.ts",
+        "**/responsive-cx.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"], baseURL: configuredBase },
     },
