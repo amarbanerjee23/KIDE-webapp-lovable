@@ -40,7 +40,7 @@ test("checkpoint restore removes extra files and a custom model set imports comp
     .selectOption("precision-irrigation");
   await page.getByRole("button", { name: "Load selected" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
-  await page.getByRole("button", { name: "Replace workspace" }).click();
+  await page.getByRole("button", { name: "Replace with example" }).click();
   await expect(page.getByText("Agri.dml")).toBeVisible();
   await expect(page.getByText("Ecre.dml")).toHaveCount(0);
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
