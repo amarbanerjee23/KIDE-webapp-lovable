@@ -60,6 +60,10 @@ function CheckpointsPage() {
   const checkpointsGeneration = useRef(0);
   const [pendingRestore, setPendingRestore] = useState<Checkpoint | null>(null);
   const [pendingImport, setPendingImport] = useState<ImportOutcome | null>(null);
+  const canCreateProject =
+    !selection.projectsLoading &&
+    !selection.error &&
+    ["owner", "administrator", "engineer"].includes(selection.myRole);
   const canEdit =
     !!selection.projectId &&
     !selection.projectsLoading &&
@@ -193,7 +197,10 @@ function CheckpointsPage() {
                 className="h-9 rounded-md border border-border bg-background px-2 text-xs"
                 aria-label="Checkpoint organization"
                 value={selection.orgId ?? ""}
-                onChange={(event) => selection.setOrgId(event.target.value)}
+                onChange={(event) => {
+                  setProjectName("");
+                  selection.setOrgId(event.target.value);
+                }}
               >
                 {selection.orgs.map((org) => (
                   <option key={org.id} value={org.id}>
@@ -219,31 +226,39 @@ function CheckpointsPage() {
                   </option>
                 ))}
               </select>
-              <input
-                className="h-9 rounded-md border border-border bg-background px-2 text-xs"
-                aria-label="New checkpoint project name"
-                placeholder="New project name"
-                value={projectName}
-                onChange={(event) => setProjectName(event.target.value)}
-              />
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={
-                  busy || selection.projectsLoading || !selection.orgId || !projectName.trim()
-                }
-                onClick={() =>
-                  void run("Project created.", async () => {
-                    await addProject({
-                      data: { organizationId: selection.orgId!, name: projectName },
-                    });
-                    setProjectName("");
-                    await selection.refreshProjects(selection.orgId!);
-                  })
-                }
-              >
-                Add project
-              </Button>
+              {canCreateProject ? (
+                <>
+                  <input
+                    className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+                    aria-label="New checkpoint project name"
+                    placeholder="New project name"
+                    value={projectName}
+                    onChange={(event) => setProjectName(event.target.value)}
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={
+                      busy || !canCreateProject || !selection.orgId || !projectName.trim()
+                    }
+                    onClick={() =>
+                      void run("Project created.", async () => {
+                        await addProject({
+                          data: { organizationId: selection.orgId!, name: projectName },
+                        });
+                        setProjectName("");
+                        await selection.refreshProjects(selection.orgId!);
+                      })
+                    }
+                  >
+                    Add project
+                  </Button>
+                </>
+              ) : !selection.projectsLoading && selection.orgId && !selection.error ? (
+                <p className="text-xs text-muted-foreground">
+                  Only owners, administrators and engineers can create projects.
+                </p>
+              ) : null}
             </div>
           )}
           {selection.projectsLoading && (

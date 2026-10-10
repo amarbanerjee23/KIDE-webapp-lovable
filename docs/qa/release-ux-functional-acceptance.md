@@ -41,3 +41,18 @@ PR66 fixes concrete source defects and adds automated regression coverage. The e
 Complete the live production qualification workflow on the exact deployed main SHA and retain its artifact. In addition, an authorized product tester must validate actual input ergonomics, keyboard focus/assistive-technology experience and visible feedback on desktop and mobile, using test users from different organizations. A paid launch requires a real Hyperswitch provider integration, declined/3DS/payment-pending scenarios, webhook replay and reconciliation; CI cannot fabricate this proof.
 
 Any failed production gate requires a corrective PR, successful post-merge CI, repeat deployment and requalification. Never override a failing release gate or claim absolute absence of defects.
+
+## PR77 read-only role parity and stale draft recovery
+
+Source-level audit found that Checkpoints showed an **Add project** action to
+reviewer/viewer roles even though server-side project creation rejects those
+roles. Reviews likewise allowed reviewer/viewer users to enter a review
+request that cannot pass the server's editing-role check. These are misleading
+controls rather than evidence of a server-side authorization bypass.
+
+The controls now follow the same owner/administrator/engineer role boundary
+as the server, while reviewers retain their independent decision permission.
+Review draft text and checkpoint project-name drafts clear when the user
+switches organizations. The multi-tenant browser acceptance switches between
+owner and reviewer organizations and confirms no stale unauthorized actions,
+while the existing server authorization remains mandatory.
