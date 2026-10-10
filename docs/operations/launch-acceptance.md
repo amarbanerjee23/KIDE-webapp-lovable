@@ -9,7 +9,8 @@ The operator must provide:
 - `PROJECT_ID`: production Google Cloud project;
 - `KIDE_URL`: deployed HTTPS production origin;
 - `OPERATOR`: accountable launch operator or team identifier;
-- `RESTORE_DRILL_REF`: reference to the completed database restore drill;
+- `RESTORE_DRILL_REF`: completed Cloud SQL `CLONE` operation ID;
+- `RESTORE_DRILL_RECOVERY_INSTANCE`: name of the distinct recovery Cloud SQL instance;
 - optional `RELEASE_VERSION`, default `1.0.0`.
 
 ## Capture acceptance
@@ -114,3 +115,17 @@ release publication. A standalone copied acceptance JSON is **not** evidence.
 The checks prove artifact consistency, not that a real Cloud SQL restore drill
 occurred: the accountable operator must still furnish a genuine restore
 record and GitHub protected environment approvals.
+
+## Verified clone provenance (PR80)
+
+Before accepting a launch candidate, the evidence collector queries the
+completed Cloud SQL clone operation, separate recovery instance and application
+database listing using the authorized production GCP identity. It retains
+`restore-operation-<sha>.json` and `restore-metadata-<sha>.log`, both SHA-256
+bound to the launch acceptance record. These must be present when the official
+release workflow validates downloaded acceptance artifacts.
+
+This validates Cloud SQL metadata, not restored SQL table contents or the
+original clone command source. The operator must separately retain evidence
+that the clone originated from production and that real recovered application
+records and relationships were inspected read-only before signing off.

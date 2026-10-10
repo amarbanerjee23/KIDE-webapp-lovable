@@ -25,11 +25,15 @@ Before publication:
 ## Qualify production
 
 In GitHub Actions select **Production deployment qualification**, choose `main`,
-and enter the completed restore drill reference.
+and enter the successful Cloud SQL clone operation ID **and** its distinct
+recovery instance name. An arbitrary issue/ticket reference is no longer valid.
+First complete an operator-reviewed, read-only SQL recovery inspection.
 
 This workflow:
 
 - refuses stale commits or non-`main` references;
+- verifies a real completed Cloud SQL clone operation plus a separate,
+  runnable PostgreSQL recovery instance and listed application database;
 - proves Cloud Run auth persistence and 100% traffic on the latest ready revision;
 - matches the deployed image digest to the commit-tagged image in Artifact Registry;
 - executes the live auth/session/anonymous-route smoke with a unique identity;

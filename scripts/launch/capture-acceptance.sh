@@ -7,6 +7,8 @@ SERVICE_NAME="${SERVICE_NAME:-kide-webapp}"
 KIDE_URL="${KIDE_URL:-}"
 OPERATOR="${OPERATOR:-}"
 RESTORE_DRILL_REF="${RESTORE_DRILL_REF:-}"
+RESTORE_DRILL_RECOVERY_INSTANCE="${RESTORE_DRILL_RECOVERY_INSTANCE:-}"
+RESTORE_DRILL_DATABASE_NAME="${RESTORE_DRILL_DATABASE_NAME:-kide}"
 RELEASE_VERSION="${RELEASE_VERSION:-1.0.0}"
 OUTPUT_DIR="${OUTPUT_DIR:-launch-evidence}"
 KIDE_ACCEPTANCE_BRANCH="${KIDE_ACCEPTANCE_BRANCH:-}"
@@ -19,7 +21,9 @@ fail() {
 [[ -n "${PROJECT_ID}" ]] || fail "PROJECT_ID is required."
 [[ -n "${KIDE_URL}" ]] || fail "KIDE_URL is required."
 [[ -n "${OPERATOR}" ]] || fail "OPERATOR is required."
-[[ -n "${RESTORE_DRILL_REF}" ]] || fail "RESTORE_DRILL_REF is required."
+[[ -n "${RESTORE_DRILL_REF}" ]] || fail "RESTORE_DRILL_REF (Cloud SQL CLONE operation ID) is required."
+[[ -n "${RESTORE_DRILL_RECOVERY_INSTANCE}" ]] ||
+  fail "RESTORE_DRILL_RECOVERY_INSTANCE is required."
 
 commit_sha="$(git rev-parse HEAD)"
 branch_name="${KIDE_ACCEPTANCE_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
@@ -31,6 +35,7 @@ smoke_log="${OUTPUT_DIR}/smoke-${commit_sha}.log"
 browser_log="${OUTPUT_DIR}/browser-journey-${commit_sha}.log"
 deployment_log="${OUTPUT_DIR}/deployment-${commit_sha}.log"
 deployment_file="${OUTPUT_DIR}/deployment-qualification-${commit_sha}.json"
+restore_file="${OUTPUT_DIR}/restore-operation-${commit_sha}.json"
 evidence_file="${OUTPUT_DIR}/launch-acceptance-${commit_sha}.json"
 
 echo "Running GCP launch preflight..."
@@ -40,6 +45,19 @@ if PROJECT_ID="${PROJECT_ID}" REGION="${REGION}" SERVICE_NAME="${SERVICE_NAME}" 
 else
   cat "${preflight_log}" >&2
   fail "GCP launch preflight failed."
+fi
+
+echo "Verifying real Cloud SQL recovery clone operation metadata..."
+if PROJECT_ID="${PROJECT_ID}" \
+   RESTORE_DRILL_REF="${RESTORE_DRILL_REF}" \
+   RESTORE_DRILL_RECOVERY_INSTANCE="${RESTORE_DRILL_RECOVERY_INSTANCE}" \
+   RESTORE_DRILL_DATABASE_NAME="${RESTORE_DRILL_DATABASE_NAME}" \
+   OUTPUT_FILE="${restore_file}" \
+   bash scripts/launch/check-restore-drill.sh >"${OUTPUT_DIR}/restore-metadata-${commit_sha}.log" 2>&1; then
+  restore_status="passed"
+else
+  cat "${OUTPUT_DIR}/restore-metadata-${commit_sha}.log" >&2
+  fail "Cloud SQL clone metadata qualification failed."
 fi
 
 echo "Running deployed-environment smoke..."
@@ -83,12 +101,15 @@ smoke_sha="$(sha256sum "${smoke_log}" | awk '{print $1}')"
 browser_sha="$(sha256sum "${browser_log}" | awk '{print $1}')"
 deployment_sha="$(sha256sum "${deployment_file}" | awk '{print $1}')"
 deployment_log_sha="$(sha256sum "${deployment_log}" | awk '{print $1}')"
+restore_sha="$(sha256sum "${restore_file}" | awk '{print $1}')"
+restore_log_sha="$(sha256sum "${OUTPUT_DIR}/restore-metadata-${commit_sha}.log" | awk '{print $1}')"
 
 python3 - "${evidence_file}" "${deployment_file}" "${commit_sha}" "${branch_name}" "${timestamp}" \
   "${RELEASE_VERSION}" "${KIDE_URL}" "${OPERATOR}" "${RESTORE_DRILL_REF}" \
   "${preflight_status}" "${preflight_sha}" "${smoke_status}" "${smoke_sha}" \
   "${browser_status}" "${browser_sha}" "${deployment_status}" "${deployment_sha}" \
-  "${deployment_log_sha}" <<'PY'
+  "${deployment_log_sha}" "${restore_file}" "${restore_status}" "${restore_sha}" \
+  "${restore_log_sha}" <<'PY'
 import json
 import sys
 
@@ -111,10 +132,16 @@ import sys
     deployment_status,
     deployment_sha,
     deployment_log_sha,
+    restore_file,
+    restore_status,
+    restore_sha,
+    restore_log_sha,
 ) = sys.argv[1:]
 
 with open(deployment_path, encoding="utf-8") as handle:
     deployment = json.load(handle)
+with open(restore_file, encoding="utf-8") as handle:
+    restore_operation = json.load(handle)
 
 payload = {
     "schemaVersion": 2,
@@ -125,7 +152,13 @@ payload = {
     "acceptedAt": timestamp,
     "operator": operator,
     "restoreDrillReference": restore_drill_ref,
+    "restoreDrill": restore_operation,
     "checks": {
+        "databaseRestoreDrill": {
+            "status": restore_status,
+            "outputSha256": restore_sha,
+            "logSha256": restore_log_sha,
+        },
         "gcpLaunchPreflight": {
             "status": preflight_status,
             "outputSha256": preflight_sha,

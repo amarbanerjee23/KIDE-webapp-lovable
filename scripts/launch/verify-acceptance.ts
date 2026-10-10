@@ -48,6 +48,7 @@ const evidenceFileNames = {
   liveSmoke: `smoke-${commitSha}.log`,
   productionBrowserJourney: `browser-journey-${commitSha}.log`,
   deploymentQualification: `deployment-qualification-${commitSha}.json`,
+  databaseRestoreDrill: `restore-operation-${commitSha}.json`,
 } as const;
 
 function verifySidecar(name: string, expectedHash: unknown): void {
@@ -65,6 +66,7 @@ function verifySidecar(name: string, expectedHash: unknown): void {
 }
 
 for (const key of [
+  "databaseRestoreDrill",
   "gcpLaunchPreflight",
   "liveSmoke",
   "productionBrowserJourney",
@@ -82,6 +84,34 @@ if (!HEX64.test(String(deploymentCheck["logSha256"] ?? ""))) {
   fail("deploymentQualification logSha256 must be SHA-256");
 }
 verifySidecar(`deployment-${commitSha}.log`, deploymentCheck["logSha256"]);
+const restoreCheck = record(checks["databaseRestoreDrill"], "databaseRestoreDrill check");
+if (!HEX64.test(String(restoreCheck["logSha256"] ?? ""))) {
+  fail("databaseRestoreDrill logSha256 must be SHA-256");
+}
+verifySidecar(`restore-metadata-${commitSha}.log`, restoreCheck["logSha256"]);
+
+const restore = record(payload["restoreDrill"], "restoreDrill");
+const restoreFromFile = JSON.parse(
+  readFileSync(join(evidenceDirectory, evidenceFileNames.databaseRestoreDrill), "utf8"),
+) as unknown;
+if (!isDeepStrictEqual(restoreFromFile, restore)) {
+  fail("embedded restore drill metadata does not match the verified source evidence");
+}
+if (restore["schemaVersion"] !== 1 ||
+    restore["projectId"] !== record(payload["deployment"], "deployment")["projectId"] ||
+    restore["operationId"] !== payload["restoreDrillReference"] ||
+    restore["operationType"] !== "CLONE" ||
+    restore["operationStatus"] !== "DONE" ||
+    restore["sourceInstance"] === restore["recoveryInstance"] ||
+    restore["recoveryState"] !== "RUNNABLE" ||
+    restore["backupConfigured"] !== true ||
+    restore["pitrConfigured"] !== true ||
+    restore["recoveryDatabaseListed"] !== true ||
+    restore["contentQueriesVerified"] !== false ||
+    restore["sourceRequestVerified"] !== false ||
+    restore["secretsCaptured"] !== false) {
+  fail("Cloud SQL restore drill metadata verification is incomplete or inconsistent");
+}
 
 const deployment = record(payload["deployment"], "deployment");
 const fileDeployment = JSON.parse(
