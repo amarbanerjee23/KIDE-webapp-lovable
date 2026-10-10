@@ -60,9 +60,9 @@ test("production customer can qualify and export real generated code, then sign 
   await expect(page.getByRole("link", { name: "Open new project" })).toBeVisible();
   await page.getByRole("link", { name: "Open new project" }).click();
   await expect(page).toHaveURL("/models");
-  await expect(page.getByRole("button", { name: /^Building\\.dml/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Building\.dml/ })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: /^Building\\.dml/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Building\.dml/ })).toBeVisible();
 
   // Return to the explicitly selected blank project and prove no models leaked
   // from the example before generating its actual release candidate.
