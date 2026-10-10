@@ -119,6 +119,7 @@ if bun scripts/launch/verify-acceptance.ts "$tmp/tampered.json" >/dev/null 2>&1;
   fail "verifier accepted a checksum that did not match the actual log bytes"
 fi
 
+sha=1234567890abcdef1234567890abcdef12345678
 cp "$tmp/good.json" "$tmp/good-copy.json"
 python3 - "$tmp/good.json" <<'PY'
 import json
@@ -135,12 +136,15 @@ if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; the
 fi
 cp "$tmp/good-copy.json" "$tmp/good.json"
 
+cp "$tmp/restore-operation-${sha}.json" "$tmp/restore-operation-backup.json"
 printf 'tampered recovery metadata\n' >> "$tmp/restore-operation-${sha}.json"
 if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; then
   fail "verifier accepted a modified recovery metadata sidecar"
 fi
+mv "$tmp/restore-operation-backup.json" "$tmp/restore-operation-${sha}.json"
+bun scripts/launch/verify-acceptance.ts "$tmp/good.json"
 
-sha=1234567890abcdef1234567890abcdef12345678
+
 printf 'post-qualification tampering\n' >> "$tmp/preflight-${sha}.log"
 if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; then
   fail "verifier accepted modified preflight evidence"
