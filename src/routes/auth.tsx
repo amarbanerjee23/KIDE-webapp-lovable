@@ -12,7 +12,11 @@ import {
   authReadinessSummary,
   type AuthRuntimeReadiness,
 } from "@/lib/auth/readiness";
-import { consumePostAuthRedirect } from "@/lib/auth/post-auth-redirect";
+import {
+  consumePostAuthRedirect,
+  rememberPostAuthRedirect,
+} from "@/lib/auth/post-auth-redirect";
+import { isInvitationLandingPath } from "@/lib/auth/session-policy";
 
 const title = "Sign in — KIDE Systems Engineering";
 const description = "Secure access to your KIDE engineering organization and projects.";
@@ -42,6 +46,17 @@ function AuthPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [readiness, setReadiness] = useState<AuthRuntimeReadiness | null>(null);
+
+  useEffect(() => {
+    // The invitation landing page is intentionally public, but the preview
+    // and membership mutation require authentication. Keep the return target
+    // across signup, sign-in and OAuth redirects without trusting arbitrary
+    // external URLs or allowing a post-auth open redirect.
+    const target = new URLSearchParams(window.location.search).get("returnTo");
+    if (target && isInvitationLandingPath(target)) {
+      rememberPostAuthRedirect(target);
+    }
+  }, []);
 
   const completeAuthentication = useCallback(
     async (showValidationError: boolean) => {
