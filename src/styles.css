@@ -304,3 +304,16 @@ html[data-theme="high-contrast"] {
   }
 }
 
+
+
+/* Sonner's built-in notification palette can render 2.7–3:1 text contrast.
+ * Keep every notification legible across dark, light and high-contrast themes. */
+[data-sonner-toast] {
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+[data-sonner-toast] [data-title],
+[data-sonner-toast] [data-description] {
+  color: var(--foreground) !important;
+}
