@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getActiveProject } from "@/lib/active-project";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -57,10 +57,13 @@ function CheckpointsPage() {
   const [label, setLabel] = useState("");
   const [projectName, setProjectName] = useState("");
   const [busy, setBusy] = useState(false);
+  const checkpointsGeneration = useRef(0);
   const [pendingRestore, setPendingRestore] = useState<Checkpoint | null>(null);
   const [pendingImport, setPendingImport] = useState<ImportOutcome | null>(null);
   const canEdit =
     !!selection.projectId &&
+    !selection.projectsLoading &&
+    !selection.error &&
     access.status === "ready" &&
     access.projectId === selection.projectId &&
     access.canEdit &&
@@ -86,16 +89,27 @@ function CheckpointsPage() {
 
   const refresh = useCallback(
     async (projectId: string) => {
+      const generation = ++checkpointsGeneration.current;
       const rows = await list({ data: { projectId } });
-      setCheckpoints(rows.filter((checkpoint) => checkpoint.label !== WORKING_COPY_LABEL));
+      if (generation === checkpointsGeneration.current) {
+        setCheckpoints(rows.filter((checkpoint) => checkpoint.label !== WORKING_COPY_LABEL));
+      }
     },
     [list],
   );
 
   useEffect(() => {
-    if (selection.projectId) void refresh(selection.projectId);
-    else setCheckpoints([]);
-  }, [selection.projectId, refresh]);
+    checkpointsGeneration.current += 1;
+    setCheckpoints([]);
+    if (selection.projectId && !selection.projectsLoading) {
+      void refresh(selection.projectId).catch(() =>
+        toast.error("Could not load the selected project's checkpoints."),
+      );
+    }
+    return () => {
+      checkpointsGeneration.current += 1;
+    };
+  }, [selection.projectId, selection.projectsLoading, refresh]);
 
   const run = async (message: string, fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -190,6 +204,7 @@ function CheckpointsPage() {
               <select
                 className="h-9 min-w-48 rounded-md border border-border bg-background px-2 text-xs"
                 aria-label="Checkpoint project"
+                disabled={selection.projectsLoading || Boolean(selection.error)}
                 value={selection.projectId ?? ""}
                 onChange={(event) => selection.setProjectId(event.target.value || null)}
               >
@@ -214,7 +229,9 @@ function CheckpointsPage() {
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={busy || !selection.orgId || !projectName.trim()}
+                disabled={
+                  busy || selection.projectsLoading || !selection.orgId || !projectName.trim()
+                }
                 onClick={() =>
                   void run("Project created.", async () => {
                     await addProject({
@@ -227,6 +244,25 @@ function CheckpointsPage() {
               >
                 Add project
               </Button>
+            </div>
+          )}
+          {selection.projectsLoading && (
+            <p role="status" className="mt-2 text-xs text-muted-foreground">
+              Loading selected organization projects…
+            </p>
+          )}
+          {selection.error && (
+            <div role="alert" className="mt-2 flex items-center gap-2 text-xs text-destructive">
+              <span>{selection.error}</span>
+              {selection.orgId && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void selection.refreshProjects(selection.orgId!)}
+                >
+                  Retry
+                </Button>
+              )}
             </div>
           )}
         </section>

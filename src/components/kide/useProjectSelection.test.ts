@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isCurrentOrganizationRequest,
   preferredExplicitProjectId,
   type ProjectOption,
 } from "@/components/kide/useProjectSelection";
@@ -28,5 +29,21 @@ describe("explicit project selection", () => {
         "org-1",
       ),
     ).toBeNull();
+  });
+});
+
+describe("organization response generations", () => {
+  it("rejects a late response from a previous organization", () => {
+    expect(isCurrentOrganizationRequest("org-a", 1, "org-b", 2)).toBe(false);
+    expect(isCurrentOrganizationRequest("org-b", 2, "org-b", 2)).toBe(true);
+  });
+
+  it("rejects older responses after a same-org refresh", () => {
+    expect(isCurrentOrganizationRequest("org-a", 4, "org-a", 5)).toBe(false);
+    expect(isCurrentOrganizationRequest("org-a", 5, "org-a", 5)).toBe(true);
+  });
+
+  it("rejects responses after the selection is cleared or the page unmounts", () => {
+    expect(isCurrentOrganizationRequest("org-a", 3, null, 4)).toBe(false);
   });
 });

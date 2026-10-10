@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getActiveProject, setActiveProject } from "@/lib/active-project";
 import { getOrganization, getWorkspace } from "@/lib/teams.functions";
@@ -21,62 +21,122 @@ export function preferredExplicitProjectId(
     : null;
 }
 
+/** Reject responses from a previous selected tenant or an outdated request. */
+export function isCurrentOrganizationRequest(
+  requestedOrgId: string,
+  requestId: number,
+  selectedOrgId: string | null,
+  currentRequestId: number,
+): boolean {
+  return requestedOrgId === selectedOrgId && requestId === currentRequestId;
+}
+
 /**
- * Shared organization + project picker state used by checkpoint and review
- * pages. The selected project is also the global browser working project.
+ * Shared project picker for Reviews and Checkpoints.
+ * Every asynchronous result is scoped to both the selected organization and
+ * a monotonically increasing request generation. Old responses cannot replace
+ * another tenant's role, project list or active project.
  */
 export function useProjectSelection() {
   const loadWorkspace = useServerFn(getWorkspace);
   const loadOrg = useServerFn(getOrganization);
+  const selectedOrgRef = useRef<string | null>(null);
+  const requestGeneration = useRef(0);
+  const allowedProjectsRef = useRef<Set<string>>(new Set());
 
   const [orgs, setOrgs] = useState<Array<{ id: string; name: string; role: string }>>([]);
   const [orgId, setOrgIdState] = useState<string | null>(null);
-  const [myRole, setMyRole] = useState<string>("viewer");
+  const [myRole, setMyRole] = useState("viewer");
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [projectId, setProjectIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const refreshProjects = useCallback(
     async (id: string) => {
-      const org = await loadOrg({ data: { organizationId: id } });
-      setMyRole(org.myRole ?? "viewer");
-      const list = org.projects as ProjectOption[];
-      setProjects(list);
+      if (selectedOrgRef.current !== id) return;
+      const generation = ++requestGeneration.current;
+      setProjectsLoading(true);
+      setError("");
+      try {
+        const org = await loadOrg({ data: { organizationId: id } });
+        if (
+          !isCurrentOrganizationRequest(
+            id,
+            generation,
+            selectedOrgRef.current,
+            requestGeneration.current,
+          )
+        )
+          return;
+        const list = org.projects as ProjectOption[];
+        const ids = new Set(list.map((project) => project.id));
+        allowedProjectsRef.current = ids;
+        setMyRole(org.myRole ?? "viewer");
+        setProjects(list);
 
-      const active = getActiveProject();
-      const preferred = preferredExplicitProjectId(list, active, id);
-
-      setProjectIdState(preferred);
-      if (preferred) {
-        setActiveProject({ projectId: preferred, organizationId: id });
-      } else if (active) {
-        setActiveProject(null);
+        const active = getActiveProject();
+        const preferred = preferredExplicitProjectId(list, active, id);
+        setProjectIdState(preferred);
+        if (active && !preferred && active.organizationId === id) {
+          setActiveProject(null);
+        }
+      } catch (cause) {
+        if (selectedOrgRef.current !== id || requestGeneration.current !== generation) return;
+        allowedProjectsRef.current.clear();
+        setProjects([]);
+        setProjectIdState(null);
+        setMyRole("viewer");
+        setError(cause instanceof Error ? cause.message : "Could not load this organization.");
+      } finally {
+        if (
+          isCurrentOrganizationRequest(
+            id,
+            generation,
+            selectedOrgRef.current,
+            requestGeneration.current,
+          )
+        ) {
+          setProjectsLoading(false);
+        }
       }
     },
     [loadOrg],
   );
 
   useEffect(() => {
+    let mounted = true;
     void (async () => {
       try {
         const data = await loadWorkspace();
+        if (!mounted) return;
         const organizations = data.organizations.map((org) => ({
           id: org.id,
           name: org.name,
           role: org.role,
         }));
         setOrgs(organizations);
-
         const active = getActiveProject();
         const preferredOrg =
           active && organizations.some((org) => org.id === active.organizationId)
             ? active.organizationId
             : (organizations[0]?.id ?? null);
+        selectedOrgRef.current = preferredOrg;
         setOrgIdState(preferredOrg);
+        if (!preferredOrg && active) setActiveProject(null);
+      } catch (cause) {
+        if (mounted) {
+          setError(cause instanceof Error ? cause.message : "Could not load organizations.");
+        }
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
+    return () => {
+      mounted = false;
+      requestGeneration.current += 1;
+    };
   }, [loadWorkspace]);
 
   useEffect(() => {
@@ -84,24 +144,41 @@ export function useProjectSelection() {
       void refreshProjects(orgId);
     } else {
       setProjects([]);
+      setMyRole("viewer");
       setProjectIdState(null);
+      setProjectsLoading(false);
     }
   }, [orgId, refreshProjects]);
 
   const setOrgId = (nextOrgId: string | null) => {
+    if (nextOrgId === selectedOrgRef.current) return;
+    // Invalidate in-flight requests *before* React processes the state change.
+    requestGeneration.current += 1;
+    selectedOrgRef.current = nextOrgId;
+    allowedProjectsRef.current = new Set();
     setOrgIdState(nextOrgId);
+    setProjects([]);
+    setMyRole("viewer");
     setProjectIdState(null);
+    setProjectsLoading(Boolean(nextOrgId));
+    setError("");
     if (getActiveProject()) setActiveProject(null);
   };
 
   const setProjectId = (nextProjectId: string | null) => {
+    if (
+      nextProjectId &&
+      (projectsLoading || !selectedOrgRef.current || !allowedProjectsRef.current.has(nextProjectId))
+    ) {
+      return;
+    }
     setProjectIdState(nextProjectId);
-    if (nextProjectId && orgId) {
+    if (nextProjectId && selectedOrgRef.current) {
       setActiveProject({
         projectId: nextProjectId,
-        organizationId: orgId,
+        organizationId: selectedOrgRef.current,
       });
-    } else if (!nextProjectId) {
+    } else if (!nextProjectId && getActiveProject()) {
       setActiveProject(null);
     }
   };
@@ -116,5 +193,7 @@ export function useProjectSelection() {
     setProjectId,
     refreshProjects,
     loading,
+    projectsLoading,
+    error,
   };
 }
