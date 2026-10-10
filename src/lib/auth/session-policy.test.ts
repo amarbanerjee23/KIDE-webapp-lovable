@@ -18,7 +18,12 @@ describe("client session route policy", () => {
     expect(isPublicSessionPath(invite)).toBe(true);
     expect(requiresActiveSession(invite)).toBe(false);
     expect(isPathSessionVerified(invite, { status: "anonymous", verifiedPath: null })).toBe(true);
-    for (const unsafe of ["/invite/not-a-token", "/invite/aaa/extra", "/invites/" + "a".repeat(48), "/team"]) {
+    for (const unsafe of [
+      "/invite/not-a-token",
+      "/invite/aaa/extra",
+      "/invites/" + "a".repeat(48),
+      "/team",
+    ]) {
       expect(isInvitationLandingPath(unsafe)).toBe(false);
       expect(requiresActiveSession(unsafe)).toBe(true);
     }
