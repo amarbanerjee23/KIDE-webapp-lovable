@@ -88,13 +88,8 @@ export const listAllProjects = createServerFn({ method: "GET" })
 
 export const createProject = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
-  .inputValidator(
-    (input: {
-      organizationId: string;
-      name: string;
-      description?: string;
-      templateId?: string;
-    }) => input,
+  .inputValidator((input: { organizationId: string; name: string; description?: string; templateId?: string }) =>
+    input,
   )
   .handler(async ({ data, context }) => {
     const name = data.name.trim();
