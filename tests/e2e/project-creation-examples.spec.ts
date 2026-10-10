@@ -32,14 +32,14 @@ test("new and existing projects plus five prebuilt examples persist in PostgreSQ
   for (const name of [`First blank ${id}`, `Second blank ${id}`]) {
     await page.getByRole("textbox", { name: `New project name for ${org}` }).fill(name);
     await page.getByRole("button", { name: "Project", exact: true }).click();
-    await expect(page.getByText(`Project created: ${name}`)).toBeVisible();
+    await expect(page.getByText("Project created successfully.", { exact: true })).toBeVisible();
     await expect(page.getByText(name, { exact: true })).toBeVisible();
   }
 
   for (const template of examples) {
     await expect(page.getByText(`Level ${template.level} of 5`, { exact: false })).toBeVisible();
     await page.getByRole("button", { name: `Use ${template.title} example` }).click();
-    await expect(page.getByText(`Project created: ${template.title}`)).toBeVisible();
+    await expect(page.getByText("Project created successfully.", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Open new project" }).click();
     await expect(page).toHaveURL("/models");
     await expect(
