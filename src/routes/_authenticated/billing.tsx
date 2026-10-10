@@ -184,7 +184,9 @@ function BillingPage() {
               {plan.id === "professional" ? (
                 canManage ? (
                   <Button asChild className="mt-5">
-                    <Link to="/checkout" search={{ plan: "professional" }}>Upgrade</Link>
+                    <Link to="/checkout" search={{ plan: "professional" }}>
+                      Upgrade
+                    </Link>
                   </Button>
                 ) : (
                   <Button className="mt-5" disabled>
@@ -199,7 +201,7 @@ function BillingPage() {
                 <Button className="mt-5" variant="outline" disabled>
                   {activePlan ? "Free tier" : "Current plan"}
                 </Button>
-              )
+              )}
             </section>
           ))}
         </div>
