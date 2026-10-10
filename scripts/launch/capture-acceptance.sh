@@ -51,16 +51,6 @@ else
   fail "Live production smoke failed."
 fi
 
-echo "Running full production engineering customer journey..."
-if KIDE_E2E_URL="${KIDE_URL}" \
-   bunx playwright test tests/e2e/production-release-journey.spec.ts \
-     --project=configured-auth --workers=1 --retries=0 >"${browser_log}" 2>&1; then
-  browser_status="passed"
-else
-  cat "${browser_log}" >&2
-  fail "Production browser engineering journey failed."
-fi
-
 echo "Qualifying exact deployed Cloud Run revision..."
 if PROJECT_ID="${PROJECT_ID}" \
    REGION="${REGION}" \
@@ -73,6 +63,16 @@ if PROJECT_ID="${PROJECT_ID}" \
 else
   cat "${deployment_log}" >&2
   fail "Live deployment qualification failed."
+fi
+
+echo "Running full production engineering customer journey..."
+if KIDE_E2E_URL="${KIDE_URL}" \
+   bunx playwright test tests/e2e/production-release-journey.spec.ts \
+     --project=configured-auth --workers=1 --retries=0 >"${browser_log}" 2>&1; then
+  browser_status="passed"
+else
+  cat "${browser_log}" >&2
+  fail "Production browser engineering journey failed."
 fi
 
 preflight_sha="$(sha256sum "${preflight_log}" | awk '{print $1}')"
