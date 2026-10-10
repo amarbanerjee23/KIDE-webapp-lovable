@@ -156,18 +156,24 @@ RELEASE_VERSION=1.0.0 \
 bash scripts/launch/capture-acceptance.sh
 ```
 
-The collector runs the GCP launch preflight and live smoke test, hashes their outputs and verifies the
-resulting acceptance JSON. Runtime evidence is ignored by Git and should be retained with release
-operations records. See `docs/operations/launch-acceptance.md`.
+The collector runs the GCP launch preflight, repeatable auth/session smoke, exact Cloud Run
+revision and Artifact Registry image-digest verification, and a real Chromium customer engineering
+journey ending in generated-code and release-bundle integrity verification. Acceptance evidence
+includes all checks. Install `bun install --frozen-lockfile` and
+`bunx playwright install --with-deps chromium` for operator-run acceptance.
+Runtime evidence is ignored by Git and retained with release operations.
+See `docs/operations/launch-acceptance.md`.
 
 ## Official release publication
 
-Official release publication is manual and guarded. After production launch acceptance evidence has
-been captured for the exact green `main` commit, use the GitHub Actions workflow
-`Publish official release`.
+Official release publication is manual and guarded. Run `Production deployment qualification`
+from the exact green, deployed `main` commit, then provide its successful numeric run ID to the
+`Publish official release` workflow. Do not paste launch acceptance JSON.
 
 The workflow verifies:
 
+- successful production qualification run and downloaded commit-scoped acceptance artifact;
+- required real customer browser journey and matching Artifact Registry/Cloud Run digest;
 - acceptance evidence structure and release version;
 - acceptance commit equals current `main`;
 - a successful `main` CI run exists for that exact SHA;
