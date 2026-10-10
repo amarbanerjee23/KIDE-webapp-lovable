@@ -31,9 +31,9 @@ function InvitePage() {
   const session = useServerFn(getServerSession);
   const preview = useServerFn(previewInvitation);
   const accept = useServerFn(acceptInvitation);
-  const [authStatus, setAuthStatus] = useState<"checking" | "anonymous" | "authenticated" | "error">(
-    "checking",
-  );
+  const [authStatus, setAuthStatus] = useState<
+    "checking" | "anonymous" | "authenticated" | "error"
+  >("checking");
   const [state, setState] = useState<Awaited<ReturnType<typeof previewInvitation>> | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -107,7 +107,9 @@ function InvitePage() {
             </Button>
           </div>
         ) : error ? (
-          <p role="alert" className="text-sm text-destructive">{error}</p>
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
         ) : !state ? (
           <p className="text-sm text-muted-foreground">Checking your invitation…</p>
         ) : !state.found ? (
@@ -126,7 +128,9 @@ function InvitePage() {
               </p>
             )}
             {state.expired && state.status === "pending" && (
-              <p className="mt-3 text-sm text-warning">This invitation has expired.</p>
+              <p className="mt-3 text-sm text-warning">
+                This invitation has expired.
+              </p>
             )}
             <Button
               className="mt-5 w-full"
