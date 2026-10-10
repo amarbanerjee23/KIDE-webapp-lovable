@@ -39,7 +39,8 @@ type HyperWidget = {
 
 function CheckoutPage() {
   const { plan } = Route.useSearch();
-  const planId = plan && plan in PLAN_CATALOG ? (plan as keyof typeof PLAN_CATALOG) : "professional";
+  const planId =
+    plan && plan in PLAN_CATALOG ? (plan as keyof typeof PLAN_CATALOG) : "professional";
   const planInfo = PLAN_CATALOG[planId];
 
   const workspace = useServerFn(getWorkspace);
@@ -75,7 +76,9 @@ function CheckoutPage() {
         if (active) setLoadingOrganizations(false);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -95,7 +98,9 @@ function CheckoutPage() {
         if (active) setError(err instanceof Error ? err.message : "Could not start checkout.");
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [orgId, planId, checkoutAttempt]);
 
   useEffect(() => {
@@ -105,12 +110,16 @@ function CheckoutPage() {
     script.src = `${session.baseUrl}/v1/HyperLoader.js`;
     script.onload = () => {
       if (!active) return;
-      const Hyper = (window as unknown as { Hyper?: new (key: string) => {
-        elements: (opts: { clientSecret: string }) => {
-          create: (kind: string) => { mount: (selector: string) => void };
-        };
-        confirmPayment: HyperWidget["confirmPayment"];
-      } }).Hyper;
+      const Hyper = (
+        window as unknown as {
+          Hyper?: new (key: string) => {
+            elements: (opts: { clientSecret: string }) => {
+              create: (kind: string) => { mount: (selector: string) => void };
+            };
+            confirmPayment: HyperWidget["confirmPayment"];
+          };
+        }
+      ).Hyper;
       if (!Hyper) {
         setError("The payment widget could not be loaded from your Hyperswitch instance.");
         return;
@@ -239,7 +248,11 @@ function CheckoutPage() {
                   {error}
                 </p>
               )}
-              <Button className="mt-4 w-full" onClick={() => void pay()} disabled={busy || !widgetReady}>
+              <Button
+                className="mt-4 w-full"
+                onClick={() => void pay()}
+                disabled={busy || !widgetReady}
+              >
                 {busy ? (
                   <>
                     <Loader2 className="size-4 animate-spin" /> Processing…
