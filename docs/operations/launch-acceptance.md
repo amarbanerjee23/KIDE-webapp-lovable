@@ -36,7 +36,7 @@ The command:
 7. runs the live Chromium signup-to-release journey plus complete five-example source/checksum persistence and independently authenticated cross-organization isolation suites;
 8. hashes the preflight, smoke, browser and deployment outputs;
 9. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity and browser-journey evidence;
-10. verifies that the evidence is internally consistent.
+10. verifies that the evidence is internally consistent and that each referenced log/JSON file actually exists, hashes to the claimed SHA-256 and matches the embedded deployment qualification.
 
 It deliberately does not record credentials, secret values, database connection strings or payment data.
 
@@ -101,3 +101,16 @@ Repeated smoke and browser runs use cryptographically randomized unique test acc
 They create real production records, including multiple starter projects and independently authenticated tenant test accounts. Treat them as operational qualification data and
 retain them until the operations owner approves cleanup under the database audit and
 evidence-retention policy. Do not commit logs, browser traces or credentials.
+
+## Tamper-evident sidecars (PR79)
+
+Acceptance is valid only with its original downloaded production qualification
+artifact directory. The validator reads and hashes the preflight, auth smoke,
+live Chromium journey and deployment qualification logs plus the standalone
+Cloud Run qualification JSON. It verifies the embedded deployment object is
+identical to that downloaded qualification JSON. Missing or edited files reject
+release publication. A standalone copied acceptance JSON is **not** evidence.
+
+The checks prove artifact consistency, not that a real Cloud SQL restore drill
+occurred: the accountable operator must still furnish a genuine restore
+record and GitHub protected environment approvals.

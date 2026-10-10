@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 
 const HEX64 = /^[0-9a-f]{64}$/;
 const HEX40 = /^[0-9a-f]{40}$/;
@@ -36,7 +39,31 @@ if (!payload["operator"]) fail("operator is required");
 if (!payload["restoreDrillReference"]) fail("restoreDrillReference is required");
 if (payload["secretsCaptured"] !== false) fail("secretsCaptured must be false");
 
+// The successful qualification workflow stores evidence alongside this JSON.
+// A checksum-shaped string without its exact sidecar bytes is not release proof.
 const checks = record(payload["checks"], "checks");
+const evidenceDirectory = dirname(path);
+const evidenceFileNames = {
+  gcpLaunchPreflight: `preflight-${commitSha}.log`,
+  liveSmoke: `smoke-${commitSha}.log`,
+  productionBrowserJourney: `browser-journey-${commitSha}.log`,
+  deploymentQualification: `deployment-qualification-${commitSha}.json`,
+} as const;
+
+function verifySidecar(name: string, expectedHash: unknown): void {
+  const file = join(evidenceDirectory, name);
+  let contents: Buffer;
+  try {
+    contents = readFileSync(file);
+  } catch {
+    fail(`evidence file missing: ${name}`);
+  }
+  const actualHash = createHash("sha256").update(contents).digest("hex");
+  if (actualHash !== expectedHash) {
+    fail(`evidence file SHA-256 mismatch: ${name}`);
+  }
+}
+
 for (const key of [
   "gcpLaunchPreflight",
   "liveSmoke",
@@ -48,9 +75,21 @@ for (const key of [
   if (!HEX64.test(String(check["outputSha256"] ?? ""))) {
     fail(`${key} outputSha256 must be SHA-256`);
   }
+  verifySidecar(evidenceFileNames[key], check["outputSha256"]);
 }
+const deploymentCheck = record(checks["deploymentQualification"], "deploymentQualification check");
+if (!HEX64.test(String(deploymentCheck["logSha256"] ?? ""))) {
+  fail("deploymentQualification logSha256 must be SHA-256");
+}
+verifySidecar(`deployment-${commitSha}.log`, deploymentCheck["logSha256"]);
 
 const deployment = record(payload["deployment"], "deployment");
+const fileDeployment = JSON.parse(
+  readFileSync(join(evidenceDirectory, evidenceFileNames.deploymentQualification), "utf8"),
+) as unknown;
+if (!isDeepStrictEqual(fileDeployment, deployment)) {
+  fail("embedded deployment qualification does not match verified source evidence");
+}
 if (deployment["schemaVersion"] !== 1) {
   fail("deployment schemaVersion is unsupported");
 }

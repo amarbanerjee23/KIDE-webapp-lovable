@@ -40,6 +40,8 @@ grep -q 'git ls-remote --exit-code --tags' "$workflow" ||
   fail "release workflow must refuse an existing tag"
 grep -q 'gh release create' "$workflow" ||
   fail "release workflow must publish through GitHub Releases"
+grep -q 'KIDE_QUALIFICATION_ACCEPTANCE_PATH' "$workflow" ||
+  fail "publisher must retain original downloaded sidecars with acceptance JSON"
 grep -q 'Launch acceptance evidence SHA-256' "$workflow" ||
   fail "release notes must retain an acceptance evidence digest"
 
@@ -114,6 +116,7 @@ cat >"$tmp/good.json" <<JSON
 }
 JSON
 
+node scripts/ci/write-acceptance-fixture.mjs "$tmp/good.json"
 ACCEPTANCE_FILE="$tmp/good.json" EXPECTED_COMMIT_SHA="$sha"   bash scripts/release/validate-publication.sh >/dev/null
 
 node - "$tmp/good.json" "$tmp/bad.json" <<'JS'
