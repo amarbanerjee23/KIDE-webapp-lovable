@@ -4,5 +4,6 @@
   "status": "release-candidate",
   "requiresLaunchAcceptanceEvidence": true,
   "graphSynthesisDefaultOn": false,
-  "requiresProductionQualification": true
+  "requiresProductionQualification": true,
+  "paidBillingEnabled": false
 }

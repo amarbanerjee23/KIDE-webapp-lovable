@@ -28,4 +28,6 @@ grep -q 'RELEASE_VERSION:-1.0.0' scripts/launch/capture-acceptance.sh   || fail 
 grep -q '"status": "release-candidate"' release.json   || fail "release metadata must not claim published before acceptance"
 grep -q '"requiresProductionQualification": true' release.json   || fail "release metadata must require production deployment qualification"
 
+bash scripts/ci/test-free-evaluation-scope.sh
+
 echo "v1.0.0 release-candidate integrity contracts passed."

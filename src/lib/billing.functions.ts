@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireKideAuth } from "@/lib/auth-middleware";
+import { PAID_BILLING_ENABLED } from "@/lib/billing-policy";
 import { ADMIN_ROLES, requireOrganizationAccess, type Role } from "@/lib/data-access.server";
 
 export const PLAN_CATALOG = {
@@ -113,6 +114,9 @@ export const createCheckout = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }): Promise<CreateCheckoutResult> => {
+    // No provider call, pending payment or card-collection session in v1.0.0,
+    // even when old Hyperswitch environment variables remain configured.
+    if (!PAID_BILLING_ENABLED) return { configured: false };
     await requireOrganizationAccess(context.db, context.userId, data.organizationId, ADMIN_ROLES);
 
     const baseUrl = process.env["HYPERSWITCH_BASE_URL"]?.replace(/\/+$/, "");

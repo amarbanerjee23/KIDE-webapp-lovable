@@ -42,6 +42,14 @@ development-only auth secret. Production always fails closed unless explicit val
 The `/auth` page verifies both configuration and live PostgreSQL reachability before enabling the
 form, without exposing connection strings, secret values, or secret lengths.
 
+## v1.0.0 evaluation scope
+
+KIDE v1.0.0 is a **free engineering evaluation**. Checkout, paid upgrades and
+payment webhooks are deliberately disabled regardless of payment-provider
+configuration. The product does not currently enforce advertised plan quotas
+or offer enterprise SSO/SAML. Production paid subscriptions require additional
+entitlement, lifecycle and payment-provider acceptance before enablement.
+
 ## Production
 
 Required runtime variables:
