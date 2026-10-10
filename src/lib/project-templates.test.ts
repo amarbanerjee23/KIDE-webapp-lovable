@@ -39,7 +39,7 @@ describe("progressive real-world starter projects", () => {
   );
 
   it("rejects unknown templates before any database insert can occur", () => {
-    expect(projectTemplateById("not-in-the-gallery")).toThrow("valid starter example");
+    expect(() => projectTemplateById("not-in-the-gallery")).toThrow("valid starter example");
     expect(() => projectTemplateSources("wrong")).toThrow("valid starter example");
   });
 });
