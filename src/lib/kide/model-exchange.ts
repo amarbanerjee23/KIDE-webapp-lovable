@@ -6,7 +6,7 @@
  * to be exactly what was exported.
  */
 import { DSL_LANGUAGES, type DslKind } from "@/lib/dsl";
-import { SAMPLE_WORKSPACE } from "@/lib/dsl/samples";
+import { normalizeWorkspaceFilePath } from "@/lib/kide/workspace-files";
 import { sha256 } from "./sha256";
 
 export const EXCHANGE_FORMAT = "kide.modelset/1";
@@ -37,7 +37,9 @@ export function exportModelSet(
     .sort()
     .map((path) => {
       const source = sources[path] ?? "";
-      return { path, kind: kindFor(path) ?? "dml", source, sha256: sha256(source) };
+      const kind = kindFor(path);
+      if (!kind) throw new Error(`Cannot export unsupported model file "${path}".`);
+      return { path, kind, source, sha256: sha256(source) };
     });
   return { format: EXCHANGE_FORMAT, exportedAt, files };
 }
@@ -72,31 +74,57 @@ export function importModelSet(text: string): ImportOutcome {
 
   const problems: string[] = [];
   const sources: Record<string, string> = {};
+  const paths = new Set<string>();
   for (const file of doc.files) {
-    if (typeof file?.path !== "string" || typeof file?.source !== "string") {
-      problems.push("One entry is missing its file name or its content.");
+    if (
+      !file ||
+      typeof file.path !== "string" ||
+      typeof file.source !== "string" ||
+      typeof file.kind !== "string"
+    ) {
+      problems.push("One entry is missing its model path, language or content.");
       continue;
     }
-    if (!kindFor(file.path)) {
-      problems.push(`"${file.path}" is not one of the five KIDE model languages.`);
-      continue;
-    }
-    if (typeof file.sha256 === "string" && file.sha256 !== sha256(file.source)) {
-      problems.push(`"${file.path}" has been altered since it was exported — its checksum does not match.`);
-      continue;
-    }
-    sources[file.path] = file.source;
-  }
 
-  const expected = SAMPLE_WORKSPACE.map((file) => file.path);
-  for (const path of expected) {
-    if (!(path in sources)) problems.push(`The model set is missing ${path}.`);
+    const kind = kindFor(file.path);
+    if (!kind || kind !== file.kind) {
+      problems.push(`"${file.path}" has an unknown or mismatched model language.`);
+      continue;
+    }
+
+    try {
+      if (normalizeWorkspaceFilePath(file.path, kind) !== file.path) {
+        problems.push(`"${file.path}" is not a normalized model path.`);
+        continue;
+      }
+    } catch {
+      problems.push(`"${file.path}" is not a safe model path.`);
+      continue;
+    }
+
+    const identity = file.path.toLowerCase();
+    if (paths.has(identity)) {
+      problems.push(`Duplicate model file "${file.path}".`);
+      continue;
+    }
+    paths.add(identity);
+
+    if (typeof file.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(file.sha256)) {
+      problems.push(`"${file.path}" is missing a valid SHA-256 checksum.`);
+      continue;
+    }
+    if (file.sha256 !== sha256(file.source)) {
+      problems.push(`"${file.path}" has been altered since export — its checksum does not match.`);
+      continue;
+    }
+
+    sources[file.path] = file.source;
   }
 
   return {
     ok: problems.length === 0,
     problems,
-    sources,
-    fileCount: Object.keys(sources).length,
+    sources: problems.length === 0 ? sources : {},
+    fileCount: problems.length === 0 ? Object.keys(sources).length : 0,
   };
 }
