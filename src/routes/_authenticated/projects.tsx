@@ -410,7 +410,7 @@ function ProjectsHome() {
                   className="flex flex-wrap items-center gap-2 border-b border-primary/30 bg-primary/5 px-4 py-3 text-xs"
                 >
                   <span className="min-w-0 flex-1 font-medium">
-                    Project created: {recentCreated.name}
+                    Project created successfully.
                   </span>
                   <Button asChild size="sm">
                     <Link
