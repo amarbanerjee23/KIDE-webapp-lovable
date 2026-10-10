@@ -11,6 +11,8 @@ test("mobile and tablet navigation remains usable across engineering and managem
   const id = randomBytes(8).toString("hex");
   await page.goto("/auth");
   await signUpThroughUi(page, `mobile-qa-${id}@example.com`, "Kide-Mobile-QA!Aa1");
+  await expect(page).toHaveURL("/projects");
+  await expect(page.getByRole("heading", { name: "Your projects" })).toBeVisible();
   await page.getByPlaceholder("Acme Robotics").fill(`Mobile QA ${id}`);
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { name: `Mobile QA ${id}` })).toBeVisible();
