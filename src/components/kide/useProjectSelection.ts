@@ -61,7 +61,15 @@ export function useProjectSelection() {
       setError("");
       try {
         const org = await loadOrg({ data: { organizationId: id } });
-        if (!isCurrentOrganizationRequest(id, generation, selectedOrgRef.current, requestGeneration.current)) return;
+        if (
+          !isCurrentOrganizationRequest(
+            id,
+            generation,
+            selectedOrgRef.current,
+            requestGeneration.current,
+          )
+        )
+          return;
         const list = org.projects as ProjectOption[];
         const ids = new Set(list.map((project) => project.id));
         allowedProjectsRef.current = ids;
@@ -82,7 +90,14 @@ export function useProjectSelection() {
         setMyRole("viewer");
         setError(cause instanceof Error ? cause.message : "Could not load this organization.");
       } finally {
-        if (isCurrentOrganizationRequest(id, generation, selectedOrgRef.current, requestGeneration.current)) {
+        if (
+          isCurrentOrganizationRequest(
+            id,
+            generation,
+            selectedOrgRef.current,
+            requestGeneration.current,
+          )
+        ) {
           setProjectsLoading(false);
         }
       }
@@ -151,11 +166,10 @@ export function useProjectSelection() {
   };
 
   const setProjectId = (nextProjectId: string | null) => {
-    if (nextProjectId && (
-      projectsLoading ||
-      !selectedOrgRef.current ||
-      !allowedProjectsRef.current.has(nextProjectId)
-    )) {
+    if (
+      nextProjectId &&
+      (projectsLoading || !selectedOrgRef.current || !allowedProjectsRef.current.has(nextProjectId))
+    ) {
       return;
     }
     setProjectIdState(nextProjectId);
