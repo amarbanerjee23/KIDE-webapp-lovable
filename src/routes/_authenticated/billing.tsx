@@ -70,24 +70,39 @@ function BillingPage() {
   const billing = useServerFn(getBillingStatus);
   const [email, setEmail] = useState("");
   const [orgs, setOrgs] = useState<Array<{ id: string; name: string; role: string }>>([]);
-  const [activePlan, setActivePlan] = useState<string | null>(null);
-  const [payments, setPayments] = useState<
-    Array<{ id: string; plan: string; amount: number; currency: string; status: string; created_at: string }>
+  const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [statuses, setStatuses] = useState<
+    Awaited<ReturnType<typeof getBillingStatus>>["organizations"]
   >([]);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
+    let active = true;
     void (async () => {
-      const data = await load();
-      setEmail(data.email);
-      setOrgs(data.organizations.map((org) => ({ id: org.id, name: org.name, role: org.role })));
-      const status = await billing();
-      const paid = status.organizations.find((org) => org.subscription?.status === "active");
-      setActivePlan(paid?.subscription?.plan ?? null);
-      setPayments(status.organizations.flatMap((org) => org.payments));
+      try {
+        const data = await load();
+        const status = await billing();
+        if (!active) return;
+        setEmail(data.email);
+        setOrgs(data.organizations.map((org) => ({ id: org.id, name: org.name, role: org.role })));
+        setStatuses(status.organizations);
+        setSelectedOrgId((current) => current || data.organizations[0]?.id || "");
+      } catch (error) {
+        if (active) {
+          setLoadError(error instanceof Error ? error.message : "Could not load billing details.");
+        }
+      }
     })();
+    return () => { active = false; };
   }, []);
 
-  const canManage = orgs.some((org) => org.role === "owner" || org.role === "administrator");
+  const selectedOrganization = orgs.find((org) => org.id === selectedOrgId);
+  const selectedStatus = statuses.find((org) => org.id === selectedOrgId);
+  const activePlan =
+    selectedStatus?.subscription?.status === "active" ? selectedStatus.subscription.plan : null;
+  const payments = selectedStatus?.payments ?? [];
+  const canManage =
+    selectedOrganization?.role === "owner" || selectedOrganization?.role === "administrator";
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -95,6 +110,25 @@ function BillingPage() {
       <div className="mx-auto max-w-5xl p-6">
         <h1 className="text-xl font-semibold">Plan &amp; billing</h1>
         <p className="mt-1 text-sm text-muted-foreground">{email}</p>
+        {loadError && (
+          <p role="alert" className="mt-3 text-sm text-destructive">
+            Billing information could not be loaded: {loadError}
+          </p>
+        )}
+        {orgs.length > 1 && (
+          <label className="mt-4 block max-w-sm text-xs font-medium">
+            Organization
+            <select
+              value={selectedOrgId}
+              onChange={(event) => setSelectedOrgId(event.target.value)}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {orgs.map((org) => (
+                <option key={org.id} value={org.id}>{org.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {/* Current plan */}
         <section className="mt-6 rounded-md border border-border bg-card p-5">
@@ -148,21 +182,24 @@ function BillingPage() {
                 ))}
               </ul>
               {plan.id === "professional" ? (
-                <Button asChild className="mt-5" disabled={!canManage && orgs.length > 0}>
-                  <Link to="/checkout" search={{ plan: "professional" }}>
-                    Upgrade
-                  </Link>
-                </Button>
+                canManage ? (
+                  <Button asChild className="mt-5">
+                    <Link to="/checkout" search={{ plan: "professional" }}>Upgrade</Link>
+                  </Button>
+                ) : (
+                  <Button className="mt-5" disabled>
+                    Organization owner access required
+                  </Button>
+                )
+              ) : plan.id === "enterprise" ? (
+                <p className="mt-5 text-xs text-muted-foreground">
+                  Enterprise enquiries are not available in-app yet.
+                </p>
               ) : (
-                <Button
-                  className="mt-5"
-                  variant="outline"
-                  disabled={plan.id === "starter"}
-                  title={plan.id === "enterprise" ? "Contact sales for an annual agreement" : undefined}
-                >
-                  {plan.id === "starter" ? "Current plan" : "Contact sales"}
+                <Button className="mt-5" variant="outline" disabled>
+                  {activePlan ? "Free tier" : "Current plan"}
                 </Button>
-              )}
+              )
             </section>
           ))}
         </div>
