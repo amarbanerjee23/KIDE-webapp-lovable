@@ -118,7 +118,7 @@ test("new engineer creates the first project, loads linked models and navigates 
   await expect(page.getByRole("button", { name: /^Ecre\.dml/ })).toBeVisible();
   await capture(page, "09-mobile-models");
 
-  for (const route of [
+  const auditRoutes = [
     "/designer",
     "/workbench",
     "/synthesis",
@@ -133,12 +133,16 @@ test("new engineer creates the first project, loads linked models and navigates 
     "/notifications",
     "/billing",
     "/profile",
-  ]) {
-    await page.goto(route);
-    await expect(page).toHaveURL(route);
-    await expect(page.locator("main h1").first()).toBeVisible();
-    await expectNoPageOverflow(page, 375, route);
+  ];
+  for (const width of [375, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of auditRoutes) {
+      await page.goto(route);
+      await expect(page).toHaveURL(route);
+      await expect(page.locator("main h1").first()).toBeVisible();
+      await expectNoPageOverflow(page, width, route);
+      await capture(page, `10-${width}-${route.slice(1)}`);
+    }
   }
-  await capture(page, "10-mobile-profile");
   expect(errors).toEqual([]);
 });
