@@ -83,6 +83,9 @@ case "$*" in
   *"run revisions describe kide-webapp-00042-abc"*)
     cat "${KIDE_FAKE_REVISION_JSON}"
     ;;
+  *"artifacts docker images describe "*)
+    printf '%s\n' "${KIDE_FAKE_REGISTRY_DIGEST:-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
+    ;;
   *)
     echo "unexpected gcloud invocation: $*" >&2
     exit 97
@@ -95,6 +98,7 @@ run_qualifier() {
   PATH="$tmp/bin:$PATH" \
   KIDE_FAKE_SERVICE_JSON="$tmp/service.json" \
   KIDE_FAKE_REVISION_JSON="$tmp/revision.json" \
+  KIDE_FAKE_REGISTRY_DIGEST="${REGISTRY_DIGEST_OVERRIDE:-sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" \
   PROJECT_ID=test-project \
   REGION=us-central1 \
   SERVICE_NAME=kide-webapp \
@@ -121,9 +125,18 @@ assert payload["buildImage"] == build_image
 assert payload["latestReadyRevision"] == "kide-webapp-00042-abc"
 assert payload["trafficPercent"] == 100
 assert payload["imageDigest"].startswith("sha256:")
+assert payload["registryImageDigest"] == payload["imageDigest"]
 assert payload["authDeploymentState"] == "configured"
 assert payload["secretsCaptured"] is False
 PY
+
+write_service 100 "$commit_sha"
+if REGISTRY_DIGEST_OVERRIDE=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
+   run_qualifier >"$tmp/digest.out" 2>&1; then
+  fail "qualifier accepted a revision whose digest differs from Artifact Registry"
+fi
+grep -q "does not match the expected Artifact Registry commit-tagged image" "$tmp/digest.out" ||
+  fail "Artifact Registry image mismatch diagnostic missing"
 
 write_service 90 "$commit_sha"
 if run_qualifier >"$tmp/traffic.out" 2>&1; then
