@@ -33,6 +33,7 @@ export default defineConfig({
         "**/invitation-onboarding.spec.ts",
         "**/responsive-cx.spec.ts",
         "**/first-run-ux-acceptance.spec.ts",
+        "**/project-creation-examples.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"], baseURL: configuredBase },
     },

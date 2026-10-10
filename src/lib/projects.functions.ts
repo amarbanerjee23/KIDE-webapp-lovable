@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireKideAuth } from "@/lib/auth-middleware";
+import { WORKING_COPY_LABEL, validateWorkingCopySources } from "@/lib/project-working-copy";
+import { projectTemplateById, projectTemplateSources } from "@/lib/project-templates";
 import {
   createNotifications,
   EDIT_ROLES,
@@ -86,39 +88,75 @@ export const listAllProjects = createServerFn({ method: "GET" })
 
 export const createProject = createServerFn({ method: "POST" })
   .middleware([requireKideAuth])
-  .inputValidator((input: { organizationId: string; name: string; description?: string }) => input)
+  .inputValidator(
+    (input: { organizationId: string; name: string; description?: string; templateId?: string }) =>
+      input,
+  )
   .handler(async ({ data, context }) => {
-    const name = data.name.trim().slice(0, 120);
-    if (!name) throw new Error("Please give the project a name.");
+    const name = data.name.trim();
+    // These constraints match the projects table. Reject invalid names before
+    // PostgreSQL can surface a generic SQL error to the end user.
+    if (name.length < 2 || name.length > 120) {
+      throw new Error("Project name must be between 2 and 120 characters.");
+    }
 
     await requireOrganizationAccess(context.db, context.userId, data.organizationId, EDIT_ROLES);
 
-    const rows = await context.db<{ id: string; name: string }[]>`
-      INSERT INTO public.projects (
-        organization_id, name, description, created_by
-      )
-      VALUES (
-        ${data.organizationId}::uuid,
-        ${name},
-        ${(data.description ?? "").slice(0, 500)},
-        ${context.userId}::uuid
-      )
-      RETURNING id, name
-    `;
-    const row = rows[0];
-    if (!row) throw new Error("Could not create the project.");
+    const template = data.templateId ? projectTemplateById(data.templateId) : null;
+    const sources = template
+      ? validateWorkingCopySources(projectTemplateSources(template.id))
+      : null;
+    const description = (data.description?.trim() || template?.summary || "").slice(0, 500);
 
-    await recordAudit(
-      context.db,
-      context.userId,
-      data.organizationId,
-      "project.created",
-      "project",
-      row.id,
-      { name },
-      row.id,
-    );
-    return row;
+    // Project + initial model sources + audit must commit together. Otherwise a
+    // failed working-copy insert leaves a misleading empty or orphaned example.
+    return context.db.begin(async (transaction) => {
+      const rows = await transaction<{ id: string; name: string }[]>`
+        INSERT INTO public.projects (organization_id, name, description, created_by)
+        VALUES (
+          ${data.organizationId}::uuid,
+          ${name},
+          ${description},
+          ${context.userId}::uuid
+        )
+        RETURNING id, name
+      `;
+      const row = rows[0];
+      if (!row) throw new Error("Could not create the project.");
+
+      if (sources) {
+        await transaction`
+          INSERT INTO public.model_checkpoints (
+            project_id, label, sources, error_count, warning_count, created_by
+          )
+          VALUES (
+            ${row.id}::uuid,
+            ${WORKING_COPY_LABEL},
+            ${transaction.json(sources)},
+            0,
+            0,
+            ${context.userId}::uuid
+          )
+        `;
+      }
+
+      await transaction`
+        INSERT INTO public.audit_events (
+          organization_id, project_id, actor_id, action, target_type,
+          target_id, change_summary
+        )
+        VALUES (
+          ${data.organizationId}::uuid,
+          ${row.id}::uuid,
+          ${context.userId}::uuid,
+          'project.created',
+          'project',
+          ${row.id},
+          ${transaction.json({ name, templateId: template?.id ?? null })}
+        )
+      `;
+      return row;
+    });
   });
 
 export const saveCheckpoint = createServerFn({ method: "POST" })
