@@ -8,10 +8,12 @@ must **not** run from a pull request or automatically from a merge.
 Before publication:
 
 1. Merge all intended release changes into `main`.
-2. Require successful `main` CI for that exact commit, including the production
-   container and browser journey.
-3. Deploy that **same commit** through Cloud Build and verify the deployed Cloud Run
-   service is operational.
+2. Require successful post-merge `main` CI for that exact commit, including
+   the production container and browser journey.
+3. Dispatch **Deploy production from approved main** on `main`, passing the full
+   SHA and `DEPLOY <same-40-character-SHA>` confirmation. The protected workflow
+   submits Cloud Build with the exact `COMMIT_SHA`, requires configured auth,
+   and fails unless the running revision and registry digest match that SHA.
 4. Complete and document the Cloud SQL restore drill.
 5. Configure the GitHub `production` environment with GCP workload identity,
    the production project, and required reviewer approvals.
