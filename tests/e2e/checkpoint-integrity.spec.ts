@@ -55,7 +55,8 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   await page.goto("/checkpoints");
   await page.getByRole("button", { name: "Restore" }).click();
   await page.getByRole("button", { name: "Replace workspace" }).click();
-  await page.goto("/models");
+  await page.getByRole("link", { name: "Model languages" }).click();
+  await expect(page).toHaveURL("/models");
   await expect(page.getByText("Ecre.dml")).toBeVisible();
   await expect(page.getByText("Agri.dml")).toHaveCount(0);
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
@@ -82,7 +83,8 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   });
   await expect(page.getByRole("alertdialog")).toContainText("Import 1 verified model files");
   await page.getByRole("button", { name: "Replace workspace" }).click();
-  await page.goto("/models");
+  await page.getByRole("link", { name: "Model languages" }).click();
+  await expect(page).toHaveURL("/models");
   await expect(page.getByText("custom/Telemetry.dml")).toBeVisible();
   await expect(page.getByText("Ecre.dml")).toHaveCount(0);
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
