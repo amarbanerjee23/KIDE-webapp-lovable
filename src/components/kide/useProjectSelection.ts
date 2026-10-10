@@ -21,6 +21,16 @@ export function preferredExplicitProjectId(
     : null;
 }
 
+/** Reject responses from a previous selected tenant or an outdated request. */
+export function isCurrentOrganizationRequest(
+  requestedOrgId: string,
+  requestId: number,
+  selectedOrgId: string | null,
+  currentRequestId: number,
+): boolean {
+  return requestedOrgId === selectedOrgId && requestId === currentRequestId;
+}
+
 /**
  * Shared project picker for Reviews and Checkpoints.
  * Every asynchronous result is scoped to both the selected organization and
@@ -51,7 +61,7 @@ export function useProjectSelection() {
       setError("");
       try {
         const org = await loadOrg({ data: { organizationId: id } });
-        if (selectedOrgRef.current !== id || requestGeneration.current !== generation) return;
+        if (!isCurrentOrganizationRequest(id, generation, selectedOrgRef.current, requestGeneration.current)) return;
         const list = org.projects as ProjectOption[];
         const ids = new Set(list.map((project) => project.id));
         allowedProjectsRef.current = ids;
@@ -72,7 +82,7 @@ export function useProjectSelection() {
         setMyRole("viewer");
         setError(cause instanceof Error ? cause.message : "Could not load this organization.");
       } finally {
-        if (selectedOrgRef.current === id && requestGeneration.current === generation) {
+        if (isCurrentOrganizationRequest(id, generation, selectedOrgRef.current, requestGeneration.current)) {
           setProjectsLoading(false);
         }
       }
