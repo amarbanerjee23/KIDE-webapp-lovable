@@ -1,58 +1,78 @@
 # Official Release Publication
 
-KIDE official releases are published manually through the guarded GitHub Actions workflow:
-
-`Publish official release`
-
-The workflow does not run on push, pull request, merge or schedule.
+The official KIDE release is a manual, fail-closed sequence. The publication workflow
+must **not** run from a pull request or automatically from a merge.
 
 ## Prerequisites
 
-Before invoking the workflow:
+Before publication:
 
-1. the intended release candidate must be the current `main` commit;
-2. `main` CI must have completed successfully for that exact commit;
-3. the production database restore drill must be complete;
-4. production launch preflight must have passed;
-5. the live production smoke test must have passed;
-6. `scripts/launch/capture-acceptance.sh` must have produced verified acceptance evidence;
-7. the acceptance JSON must identify the exact current `main` commit;
-8. the GitHub `production` environment should have appropriate reviewer protection configured.
+1. Merge all intended release changes into `main`.
+2. Require successful `main` CI for that exact commit, including the production
+   container and browser journey.
+3. Deploy that **same commit** through Cloud Build and verify the deployed Cloud Run
+   service is operational.
+4. Complete and document the Cloud SQL restore drill.
+5. Configure the GitHub `production` environment with GCP workload identity,
+   the production project, and required reviewer approvals.
+6. Grant the qualification service account read access to Cloud Run, Cloud SQL,
+   Secret Manager metadata and Artifact Registry image metadata.
+7. Confirm monitoring/alert owners, privacy/terms approval, and no active
+   release-blocking incident.
+
+## Qualify production
+
+In GitHub Actions select **Production deployment qualification**, choose `main`,
+and enter the completed restore drill reference.
+
+This workflow:
+
+- refuses stale commits or non-`main` references;
+- proves Cloud Run auth persistence and 100% traffic on the latest ready revision;
+- matches the deployed image digest to the commit-tagged image in Artifact Registry;
+- executes the live auth/session/anonymous-route smoke with a unique identity;
+- runs the real Chromium engineering journey: signup, project creation, example
+  load, synthesis, approval, generated-code download, release-bundle verification
+  and sign-out;
+- uploads a commit-scoped acceptance artifact containing schema-v2 evidence.
+
+Retain the **successful GitHub Actions run ID**. Do not copy/paste acceptance JSON
+into the publication workflow. Repeated qualification uses new disposable smoke and
+engineering accounts with randomized names and addresses.
 
 ## Publish
 
-In GitHub Actions, open **Publish official release** and choose **Run workflow**.
+In GitHub Actions select **Publish official release**, choose `main` and enter:
 
-Provide:
+- `qualification_run_id`: the numeric ID of a **successful Production deployment
+  qualification** run for the current `main` SHA;
+- `confirmation`: exactly `PUBLISH v1.0.0`.
 
-- the complete verified launch acceptance JSON;
-- confirmation text exactly `PUBLISH v1.0.0`.
+The workflow downloads the matching release acceptance artifact itself. It rejects
+failed/stale/non-`main` runs, a missing evidence artifact, mismatched commit or
+image evidence, missing successful main CI, and an existing release or tag. On
+success it creates `v1.0.0` pointing to the accepted commit and records the SHA-256
+of its acceptance JSON in the release notes.
 
-The workflow checks out current `main`, verifies the acceptance evidence, requires the evidence commit to equal current `main`, and queries GitHub Actions for a successful `main` CI run for that exact SHA.
+## Retention and cleanup
 
-It then rejects publication if `v1.0.0` already exists as a tag or GitHub Release.
+Production qualification creates real Better Auth users, organizations and
+projects. Accounts prefixed `launch-smoke-` and `kide-qualification-` are
+operational test records, not customer accounts. Avoid running qualification
+needlessly. Preserve them until the release evidence retention period has passed
+and the operations owner has approved cleanup. Any cleanup must respect the
+database's referential integrity and audit-retention policies; never run blanket
+production deletions automatically.
 
-## Published release
+The acceptance JSON and all verification logs are retained with operational
+release records. Do not commit logs or publish credentials or test account
+passwords. Browser traces and screenshots are not uploaded as public release
+artifacts.
 
-If every gate passes, the workflow creates the GitHub Release with:
+## Failure and rollback
 
-- tag `v1.0.0` targeting the accepted `main` commit;
-- the reviewed release notes from `docs/releases/v1.0.0.md`;
-- the accepted commit SHA;
-- SHA-256 of the launch acceptance evidence.
-
-The full acceptance JSON is not included in the public release notes.
-
-## Failure behavior
-
-A failed validation creates no release.
-
-The workflow never force-updates or overwrites an existing release tag. If a publication issue occurs, investigate before retrying; never delete or move an official tag simply to bypass a failed gate.
-
-## Post-publication
-
-After publication:
-
-1. verify the GitHub Release tag resolves to the accepted commit;
-2. rerun the production health endpoint and smoke test if any production configuration changed during publication;
-3. retain the acceptance JSON, preflight/smoke logs, restore-drill record, Cloud Build run and Cloud Run revision with the operational release record.
+A failed qualification creates **no release**. Diagnose and redeploy a
+corrected `main` commit, then run qualification again; its run ID and artifact
+must match the new commit. Never override release evidence or force-move a
+published tag. For a Cloud Run incident follow
+`docs/operations/launch-runbook.md`.

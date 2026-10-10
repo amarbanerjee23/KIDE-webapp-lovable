@@ -26,6 +26,7 @@ export default defineConfig({
         "**/configured-auth.spec.ts",
         "**/auth-lifecycle.spec.ts",
         "**/release-journey.spec.ts",
+        "**/production-release-journey.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"], baseURL: configuredBase },
     },

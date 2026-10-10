@@ -77,6 +77,10 @@ cat >"$tmp/good.json" <<JSON
       "outputSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "status": "passed"
     },
+    "productionBrowserJourney": {
+      "outputSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "status": "passed"
+    },
     "deploymentQualification": {
       "outputSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "status": "passed"
@@ -95,6 +99,7 @@ cat >"$tmp/good.json" <<JSON
     "latestReadyRevision": "kide-webapp-00042-abc",
     "revisionImage": "us-central1-docker.pkg.dev/test-project/kide/kide-webapp@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     "imageDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "registryImageDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     "cloudSqlConnection": "test-project:us-central1:kide-web-app",
     "authDeploymentState": "configured",
     "trafficPercent": 100,

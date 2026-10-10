@@ -59,6 +59,13 @@ revision_json="$(gcloud run revisions describe "${latest_revision}" \
   --region="${REGION}" \
   --format=json)" || fail "Latest Cloud Run revision could not be described."
 
+registry_digest="$(gcloud artifacts docker images describe "${build_image}" \
+  --project="${PROJECT_ID}" \
+  --format='value(image_summary.digest)')" ||
+  fail "Artifact Registry image digest lookup failed."
+[[ "${registry_digest}" =~ ^sha256:[0-9a-f]{64}$ ]] ||
+  fail "Artifact Registry did not return a valid immutable image digest."
+
 KIDE_SERVICE_JSON="${service_json}" \
 KIDE_REVISION_JSON="${revision_json}" \
 KIDE_OUTPUT_FILE="${OUTPUT_FILE}" \
@@ -68,6 +75,7 @@ KIDE_SERVICE_NAME="${SERVICE_NAME}" \
 KIDE_SERVICE_URL="${service_url}" \
 KIDE_EXPECTED_COMMIT="${EXPECTED_COMMIT_SHA}" \
 KIDE_BUILD_IMAGE="${build_image}" \
+KIDE_REGISTRY_DIGEST="${registry_digest}" \
 KIDE_CLOUD_SQL_CONNECTION="${cloud_sql_connection}" \
 python3 - <<'PY'
 from __future__ import annotations
@@ -119,6 +127,20 @@ if not image_digest.startswith("sha256:") or len(image_digest) != 71:
     raise SystemExit(
         "LIVE DEPLOYMENT QUALIFICATION FAILED: revision image digest has an unexpected format."
     )
+registry_digest = os.environ["KIDE_REGISTRY_DIGEST"]
+if image_digest != registry_digest:
+    raise SystemExit(
+        "LIVE DEPLOYMENT QUALIFICATION FAILED: Cloud Run revision image digest "
+        "does not match the expected Artifact Registry commit-tagged image."
+    )
+
+expected_image = os.environ["KIDE_BUILD_IMAGE"]
+repository = expected_image.rsplit(":", 1)[0]
+if revision_image != expected_image and revision_image != f"{repository}@{registry_digest}":
+    raise SystemExit(
+        "LIVE DEPLOYMENT QUALIFICATION FAILED: deployed revision image does not "
+        "reference the expected Artifact Registry image."
+    )
 
 payload = {
     "schemaVersion": 1,
@@ -132,6 +154,7 @@ payload = {
     "latestReadyRevision": latest,
     "revisionImage": revision_image,
     "imageDigest": image_digest,
+    "registryImageDigest": registry_digest,
     "cloudSqlConnection": os.environ["KIDE_CLOUD_SQL_CONNECTION"],
     "authDeploymentState": "configured",
     "trafficPercent": qualified_traffic,

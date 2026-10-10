@@ -28,6 +28,7 @@ mkdir -p "${OUTPUT_DIR}"
 
 preflight_log="${OUTPUT_DIR}/preflight-${commit_sha}.log"
 smoke_log="${OUTPUT_DIR}/smoke-${commit_sha}.log"
+browser_log="${OUTPUT_DIR}/browser-journey-${commit_sha}.log"
 deployment_log="${OUTPUT_DIR}/deployment-${commit_sha}.log"
 deployment_file="${OUTPUT_DIR}/deployment-qualification-${commit_sha}.json"
 evidence_file="${OUTPUT_DIR}/launch-acceptance-${commit_sha}.json"
@@ -64,14 +65,25 @@ else
   fail "Live deployment qualification failed."
 fi
 
+echo "Running full production engineering customer journey..."
+if KIDE_E2E_URL="${KIDE_URL}" \
+   bunx playwright test tests/e2e/production-release-journey.spec.ts \
+     --project=configured-auth --workers=1 --retries=0 >"${browser_log}" 2>&1; then
+  browser_status="passed"
+else
+  cat "${browser_log}" >&2
+  fail "Production browser engineering journey failed."
+fi
+
 preflight_sha="$(sha256sum "${preflight_log}" | awk '{print $1}')"
 smoke_sha="$(sha256sum "${smoke_log}" | awk '{print $1}')"
+browser_sha="$(sha256sum "${browser_log}" | awk '{print $1}')"
 deployment_sha="$(sha256sum "${deployment_file}" | awk '{print $1}')"
 
 python3 - "${evidence_file}" "${deployment_file}" "${commit_sha}" "${branch_name}" "${timestamp}" \
   "${RELEASE_VERSION}" "${KIDE_URL}" "${OPERATOR}" "${RESTORE_DRILL_REF}" \
   "${preflight_status}" "${preflight_sha}" "${smoke_status}" "${smoke_sha}" \
-  "${deployment_status}" "${deployment_sha}" <<'PY'
+  "${browser_status}" "${browser_sha}" "${deployment_status}" "${deployment_sha}" <<'PY'
 import json
 import sys
 
@@ -89,6 +101,8 @@ import sys
     preflight_sha,
     smoke_status,
     smoke_sha,
+    browser_status,
+    browser_sha,
     deployment_status,
     deployment_sha,
 ) = sys.argv[1:]
@@ -114,6 +128,10 @@ payload = {
             "status": smoke_status,
             "outputSha256": smoke_sha,
         },
+        "productionBrowserJourney": {
+            "status": browser_status,
+            "outputSha256": browser_sha,
+        },
         "deploymentQualification": {
             "status": deployment_status,
             "outputSha256": deployment_sha,
@@ -133,4 +151,4 @@ echo
 echo "Launch acceptance evidence created:"
 echo "  ${evidence_file}"
 echo "  ${deployment_file}"
-echo "Retain the acceptance JSON, deployment qualification JSON and logs with the release records."
+echo "Retain acceptance JSON, deployment qualification JSON and smoke/browser/preflight logs with the release records."

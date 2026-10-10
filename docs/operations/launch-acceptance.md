@@ -31,11 +31,12 @@ The command:
 2. runs the read-only GCP launch preflight;
 3. runs the live deployed-environment smoke test;
 4. verifies the deployed Cloud Run service carries that exact commit and commit-tagged image;
-5. verifies 100% traffic is on the latest ready revision and records its immutable image digest;
+5. verifies 100% traffic is on the latest ready revision and compares its immutable digest with the independently resolved Artifact Registry commit-tagged image;
 6. re-verifies Better Auth runtime configuration and the Cloud SQL attachment;
-7. hashes the qualification outputs;
-8. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity;
-9. verifies that the evidence is internally consistent.
+7. runs the full live Chromium engineering journey (signup, organization/project, example models, synthesis, approval, generated-code and release-bundle integrity, sign-out);
+8. hashes the preflight, smoke, browser and deployment outputs;
+9. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity and browser-journey evidence;
+10. verifies that the evidence is internally consistent.
 
 It deliberately does not record credentials, secret values, database connection strings or payment data.
 
@@ -46,6 +47,7 @@ Retain together:
 - `launch-acceptance-<sha>.json`;
 - matching preflight log;
 - matching smoke log;
+- matching browser engineering-journey log;
 - matching deployment qualification log and JSON;
 - restore-drill evidence;
 - Cloud Build run;
@@ -86,3 +88,16 @@ that is not current `main`.
 When publishing, provide the successful qualification workflow run ID. The publication
 workflow validates the run identity, commit, branch and conclusion, downloads the
 commit-scoped evidence artifact, and only then evaluates the release gates.
+
+## Browser test prerequisites and test-data policy
+
+Install the frozen Bun dependencies and Chromium with
+`bun install --frozen-lockfile` and `bunx playwright install --with-deps chromium`
+before capturing acceptance locally. The GitHub production qualification workflow
+installs both automatically.
+
+Repeated smoke and browser runs use cryptographically randomized unique test accounts
+(`launch-smoke-` and `kide-qualification-` prefixes) and do not reuse passwords.
+They create real production records. Treat them as operational qualification data and
+retain them until the operations owner approves cleanup under the database audit and
+evidence-retention policy. Do not commit logs, browser traces or credentials.

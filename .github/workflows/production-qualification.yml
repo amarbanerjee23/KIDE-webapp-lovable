@@ -21,7 +21,7 @@ jobs:
     name: Qualify exact main commit in production
     runs-on: ubuntu-24.04
     environment: production
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Require workflow dispatch from main
         shell: bash
@@ -79,6 +79,12 @@ jobs:
         with:
           bun-version: 1.4.2
 
+      - name: Install locked browser test dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium for production engineering journey
+        run: bunx playwright install --with-deps chromium
+
       - name: Resolve production service
         env:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -128,5 +134,5 @@ jobs:
             printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
             printf -- '- Service: `%s`\n' "$KIDE_PRODUCTION_SERVICE"
             printf -- '- Origin: %s\n' "$KIDE_PRODUCTION_URL"
-            echo "- Launch preflight, live auth/session smoke, exact revision identity, Cloud SQL attachment and 100% latest-revision traffic passed."
+            echo "- Launch preflight, repeatable live auth/session smoke, production Playwright engineering/release journey, Cloud SQL, 100% latest-revision traffic and Artifact Registry image digest verified."
           } >> "$GITHUB_STEP_SUMMARY"

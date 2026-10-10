@@ -25,6 +25,10 @@ cat >"$tmp/good.json" <<'JSON'
       "outputSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "status": "passed"
     },
+    "productionBrowserJourney": {
+      "outputSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "status": "passed"
+    },
     "deploymentQualification": {
       "outputSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "status": "passed"
@@ -43,6 +47,7 @@ cat >"$tmp/good.json" <<'JSON'
     "latestReadyRevision": "kide-webapp-00042-abc",
     "revisionImage": "us-central1-docker.pkg.dev/test-project/kide/kide-webapp@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     "imageDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "registryImageDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     "cloudSqlConnection": "test-project:us-central1:kide-web-app",
     "authDeploymentState": "configured",
     "trafficPercent": 100,
@@ -59,11 +64,11 @@ JSON
 
 bun scripts/launch/verify-acceptance.ts "$tmp/good.json"
 
-python3 - "$tmp/good.json" "$tmp/bad-check.json" "$tmp/bad-commit.json" <<'PY'
+python3 - "$tmp/good.json" "$tmp/bad-check.json" "$tmp/bad-commit.json" "$tmp/bad-browser.json" "$tmp/bad-digest.json" <<'PY'
 import json
 import sys
 
-source, bad_check, bad_commit = sys.argv[1:]
+source, bad_check, bad_commit, bad_browser, bad_digest = sys.argv[1:]
 payload = json.load(open(source, encoding="utf-8"))
 
 failed = json.loads(json.dumps(payload))
@@ -73,6 +78,14 @@ json.dump(failed, open(bad_check, "w", encoding="utf-8"))
 drifted = json.loads(json.dumps(payload))
 drifted["deployment"]["commitSha"] = "0000000000000000000000000000000000000000"
 json.dump(drifted, open(bad_commit, "w", encoding="utf-8"))
+
+browser = json.loads(json.dumps(payload))
+del browser["checks"]["productionBrowserJourney"]
+json.dump(browser, open(bad_browser, "w", encoding="utf-8"))
+
+digest = json.loads(json.dumps(payload))
+digest["deployment"]["registryImageDigest"] = "sha256:" + "0" * 64
+json.dump(digest, open(bad_digest, "w", encoding="utf-8"))
 PY
 
 if bun scripts/launch/verify-acceptance.ts "$tmp/bad-check.json" >/dev/null 2>&1; then
@@ -82,12 +95,23 @@ if bun scripts/launch/verify-acceptance.ts "$tmp/bad-commit.json" >/dev/null 2>&
   fail "verifier accepted deployment evidence for a different commit"
 fi
 
+if bun scripts/launch/verify-acceptance.ts "$tmp/bad-browser.json" >/dev/null 2>&1; then
+  fail "verifier accepted acceptance without production browser journey"
+fi
+if bun scripts/launch/verify-acceptance.ts "$tmp/bad-digest.json" >/dev/null 2>&1; then
+  fail "verifier accepted a registry image digest mismatch"
+fi
+
 grep -q 'RESTORE_DRILL_REF' scripts/launch/capture-acceptance.sh ||
   fail "collector must require restore drill evidence"
 grep -q 'git rev-parse HEAD' scripts/launch/capture-acceptance.sh ||
   fail "collector must bind acceptance to the exact Git commit"
 grep -q 'qualify-live-deployment.sh' scripts/launch/capture-acceptance.sh ||
   fail "collector must qualify the exact deployed Cloud Run revision"
+grep -q 'production-release-journey.spec.ts' scripts/launch/capture-acceptance.sh ||
+  fail "collector must run the production browser engineering journey"
+grep -q 'productionBrowserJourney' scripts/launch/capture-acceptance.sh ||
+  fail "collector must bind the browser journey to acceptance evidence"
 grep -q 'deploymentQualification' scripts/launch/capture-acceptance.sh ||
   fail "collector must record deployment qualification"
 grep -q 'sha256sum' scripts/launch/capture-acceptance.sh ||
