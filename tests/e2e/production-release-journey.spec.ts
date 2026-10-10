@@ -46,13 +46,11 @@ test("production customer can qualify and export real generated code, then sign 
   // Qualify the reported failure: creating another project in an existing
   // organization must work, not only creating the very first project.
   const secondProjectName = `Additional QA Project ${suffix}`;
-  await page.getByRole("textbox", { name: `New project name for ${orgName}` }).fill(
-    secondProjectName,
-  );
+  await page
+    .getByRole("textbox", { name: `New project name for ${orgName}` })
+    .fill(secondProjectName);
   await page.getByRole("button", { name: "Project", exact: true }).click();
-  await expect(
-    page.locator("li").filter({ hasText: secondProjectName }),
-  ).toBeVisible();
+  await expect(page.locator("li").filter({ hasText: secondProjectName })).toBeVisible();
   await expect(page.getByText("Project created successfully.", { exact: true })).toBeVisible();
 
   // The actual five-example feature also needs a live, durable project copy,
