@@ -159,6 +159,14 @@ test("production customer can qualify and export real generated code, then sign 
     ),
   ).toBe(true);
 
+  // Paid conversion remains unavailable for v1.0.0, including direct deep links.
+  await page.goto("/billing");
+  await expect(page.getByRole("heading", { name: "Evaluation access" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Upgrade" })).toHaveCount(0);
+  await page.goto("/checkout?plan=professional");
+  await expect(page.getByRole("heading", { name: "Paid checkout is unavailable" })).toBeVisible();
+  await expect(page.locator("#hyper-payment-element")).toHaveCount(0);
+
   await page.goto("/profile");
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/");

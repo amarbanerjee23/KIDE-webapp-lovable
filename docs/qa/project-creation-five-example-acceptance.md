@@ -36,3 +36,18 @@ Blank project creation remains blank. Every template creation is opt-in and inde
 - Existing CI: roles, invitation acceptance, checkpoint persistence, synthesis, code generation, release gates and browser compatibility remain enabled.
 
 Before claiming the user's specific Cloud Run bug resolved, merge after all 18 CI jobs pass, redeploy the exact green `main` SHA, and conduct a live create-project test under an authorized engineer/owner identity **and** a read-only identity. Confirm Cloud SQL persistence and error messages on the actual deployment; do not use real customer data for destructive tests.
+
+## PR76 complete-source and production journey acceptance
+
+The browser test downloads the complete five-file model set for each example,
+independently computes SHA-256 for every source, reloads the project and
+compares every persisted source string byte-for-byte. Blank projects must
+remain empty. Independent users must not enumerate another organization's
+projects before an authorized invitation is accepted.
+
+Production qualification now runs three browser suites (release journey, five
+project templates and independent tenant isolation) rather than treating a
+single successful signup-to-release account as proof of every CX boundary.
+This produces disposable production QA records that require accountable
+retention and cleanup. Isolated CI success is not a substitute for the
+production workflow and its exact-commit acceptance evidence.
