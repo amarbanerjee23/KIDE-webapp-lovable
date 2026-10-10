@@ -244,8 +244,8 @@ function TeamPage() {
                   >
                     {ROLES.filter((item) => item !== "owner").map((item) => (
                       <option key={item} value={item}>
-                          {item}
-                        </option>
+                        {item}
+                      </option>
                     ))}
                   </select>
                   <Button
@@ -291,7 +291,8 @@ function TeamPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        void navigator.clipboard.writeText(inviteLink)
+                        void navigator.clipboard
+                          .writeText(inviteLink)
                           .then(() => toast.success("Invite link copied"))
                           .catch(() =>
                             toast.error(
@@ -322,11 +323,15 @@ function TeamPage() {
                     >
                       <span className="min-w-0 flex-1 truncate">{item.email}</span>
                       <span className="text-[11px] text-muted-foreground">{item.role}</span>
-                      <span className={`rounded border px-1.5 py-0.5 text-[10px] ${
-                        item.status === "pending" ? "border-warning/40 text-warning" :
-                        item.status === "accepted" ? "border-primary/40 text-primary" :
-                        "border-border text-muted-foreground"
-                      }`}>
+                      <span
+                        className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                          item.status === "pending"
+                            ? "border-warning/40 text-warning"
+                            : item.status === "accepted"
+                              ? "border-primary/40 text-primary"
+                              : "border-border text-muted-foreground"
+                        }`}
+                      >
                         {item.status}
                       </span>
                       {isAdmin && item.status === "pending" && (
