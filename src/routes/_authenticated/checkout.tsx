@@ -51,38 +51,60 @@ function CheckoutPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(true);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [checkoutAttempt, setCheckoutAttempt] = useState(0);
   const widgetRef = useRef<HyperWidget | null>(null);
   const mountId = "hyper-payment-element";
 
   useEffect(() => {
+    let active = true;
     void (async () => {
-      const data = await workspace();
-      const manageable = data.organizations.filter(
-        (org) => org.role === "owner" || org.role === "administrator",
-      );
-      setOrgs(manageable.map((org) => ({ id: org.id, name: org.name })));
-      if (manageable[0]) setOrgId(manageable[0].id);
+      try {
+        const data = await workspace();
+        if (!active) return;
+        const manageable = data.organizations.filter(
+          (org) => org.role === "owner" || org.role === "administrator",
+        );
+        setOrgs(manageable.map((org) => ({ id: org.id, name: org.name })));
+        if (manageable[0]) setOrgId(manageable[0].id);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Could not load organizations.");
+      } finally {
+        if (active) setLoadingOrganizations(false);
+      }
     })();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (!orgId) return;
+    let active = true;
     setSession(null);
+    setError("");
+    setDone(false);
+    setPaymentPending(false);
+    setWidgetReady(false);
     widgetRef.current = null;
     void (async () => {
       try {
-        setSession(await checkout({ data: { organizationId: orgId, plan: planId } }));
+        const result = await checkout({ data: { organizationId: orgId, plan: planId } });
+        if (active) setSession(result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not start checkout.");
+        if (active) setError(err instanceof Error ? err.message : "Could not start checkout.");
       }
     })();
-  }, [orgId, planId]);
+    return () => { active = false; };
+  }, [orgId, planId, checkoutAttempt]);
 
   useEffect(() => {
     if (!session?.configured) return;
+    let active = true;
     const script = document.createElement("script");
     script.src = `${session.baseUrl}/v1/HyperLoader.js`;
     script.onload = () => {
+      if (!active) return;
       const Hyper = (window as unknown as { Hyper?: new (key: string) => {
         elements: (opts: { clientSecret: string }) => {
           create: (kind: string) => { mount: (selector: string) => void };
@@ -97,12 +119,15 @@ function CheckoutPage() {
       const elements = hyper.elements({ clientSecret: session.clientSecret });
       elements.create("payment").mount(`#${mountId}`);
       widgetRef.current = hyper;
+      setWidgetReady(true);
     };
     script.onerror = () =>
       setError("The payment widget could not be loaded from your Hyperswitch instance.");
     document.body.appendChild(script);
     return () => {
+      active = false;
       script.remove();
+      widgetRef.current = null;
     };
   }, [session]);
 
@@ -117,7 +142,8 @@ function CheckoutPage() {
         redirect: "if_required",
       });
       if (result.error) setError(result.error.message ?? "Payment failed.");
-      else setDone(true);
+      else if (result.paymentIntent?.status === "succeeded") setDone(true);
+      else setPaymentPending(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed.");
     } finally {
@@ -153,21 +179,41 @@ function CheckoutPage() {
         )}
 
         <section className="mt-6 rounded-md border border-border bg-card p-5">
-          {done ? (
+          {done || paymentPending ? (
             <div className="py-6 text-center">
               <ShieldCheck className="mx-auto size-8 text-data" />
-              <p className="mt-3 text-sm font-semibold">Payment received</p>
+              <p className="mt-3 text-sm font-semibold">
+                {done ? "Payment confirmed" : "Payment submitted"}
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Your plan will show as active on the billing page once the payment is confirmed.
+                {done
+                  ? "Your plan will show as active on the billing page after the payment webhook is processed."
+                  : "The payment provider has not yet confirmed success. Check billing for updates before attempting another payment."}
               </p>
               <Button asChild className="mt-4">
                 <Link to="/billing">Back to billing</Link>
               </Button>
             </div>
           ) : session === null ? (
-            <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Preparing your checkout…
-            </p>
+            error ? (
+              <div role="alert" className="space-y-3 text-sm">
+                <p className="text-destructive">{error}</p>
+                <Button variant="outline" onClick={() => setCheckoutAttempt((value) => value + 1)}>
+                  Retry checkout
+                </Button>
+              </div>
+            ) : !loadingOrganizations && !orgId ? (
+              <div className="space-y-3 text-sm">
+                <p>You need an organization owner or administrator role to start checkout.</p>
+                <Button asChild variant="outline">
+                  <Link to="/projects">Choose or create an organization</Link>
+                </Button>
+              </div>
+            ) : (
+              <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> Preparing your checkout…
+              </p>
+            )
           ) : !session.configured ? (
             <div className="py-2 text-sm">
               <p className="font-medium">Payments are not connected yet.</p>
@@ -193,7 +239,7 @@ function CheckoutPage() {
                   {error}
                 </p>
               )}
-              <Button className="mt-4 w-full" onClick={() => void pay()} disabled={busy}>
+              <Button className="mt-4 w-full" onClick={() => void pay()} disabled={busy || !widgetReady}>
                 {busy ? (
                   <>
                     <Loader2 className="size-4 animate-spin" /> Processing…
