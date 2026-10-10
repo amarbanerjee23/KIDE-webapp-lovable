@@ -37,7 +37,12 @@ if (!payload["restoreDrillReference"]) fail("restoreDrillReference is required")
 if (payload["secretsCaptured"] !== false) fail("secretsCaptured must be false");
 
 const checks = record(payload["checks"], "checks");
-for (const key of ["gcpLaunchPreflight", "liveSmoke", "deploymentQualification"] as const) {
+for (const key of [
+  "gcpLaunchPreflight",
+  "liveSmoke",
+  "productionBrowserJourney",
+  "deploymentQualification",
+] as const) {
   const check = record(checks[key], `${key} check`);
   if (check["status"] !== "passed") fail(`${key} did not pass`);
   if (!HEX64.test(String(check["outputSha256"] ?? ""))) {
@@ -85,6 +90,13 @@ if (!buildImage.endsWith(`:${commitSha}`)) {
 }
 if (!IMAGE_DIGEST.test(String(deployment["imageDigest"] ?? ""))) {
   fail("deployment imageDigest must be an immutable SHA-256 digest");
+}
+if (deployment["registryImageDigest"] !== deployment["imageDigest"]) {
+  fail("Cloud Run and Artifact Registry image digests must match");
+}
+const registryDigest = String(deployment["registryImageDigest"] ?? "");
+if (!IMAGE_DIGEST.test(registryDigest)) {
+  fail("deployment registryImageDigest must be an immutable SHA-256 digest");
 }
 
 console.log(`Launch acceptance evidence verified: ${path}`);
