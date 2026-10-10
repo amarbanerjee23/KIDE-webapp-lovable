@@ -72,9 +72,20 @@ test("Reviews and Checkpoints cannot reuse another organization’s projects or 
       await expect(projects.locator("option", { hasText: projectB })).toHaveCount(1);
       await expect(projects.locator("option", { hasText: projectA })).toHaveCount(0);
       await expect(projects).toHaveValue("");
+      await projects.selectOption({ label: projectB });
       if (route === "/reviews") {
+        await expect(page.getByPlaceholder("What should be reviewed?")).toBeDisabled();
+        await expect(
+          page.getByText("Only owners, administrators and engineers can request reviews.", {
+            exact: false,
+          }),
+        ).toBeVisible();
         await expect(page.getByRole("button", { name: "Request review" })).toBeDisabled();
       } else {
+        await expect(page.getByRole("button", { name: "Add project" })).toHaveCount(0);
+        await expect(
+          page.getByRole("textbox", { name: "New checkpoint project name" }),
+        ).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Save checkpoint" })).toBeDisabled();
         await expect(page.getByRole("button", { name: "Restore" })).toHaveCount(0);
       }
@@ -85,7 +96,19 @@ test("Reviews and Checkpoints cannot reuse another organization’s projects or 
       await expect(projects.locator("option", { hasText: projectB })).toHaveCount(0);
       await projects.selectOption({ label: projectA });
       if (route === "/checkpoints") {
+        await expect(page.getByRole("button", { name: "Add project" })).toBeVisible();
+        await expect(
+          page.getByRole("textbox", { name: "New checkpoint project name" }),
+        ).toBeVisible();
         await expect(page.getByRole("button", { name: "Save checkpoint" })).toBeEnabled();
+      } else {
+        const titleInput = page.getByPlaceholder("What should be reviewed?");
+        await expect(titleInput).toBeEnabled();
+        await titleInput.fill("Alpha-only review request");
+        await expect(page.getByRole("button", { name: "Request review" })).toBeEnabled();
+        await organization.selectOption({ label: orgB });
+        await expect(titleInput).toHaveValue("");
+        await expect(titleInput).toBeDisabled();
       }
     }
   } finally {

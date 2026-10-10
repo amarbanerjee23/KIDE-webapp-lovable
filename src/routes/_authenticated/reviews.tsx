@@ -104,6 +104,10 @@ function ReviewsPage() {
     }
   };
 
+  const canRequestReview =
+    !selection.projectsLoading &&
+    !selection.error &&
+    ["owner", "administrator", "engineer"].includes(selection.myRole);
   const canDecide =
     !selection.projectsLoading &&
     !!selection.projectId &&
@@ -128,7 +132,10 @@ function ReviewsPage() {
               className="h-9 rounded-md border border-border bg-background px-2 text-xs"
               aria-label="Review organization"
               value={selection.orgId ?? ""}
-              onChange={(event) => selection.setOrgId(event.target.value)}
+              onChange={(event) => {
+                  setReviewTitle("");
+                  selection.setOrgId(event.target.value);
+                }}
             >
               {selection.orgs.length === 0 ? <option value="">No organizations</option> : null}
               {selection.orgs.map((org) => (
@@ -158,13 +165,14 @@ function ReviewsPage() {
             <input
               className="h-9 min-w-64 flex-1 rounded-md border border-border bg-background px-2 text-xs"
               placeholder="What should be reviewed?"
+              disabled={!canRequestReview || !selection.projectId}
               value={reviewTitle}
               onChange={(event) => setReviewTitle(event.target.value)}
             />
             <Button
               size="sm"
               disabled={
-                busy || selection.projectsLoading || !selection.projectId || !reviewTitle.trim()
+                busy || !canRequestReview || !selection.projectId || !reviewTitle.trim()
               }
               onClick={() =>
                 void run("Review requested — reviewers have been notified.", async () => {
@@ -189,6 +197,12 @@ function ReviewsPage() {
               Request review
             </Button>
           </div>
+          {!selection.projectsLoading && selection.orgId && !selection.error && !canRequestReview && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Only owners, administrators and engineers can request reviews. Reviewers can still
+              decide existing review requests.
+            </p>
+          )}
           {selection.projectsLoading && (
             <p role="status" className="mt-2 text-xs text-muted-foreground">
               Loading selected organization projects…
