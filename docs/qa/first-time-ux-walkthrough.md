@@ -78,6 +78,7 @@ Status notation: **CI** = explicit automated acceptance already exists (must pas
 3. **Hard-to-discover mobile navigation (confirmed source design):** The More dropdown was inside a horizontally scrolling nav with hidden scrollbar. The More button is now fixed outside that scroll region; phones use it to access all engineering and governance destinations.
 4. **Form accessibility:** The first-organization and project-creation inputs now have explicit accessible labels.
 5. **Reproducible Scenario Runner mobile overflow (CI-discovered):** At 375px, the fixed-height single-row header pushed the page 107px beyond the viewport when displaying three action buttons. Header controls now wrap on phones, and long workflow/trace text can break without widening the layout. This must pass the same browser overflow assertion; do not silence the test.
+6. **Catalogue mobile header (matching code-pattern risk):** Search and Eligible only were on the same fixed-height row as Back and the page title. The controls now wrap, the search input shrinks on phones, and capability headers can wrap instead of forcing the viewport wider. Confirm with the new 375px route sweep.
 
 These changes are **not a claim that the live site was visually audited**. CI screenshots should be reviewed before merging, and the final deployed URL must be separately tested with authorized production accounts.
 
