@@ -55,7 +55,9 @@ test("first visitor sees accessible home, a working signup CTA and clear sign-in
 
   const audit = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(
-    audit.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? "")),
+    audit.violations.filter((violation) =>
+      ["serious", "critical"].includes(violation.impact ?? ""),
+    ),
   ).toEqual([]);
   expect(errors).toEqual([]);
 });
