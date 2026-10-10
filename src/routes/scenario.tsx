@@ -215,7 +215,9 @@ function ScenarioRunner() {
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase">
                     Commands issued
                   </p>
-                  <p className="break-words font-mono text-xs">{step.commands.join(", ") || "none"}</p>
+                  <p className="break-words font-mono text-xs">
+                    {step.commands.join(", ") || "none"}
+                  </p>
                 </div>
               </div>
 
