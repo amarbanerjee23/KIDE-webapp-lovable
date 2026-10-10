@@ -59,9 +59,7 @@ test("invitation link is shareable, reviewer access is restricted, and acceptanc
   }
 });
 
-test("v1.0.0 free evaluation is truthful and paid checkout stays unavailable", async ({
-  page,
-}) => {
+test("v1.0.0 free evaluation is truthful and paid checkout stays unavailable", async ({ page }) => {
   const id = randomBytes(8).toString("hex");
   await page.goto("/auth");
   await signUpThroughUi(page, `billing-${id}@example.com`, "Kide-Billing-E2e!Aa1");
