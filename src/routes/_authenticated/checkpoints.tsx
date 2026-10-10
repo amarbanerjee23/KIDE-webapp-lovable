@@ -229,7 +229,9 @@ function CheckpointsPage() {
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={busy || selection.projectsLoading || !selection.orgId || !projectName.trim()}
+                disabled={
+                  busy || selection.projectsLoading || !selection.orgId || !projectName.trim()
+                }
                 onClick={() =>
                   void run("Project created.", async () => {
                     await addProject({
@@ -253,7 +255,11 @@ function CheckpointsPage() {
             <div role="alert" className="mt-2 flex items-center gap-2 text-xs text-destructive">
               <span>{selection.error}</span>
               {selection.orgId && (
-                <Button size="sm" variant="outline" onClick={() => void selection.refreshProjects(selection.orgId!)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void selection.refreshProjects(selection.orgId!)}
+                >
                   Retry
                 </Button>
               )}
