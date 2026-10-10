@@ -93,7 +93,9 @@ function BillingPage() {
         }
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   const selectedOrganization = orgs.find((org) => org.id === selectedOrgId);
@@ -124,7 +126,9 @@ function BillingPage() {
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               {orgs.map((org) => (
-                <option key={org.id} value={org.id}>{org.name}</option>
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
               ))}
             </select>
           </label>
@@ -134,9 +138,13 @@ function BillingPage() {
         <section className="mt-6 rounded-md border border-border bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Current plan</p>
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Current plan
+              </p>
               <p className="mt-1 text-lg font-semibold">
-                {activePlan ? `${activePlan[0]!.toUpperCase()}${activePlan.slice(1)}` : "Starter — free"}
+                {activePlan
+                  ? `${activePlan[0]!.toUpperCase()}${activePlan.slice(1)}`
+                  : "Starter — free"}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {activePlan
@@ -259,7 +267,10 @@ function BillingPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Questions about plans? <Link to="/projects" className="text-primary">Back to your projects</Link>
+          Questions about plans?{" "}
+          <Link to="/projects" className="text-primary">
+            Back to your projects
+          </Link>
         </p>
       </div>
     </main>
