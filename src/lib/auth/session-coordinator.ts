@@ -3,7 +3,7 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth-client";
 import { clearActiveProject } from "@/lib/active-project";
-import { getActiveBrowserSession } from "@/lib/auth/active-session";
+import { getServerSession } from "@/lib/auth.functions";
 import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import {
   isPublicSessionPath,
@@ -33,6 +33,7 @@ export function useAuthSessionCoordinator(
 
   useEffect(() => {
     let active = true;
+    let latestReconciliation = 0;
 
     const goHome = async () => {
       if (!active || typeof window === "undefined") return;
@@ -62,6 +63,7 @@ export function useAuthSessionCoordinator(
 
     const reconcile = async () => {
       if (!active) return;
+      const reconciliationId = ++latestReconciliation;
 
       if (requiresActiveSession(pathname)) {
         setState((current) =>
@@ -69,9 +71,26 @@ export function useAuthSessionCoordinator(
         );
       }
 
-      const activeSession = await getActiveBrowserSession();
+      // Use the same server-side session source as the protected-route guard.
+      // Better Auth's public browser session endpoint can rate-limit repeated
+      // navigation requests behind a proxy's shared client-IP bucket, which
+      // otherwise falsely logs out an authenticated workspace.
+      let activeSession: Awaited<ReturnType<typeof getServerSession>> = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          activeSession = await getServerSession();
+        } catch {
+          activeSession = null;
+        }
+        if (activeSession?.session && activeSession.user) break;
+        if (attempt < 2) {
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+        }
+      }
 
-      if (!active) return;
+      // Ignore results of obsolete focus/visibility/route checks. Without
+      // this guard a slower null response could override a newer success.
+      if (!active || reconciliationId !== latestReconciliation) return;
 
       if (!activeSession) {
         await goHome();

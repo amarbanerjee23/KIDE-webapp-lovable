@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 
 import appCss from "../styles.css?url";
@@ -154,7 +154,21 @@ function RootComponent() {
   const loadUiPreferences = useServerFn(getUiPreferences);
   const pathVerified = isPathSessionVerified(location.pathname, sessionState);
   const protectedRoute = requiresActiveSession(location.pathname);
-  useWorkspacePersistence(pathVerified && protectedRoute);
+  // Route transitions temporarily recheck the session. Do not tear down the
+  // autosave coordinator during that check: doing so can discard edits that
+  // are still waiting for the debounce timer before the next page opens.
+  // A real anonymous session or navigation to a public route still disables it.
+  const [workspaceSessionEstablished, setWorkspaceSessionEstablished] = useState(false);
+  useEffect(() => {
+    if (sessionState.status === "anonymous" || !protectedRoute) {
+      setWorkspaceSessionEstablished(false);
+    } else if (pathVerified) {
+      setWorkspaceSessionEstablished(true);
+    }
+  }, [pathVerified, protectedRoute, sessionState.status]);
+  useWorkspacePersistence(
+    protectedRoute && workspaceSessionEstablished && sessionState.status !== "anonymous",
+  );
   const gated = !pathVerified;
 
   useEffect(() => {

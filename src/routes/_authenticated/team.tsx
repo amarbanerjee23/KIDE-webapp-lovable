@@ -1,23 +1,34 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import {
-  getWorkspace, getOrganization, createOrganization, inviteMember,
-  revokeInvitation, changeMemberRole, removeMember,
+  getWorkspace,
+  getOrganization,
+  createOrganization,
+  inviteMember,
+  revokeInvitation,
+  changeMemberRole,
+  removeMember,
 } from "@/lib/teams.functions";
 
 const title = "KIDE Team — organizations, roles and invitations";
-const description = "Invite engineers and reviewers, set their role, and keep an audit trail of every membership change.";
+const description =
+  "Invite engineers and reviewers, set their role, and keep an audit trail of every membership change.";
 
 export const Route = createFileRoute("/_authenticated/team")({
-  head: () => ({ meta: [
-    { title }, { name: "description", content: description },
-    { property: "og:title", content: title }, { property: "og:description", content: description },
-    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title },
+      { name: "description", content: description },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: TeamPage,
 });
 
@@ -40,17 +51,34 @@ function TeamPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("engineer");
   const [busy, setBusy] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
+  const selectedOrgRef = useRef<string | null>(null);
+  const selectOrg = (id: string) => {
+    selectedOrgRef.current = id;
+    setOrgId(id);
+    setOrg(null);
+    setInviteLink("");
+  };
 
   const refreshWorkspace = async () => {
     const data = await loadWorkspace();
     setWorkspace(data);
-    if (!orgId && data.organizations[0]) setOrgId(data.organizations[0].id);
+    if (!selectedOrgRef.current && data.organizations[0]) selectOrg(data.organizations[0].id);
   };
 
-  const refreshOrg = async (id: string) => setOrg(await loadOrg({ data: { organizationId: id } }));
+  const refreshOrg = async (id: string) => {
+    const result = await loadOrg({ data: { organizationId: id } });
+    if (selectedOrgRef.current === id) setOrg(result);
+  };
 
-  useEffect(() => { void refreshWorkspace(); }, []);
-  useEffect(() => { if (orgId) void refreshOrg(orgId); }, [orgId]);
+  useEffect(() => {
+    void refreshWorkspace().catch(() => toast.error("Could not load your organizations."));
+  }, []);
+  useEffect(() => {
+    if (orgId) {
+      void refreshOrg(orgId).catch(() => toast.error("Could not load the selected team."));
+    }
+  }, [orgId]);
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -86,6 +114,7 @@ function TeamPage() {
               <input
                 value={orgName}
                 onChange={(event) => setOrgName(event.target.value)}
+                aria-label="Organization name"
                 placeholder="Acme Robotics"
                 className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
               />
@@ -95,7 +124,7 @@ function TeamPage() {
                   run("Organization created", async () => {
                     const created = await createOrg({ data: { name: orgName } });
                     setOrgName("");
-                    setOrgId(created.id);
+                    selectOrg(created.id);
                     await refreshWorkspace();
                   })
                 }
@@ -113,7 +142,9 @@ function TeamPage() {
                 key={item.id}
                 size="sm"
                 variant={item.id === orgId ? "secondary" : "outline"}
-                onClick={() => setOrgId(item.id)}
+                aria-pressed={item.id === orgId}
+                disabled={busy}
+                onClick={() => selectOrg(item.id)}
               >
                 {item.name}
               </Button>
@@ -138,12 +169,17 @@ function TeamPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm">
                         {member.displayName}
-                        {member.isSelf && <span className="ml-2 text-[10px] text-muted-foreground">you</span>}
+                        {member.isSelf && (
+                          <span className="ml-2 text-[10px] text-muted-foreground">you</span>
+                        )}
                       </p>
-                      <p className="truncate text-[11px] text-muted-foreground">{member.jobTitle || "—"}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {member.jobTitle || "—"}
+                      </p>
                     </div>
                     <select
                       value={member.role}
+                      aria-label={`Role for ${member.displayName}`}
                       disabled={!isAdmin || member.role === "owner" || busy}
                       onChange={(event) =>
                         run("Role updated", () =>
@@ -158,7 +194,11 @@ function TeamPage() {
                       }
                       className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                     >
-                      {ROLES.map((item) => <option key={item} value={item}>{item}</option>)}
+                      {ROLES.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
                     </select>
                     {isAdmin && member.role !== "owner" && (
                       <Button
@@ -167,7 +207,12 @@ function TeamPage() {
                         disabled={busy}
                         onClick={() =>
                           run("Member removed", () =>
-                            remove({ data: { organizationId: org.organization.id, memberRoleId: member.id } }),
+                            remove({
+                              data: {
+                                organizationId: org.organization.id,
+                                memberRoleId: member.id,
+                              },
+                            }),
                           )
                         }
                       >
@@ -186,56 +231,107 @@ function TeamPage() {
                   <input
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
+                    aria-label="Invitee email"
+                    type="email"
                     placeholder="engineer@company.com"
                     className="h-9 min-w-56 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
                   />
                   <select
+                    aria-label="Invitation role"
                     value={role}
                     onChange={(event) => setRole(event.target.value as Role)}
                     className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                   >
                     {ROLES.filter((item) => item !== "owner").map((item) => (
-                      <option key={item} value={item}>{item}</option>
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
                     ))}
                   </select>
                   <Button
                     disabled={busy || !email.trim()}
                     onClick={() =>
-                      run("Invitation created", async () => {
+                      run("Invitation link created", async () => {
                         const result = await invite({
                           data: { organizationId: org.organization.id, email, role },
                         });
                         setEmail("");
                         const link = `${window.location.origin}/invite/${result.token}`;
-                        await navigator.clipboard?.writeText(link).catch(() => undefined);
-                        toast.message("Invite link copied", { description: link });
+                        setInviteLink(link);
+                        try {
+                          await navigator.clipboard.writeText(link);
+                          toast.message("Invite link copied", {
+                            description: "Share it securely with the intended recipient.",
+                          });
+                        } catch {
+                          toast.message("Copy the invitation link below", {
+                            description: "Clipboard access was unavailable.",
+                          });
+                        }
                       })
                     }
                   >
-                    Send invite
+                    Create invite link
                   </Button>
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  The invite link is copied to your clipboard. It works once and expires in 14 days.
+                  Invitation links are not emailed automatically. Share the link securely with the
+                  intended person. Links are single-use and expire in 14 days.
                 </p>
+                {inviteLink && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <input
+                      aria-label="Invitation link"
+                      value={inviteLink}
+                      readOnly
+                      onFocus={(event) => event.target.select()}
+                      className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(inviteLink)
+                          .then(() => toast.success("Invite link copied"))
+                          .catch(() =>
+                            toast.error(
+                              "Clipboard unavailable — select and copy the link manually.",
+                            ),
+                          );
+                      }}
+                    >
+                      Copy link
+                    </Button>
+                  </div>
+                )}
               </section>
             )}
 
             <section className="mt-6 rounded-md border border-border bg-card">
-              <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">Invitations</h2>
+              <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">
+                Invitations
+              </h2>
               {org.invitations.length === 0 ? (
                 <p className="px-4 py-4 text-xs text-muted-foreground">No invitations yet.</p>
               ) : (
                 <ul className="divide-y divide-border">
                   {org.invitations.map((item) => (
-                    <li key={item.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm"
+                    >
                       <span className="min-w-0 flex-1 truncate">{item.email}</span>
                       <span className="text-[11px] text-muted-foreground">{item.role}</span>
-                      <span className={`rounded border px-1.5 py-0.5 text-[10px] ${
-                        item.status === "pending" ? "border-warning/40 text-warning" :
-                        item.status === "accepted" ? "border-primary/40 text-primary" :
-                        "border-border text-muted-foreground"
-                      }`}>
+                      <span
+                        className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                          item.status === "pending"
+                            ? "border-warning/40 text-warning"
+                            : item.status === "accepted"
+                              ? "border-primary/40 text-primary"
+                              : "border-border text-muted-foreground"
+                        }`}
+                      >
                         {item.status}
                       </span>
                       {isAdmin && item.status === "pending" && (
@@ -245,7 +341,12 @@ function TeamPage() {
                           disabled={busy}
                           onClick={() =>
                             run("Invitation revoked", () =>
-                              revoke({ data: { organizationId: org.organization.id, invitationId: item.id } }),
+                              revoke({
+                                data: {
+                                  organizationId: org.organization.id,
+                                  invitationId: item.id,
+                                },
+                              }),
                             )
                           }
                         >
