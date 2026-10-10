@@ -38,7 +38,7 @@ const files = {
       contentQueriesVerified: false,
       sourceRequestVerified: false,
       secretsCaptured: false,
-    }, null, 2) + "\\n",
+    }, null, 2) + "\n",
   ],
   deploymentQualification: [
     `deployment-qualification-${sha}.json`,
@@ -57,7 +57,7 @@ writeFileSync(join(directory, `deployment-${sha}.log`), deploymentLog);
 payload.checks.deploymentQualification.logSha256 = createHash("sha256")
   .update(deploymentLog)
   .digest("hex");
-const restoreLog = "Cloud SQL separate recovery operation and database metadata verified\\n";
+const restoreLog = "Cloud SQL separate recovery operation and database metadata verified\n";
 writeFileSync(join(directory, `restore-metadata-${sha}.log`), restoreLog);
 payload.checks.databaseRestoreDrill.logSha256 = createHash("sha256")
   .update(restoreLog)
