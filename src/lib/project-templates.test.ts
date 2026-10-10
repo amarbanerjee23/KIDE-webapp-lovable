@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PROJECT_TEMPLATE_CATALOG, projectTemplateById, projectTemplateSources } from "./project-templates";
+import {
+  PROJECT_TEMPLATE_CATALOG,
+  projectTemplateById,
+  projectTemplateSources,
+} from "./project-templates";
 import { validateWorkingCopySources, WORKING_COPY_LABEL } from "./project-working-copy";
 import { linkSources } from "./kide/workspace-sources";
 
@@ -22,9 +26,11 @@ describe("progressive real-world starter projects", () => {
       expect(Object.keys(sources)).not.toContain(WORKING_COPY_LABEL);
       const workspace = linkSources(sources);
       expect(workspace.files).toHaveLength(5);
-      expect(workspace.files.flatMap((file) =>
-        file.diagnostics.filter((diagnostic) => diagnostic.severity === "error"),
-      )).toHaveLength(0);
+      expect(
+        workspace.files.flatMap((file) =>
+          file.diagnostics.filter((diagnostic) => diagnostic.severity === "error"),
+        ),
+      ).toHaveLength(0);
 
       const next = projectTemplateSources(example.id);
       expect(next).not.toBe(sources);
