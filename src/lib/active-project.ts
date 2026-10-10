@@ -42,6 +42,14 @@ export function getActiveProject(): ActiveProject | null {
 
 export function setActiveProject(project: ActiveProject | null) {
   hydrate();
+  // Reloading a picker often reselects the same project. Emitting an identical
+  // selection makes the persistence hook discard its in-flight autosave timer.
+  if (
+    activeProject?.projectId === project?.projectId &&
+    activeProject?.organizationId === project?.organizationId
+  ) {
+    return;
+  }
   activeProject = project;
 
   if (typeof window !== "undefined") {
