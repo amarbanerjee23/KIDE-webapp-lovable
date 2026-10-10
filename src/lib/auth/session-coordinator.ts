@@ -3,7 +3,7 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth-client";
 import { clearActiveProject } from "@/lib/active-project";
-import { getActiveBrowserSession } from "@/lib/auth/active-session";
+import { waitForActiveBrowserSession } from "@/lib/auth/active-session";
 import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import {
   isPublicSessionPath,
@@ -33,6 +33,7 @@ export function useAuthSessionCoordinator(
 
   useEffect(() => {
     let active = true;
+    let latestReconciliation = 0;
 
     const goHome = async () => {
       if (!active || typeof window === "undefined") return;
@@ -62,6 +63,7 @@ export function useAuthSessionCoordinator(
 
     const reconcile = async () => {
       if (!active) return;
+      const reconciliationId = ++latestReconciliation;
 
       if (requiresActiveSession(pathname)) {
         setState((current) =>
@@ -69,9 +71,18 @@ export function useAuthSessionCoordinator(
         );
       }
 
-      const activeSession = await getActiveBrowserSession();
+      // Cookie propagation, rate-limited responses and transient network
+      // errors must not cause spurious logout after one failed client read.
+      // Three bounded checks still fail closed if no valid session exists.
+      const activeSession = await waitForActiveBrowserSession({
+        attempts: 3,
+        delayMs: 150,
+        attemptTimeoutMs: 2_000,
+      });
 
-      if (!active) return;
+      // Ignore results of obsolete focus/visibility/route checks. Without
+      // this guard a slower null response could override a newer success.
+      if (!active || reconciliationId !== latestReconciliation) return;
 
       if (!activeSession) {
         await goHome();
