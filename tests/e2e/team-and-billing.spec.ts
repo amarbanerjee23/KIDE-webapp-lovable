@@ -59,7 +59,7 @@ test("invitation link is shareable, reviewer access is restricted, and acceptanc
   }
 });
 
-test("checkout is actionable or reports missing organizations/payment configuration", async ({
+test("v1.0.0 free evaluation is truthful and paid checkout stays unavailable", async ({
   page,
 }) => {
   const id = randomBytes(8).toString("hex");
@@ -67,10 +67,12 @@ test("checkout is actionable or reports missing organizations/payment configurat
   await signUpThroughUi(page, `billing-${id}@example.com`, "Kide-Billing-E2e!Aa1");
   await expect(page).toHaveURL("/projects");
 
+  // A direct deep link must never open the payment widget, even before
+  // organization onboarding or when the user has no eligible role.
   await page.goto("/checkout?plan=professional");
-  await expect(
-    page.getByText("You need an organization owner or administrator role to start checkout."),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Paid checkout is unavailable" })).toBeVisible();
+  await expect(page.getByText("KIDE v1.0.0 is a free evaluation.", { exact: false })).toBeVisible();
+  await expect(page.locator("#hyper-payment-element")).toHaveCount(0);
   await expect(page.getByText("Preparing your checkout…")).toHaveCount(0);
 
   await page.goto("/projects");
@@ -80,10 +82,16 @@ test("checkout is actionable or reports missing organizations/payment configurat
 
   await page.goto("/billing");
   await expect(page.getByRole("heading", { name: "Plan & billing" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Upgrade" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Contact sales" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Evaluation access" })).toBeVisible();
+  await expect(page.getByText("No payment is required", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Upgrade" })).toHaveCount(0);
+  await expect(page.getByText("3 projects", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("1 organization", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("5 team members", { exact: true })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Upgrade" }).click();
-  await expect(page).toHaveURL(/\/checkout\?plan=professional/);
-  await expect(page.getByText("Payments are not connected yet.")).toBeVisible();
+  // The direct checkout route must stay unavailable to an organization owner.
+  await page.goto("/checkout?plan=professional");
+  await expect(page.getByRole("heading", { name: "Paid checkout is unavailable" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to plan & billing" }).click();
+  await expect(page).toHaveURL("/billing");
 });

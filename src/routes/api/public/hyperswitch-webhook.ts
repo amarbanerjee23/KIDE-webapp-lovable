@@ -2,11 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
 import { ensureApplicationSchema } from "@/lib/application-schema.server";
 import { getDatabase } from "@/lib/database.server";
+import { PAID_BILLING_ENABLED } from "@/lib/billing-policy";
 
 export const Route = createFileRoute("/api/public/hyperswitch-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // An old valid provider event must not activate a subscription while
+        // paid billing is outside the approved v1.0.0 launch scope.
+        if (!PAID_BILLING_ENABLED) {
+          return new Response("Paid billing is unavailable in KIDE v1.0.0.", { status: 503 });
+        }
         const secret = process.env["HYPERSWITCH_WEBHOOK_SECRET"];
         if (!secret) return new Response("Webhook not configured", { status: 503 });
 
