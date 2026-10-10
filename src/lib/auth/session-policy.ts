@@ -6,9 +6,14 @@ export interface BrowserSessionState {
 }
 
 const PUBLIC_SESSION_PATHS = new Set(["/", "/auth"]);
+const INVITATION_PATH = /^\/invite\/[0-9a-f]{48}\/?$/i;
+
+export function isInvitationLandingPath(pathname: string): boolean {
+  return INVITATION_PATH.test(pathname);
+}
 
 export function isPublicSessionPath(pathname: string): boolean {
-  return PUBLIC_SESSION_PATHS.has(pathname);
+  return PUBLIC_SESSION_PATHS.has(pathname) || isInvitationLandingPath(pathname);
 }
 
 export function requiresActiveSession(pathname: string): boolean {

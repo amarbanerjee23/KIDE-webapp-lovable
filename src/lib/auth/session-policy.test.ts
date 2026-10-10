@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isInvitationLandingPath,
   isPathSessionVerified,
   isPublicSessionPath,
   requiresActiveSession,
@@ -9,6 +10,23 @@ describe("client session route policy", () => {
   it("keeps only home and auth public", () => {
     expect(isPublicSessionPath("/")).toBe(true);
     expect(isPublicSessionPath("/auth")).toBe(true);
+  });
+
+  it("exposes only token-shaped invitation landings, not their protected content", () => {
+    const invite = `/invite/${"a".repeat(48)}`;
+    expect(isInvitationLandingPath(invite)).toBe(true);
+    expect(isPublicSessionPath(invite)).toBe(true);
+    expect(requiresActiveSession(invite)).toBe(false);
+    expect(isPathSessionVerified(invite, { status: "anonymous", verifiedPath: null })).toBe(true);
+    for (const unsafe of [
+      "/invite/not-a-token",
+      "/invite/aaa/extra",
+      "/invites/" + "a".repeat(48),
+      "/team",
+    ]) {
+      expect(isInvitationLandingPath(unsafe)).toBe(false);
+      expect(requiresActiveSession(unsafe)).toBe(true);
+    }
   });
 
   it.each([
