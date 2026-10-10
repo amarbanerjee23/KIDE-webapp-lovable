@@ -34,7 +34,7 @@ elif [[ "$args" == *"/api/auth/get-session"* ]]; then
 elif [[ "$args" == *"/api/auth/health"* ]]; then
   printf '%s\n' '{"operational":true}'
 elif [[ "$args" == *"url_effective"* ]]; then
-  printf '%s' "$FAKE_KIDE_URL"
+  printf '%s/' "$FAKE_KIDE_URL"
 else
   printf '%s\n' '<html>KIDE enterprise workbench</html>'
 fi
