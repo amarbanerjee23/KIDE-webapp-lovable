@@ -133,9 +133,9 @@ function ReviewsPage() {
               aria-label="Review organization"
               value={selection.orgId ?? ""}
               onChange={(event) => {
-                  setReviewTitle("");
-                  selection.setOrgId(event.target.value);
-                }}
+                setReviewTitle("");
+                selection.setOrgId(event.target.value);
+              }}
             >
               {selection.orgs.length === 0 ? <option value="">No organizations</option> : null}
               {selection.orgs.map((org) => (
@@ -171,9 +171,7 @@ function ReviewsPage() {
             />
             <Button
               size="sm"
-              disabled={
-                busy || !canRequestReview || !selection.projectId || !reviewTitle.trim()
-              }
+              disabled={busy || !canRequestReview || !selection.projectId || !reviewTitle.trim()}
               onClick={() =>
                 void run("Review requested — reviewers have been notified.", async () => {
                   await request({
@@ -197,12 +195,15 @@ function ReviewsPage() {
               Request review
             </Button>
           </div>
-          {!selection.projectsLoading && selection.orgId && !selection.error && !canRequestReview && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Only owners, administrators and engineers can request reviews. Reviewers can still
-              decide existing review requests.
-            </p>
-          )}
+          {!selection.projectsLoading &&
+            selection.orgId &&
+            !selection.error &&
+            !canRequestReview && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Only owners, administrators and engineers can request reviews. Reviewers can still
+                decide existing review requests.
+              </p>
+            )}
           {selection.projectsLoading && (
             <p role="status" className="mt-2 text-xs text-muted-foreground">
               Loading selected organization projects…
