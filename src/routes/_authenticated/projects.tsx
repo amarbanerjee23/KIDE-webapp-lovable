@@ -332,14 +332,16 @@ function ProjectsHome() {
                     {template.learningGoal}
                   </p>
                   <Button
-                    className="mt-4 self-start"
+                    className="mt-4 h-auto w-full min-w-0 max-w-full justify-start whitespace-normal break-words py-2 text-left"
                     size="sm"
                     variant="outline"
                     disabled={busy || !exampleOrgId}
                     onClick={() => void createNewProject(exampleOrgId, template.title, template.id)}
                   >
-                    Use {template.title} example
-                    <ArrowRight className="size-3.5" />
+                    <span className="min-w-0 flex-1 break-words">
+                      Use {template.title} example
+                    </span>
+                    <ArrowRight className="size-3.5 shrink-0" />
                   </Button>
                 </article>
               ))}
