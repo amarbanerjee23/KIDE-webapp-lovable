@@ -38,7 +38,9 @@ test("mobile and tablet navigation remains usable across engineering and managem
     ]) {
       await page.goto(route);
       await expect(page).toHaveURL(route);
-      await expect(page.locator("main").first()).toBeVisible();
+      // A visible <main> alone can be the temporary authentication gate.
+      // Wait for the destination page's actual heading before moving again.
+      await expect(page.locator("main h1").first()).toBeVisible();
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,
       );
@@ -53,6 +55,7 @@ test("mobile and tablet navigation remains usable across engineering and managem
 
   for (const route of ["/overview", "/team", "/billing", "/checkpoints"]) {
     await page.goto(route);
+    await expect(page.locator("main h1").first()).toBeVisible();
     const audit = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
     const serious = audit.violations.filter((item) =>
       ["serious", "critical"].includes(item.impact ?? ""),
