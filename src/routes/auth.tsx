@@ -12,10 +12,7 @@ import {
   authReadinessSummary,
   type AuthRuntimeReadiness,
 } from "@/lib/auth/readiness";
-import {
-  consumePostAuthRedirect,
-  rememberPostAuthRedirect,
-} from "@/lib/auth/post-auth-redirect";
+import { consumePostAuthRedirect, rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import { isInvitationLandingPath } from "@/lib/auth/session-policy";
 
 const title = "Sign in — KIDE Systems Engineering";
