@@ -47,8 +47,10 @@ for attempt in 1 2; do
   FAKE_KIDE_URL=https://kide.example.test \
   KIDE_URL=https://kide.example.test \
   KIDE_LAUNCH_RUN_ID=1234567890abcdef \
-    bash scripts/launch/live-smoke.sh >"$tmp/attempt-$attempt.log" 2>&1 ||
-    fail "smoke invocation $attempt failed"
+    bash scripts/launch/live-smoke.sh >"$tmp/attempt-$attempt.log" 2>&1 || {
+      sed -n '1,30p' "$tmp/attempt-$attempt.log" >&2
+      fail "smoke invocation $attempt failed"
+    }
 done
 
 [[ "$(wc -l < "$tmp/signups.txt")" -eq 2 ]] || fail "expected two smoke accounts"
