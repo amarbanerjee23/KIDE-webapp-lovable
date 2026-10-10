@@ -51,9 +51,11 @@ In GitHub Actions select **Publish official release**, choose `main` and enter:
   qualification** run for the current `main` SHA;
 - `confirmation`: exactly `PUBLISH v1.0.0`.
 
-The workflow downloads the matching release acceptance artifact itself. It rejects
-failed/stale/non-`main` runs, a missing evidence artifact, mismatched commit or
-image evidence, missing successful main CI, and an existing release or tag. On
+The workflow downloads the matching release acceptance artifact itself. It retains
+all acceptance sidecar files and rejects missing or tampered preflight, smoke,
+browser or deployment logs, a mismatched standalone deployment JSON,
+failed/stale/non-`main` runs, mismatched commit or image evidence,
+missing successful main CI, and an existing release or tag. On
 success it creates `v1.0.0` pointing to the accepted commit and records the SHA-256
 of its acceptance JSON in the release notes.
 

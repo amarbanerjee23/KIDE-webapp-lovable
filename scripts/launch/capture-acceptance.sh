@@ -82,11 +82,13 @@ preflight_sha="$(sha256sum "${preflight_log}" | awk '{print $1}')"
 smoke_sha="$(sha256sum "${smoke_log}" | awk '{print $1}')"
 browser_sha="$(sha256sum "${browser_log}" | awk '{print $1}')"
 deployment_sha="$(sha256sum "${deployment_file}" | awk '{print $1}')"
+deployment_log_sha="$(sha256sum "${deployment_log}" | awk '{print $1}')"
 
 python3 - "${evidence_file}" "${deployment_file}" "${commit_sha}" "${branch_name}" "${timestamp}" \
   "${RELEASE_VERSION}" "${KIDE_URL}" "${OPERATOR}" "${RESTORE_DRILL_REF}" \
   "${preflight_status}" "${preflight_sha}" "${smoke_status}" "${smoke_sha}" \
-  "${browser_status}" "${browser_sha}" "${deployment_status}" "${deployment_sha}" <<'PY'
+  "${browser_status}" "${browser_sha}" "${deployment_status}" "${deployment_sha}" \
+  "${deployment_log_sha}" <<'PY'
 import json
 import sys
 
@@ -108,6 +110,7 @@ import sys
     browser_sha,
     deployment_status,
     deployment_sha,
+    deployment_log_sha,
 ) = sys.argv[1:]
 
 with open(deployment_path, encoding="utf-8") as handle:
@@ -138,6 +141,7 @@ payload = {
         "deploymentQualification": {
             "status": deployment_status,
             "outputSha256": deployment_sha,
+            "logSha256": deployment_log_sha,
         },
     },
     "deployment": deployment,

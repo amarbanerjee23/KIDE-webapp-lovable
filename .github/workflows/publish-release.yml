@@ -99,13 +99,13 @@ jobs:
             echo "Expected exactly one launch acceptance JSON in qualification evidence." >&2
             exit 1
           fi
-          cp "${evidence_files[0]}" /tmp/kide-launch-acceptance.json
+          echo "KIDE_QUALIFICATION_ACCEPTANCE_PATH=${evidence_files[0]}" >> "$GITHUB_ENV"
 
       - name: Validate acceptance against current main
         run: |
           set -euo pipefail
           main_sha="$(git rev-parse HEAD)"
-          ACCEPTANCE_FILE=/tmp/kide-launch-acceptance.json \
+          ACCEPTANCE_FILE="$KIDE_QUALIFICATION_ACCEPTANCE_PATH" \
             EXPECTED_COMMIT_SHA="$main_sha" \
             bash scripts/release/validate-publication.sh
 
@@ -163,7 +163,7 @@ jobs:
       - name: Build release publication notes
         run: |
           set -euo pipefail
-          acceptance_sha="$(sha256sum /tmp/kide-launch-acceptance.json | awk '{print $1}')"
+          acceptance_sha="$(sha256sum "$KIDE_QUALIFICATION_ACCEPTANCE_PATH" | awk '{print $1}')"
           {
             cat "docs/releases/v${RELEASE_VERSION}.md"
             echo

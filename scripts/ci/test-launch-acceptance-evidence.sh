@@ -62,6 +62,7 @@ cat >"$tmp/good.json" <<'JSON'
 }
 JSON
 
+node scripts/ci/write-acceptance-fixture.mjs "$tmp/good.json"
 bun scripts/launch/verify-acceptance.ts "$tmp/good.json"
 
 python3 - "$tmp/good.json" "$tmp/bad-check.json" "$tmp/bad-commit.json" "$tmp/bad-browser.json" "$tmp/bad-digest.json" <<'PY'
@@ -102,6 +103,30 @@ if bun scripts/launch/verify-acceptance.ts "$tmp/bad-digest.json" >/dev/null 2>&
   fail "verifier accepted a registry image digest mismatch"
 fi
 
+python3 - "$tmp/good.json" "$tmp/tampered.json" <<'PY'
+import json
+import sys
+source, target = sys.argv[1:]
+with open(source, encoding="utf-8") as handle:
+    payload = json.load(handle)
+payload["checks"]["liveSmoke"]["outputSha256"] = "1" * 64
+with open(target, "w", encoding="utf-8") as handle:
+    json.dump(payload, handle)
+PY
+if bun scripts/launch/verify-acceptance.ts "$tmp/tampered.json" >/dev/null 2>&1; then
+  fail "verifier accepted a checksum that did not match the actual log bytes"
+fi
+
+sha=1234567890abcdef1234567890abcdef12345678
+printf 'post-qualification tampering\n' >> "$tmp/preflight-${sha}.log"
+if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; then
+  fail "verifier accepted modified preflight evidence"
+fi
+rm "$tmp/preflight-${sha}.log"
+if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; then
+  fail "verifier accepted missing preflight evidence"
+fi
+
 grep -q 'RESTORE_DRILL_REF' scripts/launch/capture-acceptance.sh ||
   fail "collector must require restore drill evidence"
 grep -q 'git rev-parse HEAD' scripts/launch/capture-acceptance.sh ||
@@ -122,6 +147,10 @@ grep -q 'productionBrowserJourney' scripts/launch/capture-acceptance.sh ||
   fail "collector must bind the browser journey to acceptance evidence"
 grep -q 'deploymentQualification' scripts/launch/capture-acceptance.sh ||
   fail "collector must record deployment qualification"
+grep -q 'logSha256' scripts/launch/capture-acceptance.sh ||
+  fail "collector must checksum the deployment qualification log"
+grep -q 'KIDE_QUALIFICATION_ACCEPTANCE_PATH' .github/workflows/publish-release.yml ||
+  fail "publisher must validate the complete downloaded qualification artifact, not copied JSON"
 grep -q 'sha256sum' scripts/launch/capture-acceptance.sh ||
   fail "collector must checksum qualification outputs"
 grep -q 'secretsCaptured.*False' scripts/launch/capture-acceptance.sh ||
