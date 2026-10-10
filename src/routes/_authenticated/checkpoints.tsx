@@ -266,7 +266,16 @@ function CheckpointsPage() {
             >
               Save checkpoint
             </Button>
-            <Button size="sm" variant="secondary" onClick={exportSet} disabled={!selection.projectId || !access.projectId || access.projectId !== selection.projectId}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={exportSet}
+              disabled={
+                !selection.projectId ||
+                !access.projectId ||
+                access.projectId !== selection.projectId
+              }
+            >
               <Download className="size-4" /> Export model set
             </Button>
             <Button size="sm" variant="secondary" asChild disabled={!canEdit}>
@@ -341,8 +350,8 @@ function CheckpointsPage() {
                 {pendingRestore
                   ? `Restore "${pendingRestore.label}" exactly as saved?`
                   : `Import ${pendingImport?.fileCount ?? 0} verified model files?`}{" "}
-                All current model files will be replaced, including any files not present in the selected set.
-                This cannot be undone unless you have a previous checkpoint.
+                All current model files will be replaced, including any files not present in the
+                selected set. This cannot be undone unless you have a previous checkpoint.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
