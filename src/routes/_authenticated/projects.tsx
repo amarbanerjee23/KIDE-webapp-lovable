@@ -129,7 +129,7 @@ function ProjectsHome() {
     setBusy(true);
     try {
       const created = await addProject({
-        data: { organizationId, name: cleanName, templateId },
+        data: { organizationId, name: cleanName, ...(templateId ? { templateId } : {}) },
       });
       setActiveProject({ projectId: created.id, organizationId });
       setRecentCreated({ organizationId, projectId: created.id, name: created.name });
