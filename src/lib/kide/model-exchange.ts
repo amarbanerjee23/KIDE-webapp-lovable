@@ -65,7 +65,9 @@ export function importModelSet(text: string): ImportOutcome {
   if (doc?.format !== EXCHANGE_FORMAT) {
     return {
       ...empty,
-      problems: [`Unsupported file format. Expected ${EXCHANGE_FORMAT}, found ${String(doc?.format ?? "nothing")}.`],
+      problems: [
+        `Unsupported file format. Expected ${EXCHANGE_FORMAT}, found ${String(doc?.format ?? "nothing")}.`,
+      ],
     };
   }
   if (!Array.isArray(doc.files) || doc.files.length === 0) {
