@@ -15,7 +15,8 @@ For the launch drill:
 5. verify at least one known organization/project record from the chosen recovery point;
 6. run database integrity/read queries;
 7. record recovery point, start/end timestamps and result;
-8. destroy the recovery instance after evidence is retained.
+8. keep the separate recovery instance RUNNABLE through protected production qualification, which reads the completed clone operation and recovery database metadata;
+9. after qualification evidence and independent SQL integrity sign-off are retained, obtain operator approval and destroy only the designated recovery instance (never production).
 
 ## Recovery decision
 
