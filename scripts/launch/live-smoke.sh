@@ -16,9 +16,13 @@ echo "Checking auth readiness..."
 health="$(curl --fail --silent --show-error --max-time 15 "${KIDE_URL}/api/auth/health")"
 printf '%s' "${health}" | grep -Eq '"operational"[[:space:]]*:[[:space:]]*true'   || { echo "Authentication health is not operational." >&2; exit 1; }
 
-run_id="${KIDE_LAUNCH_RUN_ID:-$(date +%s)}"
-email="launch-smoke-${run_id}@example.com"
-password="Kide-Launch-Smoke-${run_id}!Aa1"
+run_id="${KIDE_LAUNCH_RUN_ID:-manual}"
+safe_run_id="$(printf '%s' "$run_id" | tr -cd '[:alnum:]' | cut -c1-16)"
+[[ -n "$safe_run_id" ]] || safe_run_id=manual
+# The same release commit may be qualified repeatedly; each invocation needs a new account.
+nonce="$(openssl rand -hex 12)"
+email="launch-smoke-${safe_run_id}-${nonce}@example.com"
+password="Kide-Launch-Smoke-$(openssl rand -hex 24)!Aa1"
 
 echo "Creating disposable launch-smoke account..."
 signup="$(curl --fail-with-body --silent --show-error   -H 'content-type: application/json'   -c "${cookies}"   --data "{\"name\":\"Launch Smoke\",\"email\":\"${email}\",\"password\":\"${password}\"}"   "${KIDE_URL}/api/auth/sign-up/email")"
