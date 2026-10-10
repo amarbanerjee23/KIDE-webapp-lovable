@@ -25,7 +25,7 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   await page.goto("/models");
   await expect(page.getByText("This project has no model files yet")).toBeVisible();
   await page.getByRole("button", { name: /Load Autonomous warehouse fleet/i }).click();
-  await expect(page.getByText("Ecre.dml")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Ecre\\.dml/ })).toBeVisible();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   await page.goto("/checkpoints");
@@ -41,8 +41,8 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   await page.getByRole("button", { name: "Load selected" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "Replace with example" }).click();
-  await expect(page.getByText("Agri.dml")).toBeVisible();
-  await expect(page.getByText("Ecre.dml")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Agri\\.dml/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Ecre\\.dml/ })).toHaveCount(0);
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   await page.goto("/checkpoints");
@@ -50,15 +50,15 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   await expect(page.getByRole("alertdialog")).toContainText('Restore "Warehouse baseline" exactly');
   await page.getByRole("button", { name: "Keep current workspace" }).click();
   await page.goto("/models");
-  await expect(page.getByText("Agri.dml")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Agri\\.dml/ })).toBeVisible();
 
   await page.goto("/checkpoints");
   await page.getByRole("button", { name: "Restore" }).click();
   await page.getByRole("button", { name: "Replace workspace" }).click();
   await page.getByRole("link", { name: "Model languages" }).click();
   await expect(page).toHaveURL("/models");
-  await expect(page.getByText("Ecre.dml")).toBeVisible();
-  await expect(page.getByText("Agri.dml")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Ecre\\.dml/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Agri\\.dml/ })).toHaveCount(0);
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   const source = "DataModel CustomTelemetry {\n}\n";
@@ -85,12 +85,12 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   await page.getByRole("button", { name: "Replace workspace" }).click();
   await page.getByRole("link", { name: "Model languages" }).click();
   await expect(page).toHaveURL("/models");
-  await expect(page.getByText("custom/Telemetry.dml")).toBeVisible();
-  await expect(page.getByText("Ecre.dml")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^custom\\/Telemetry\\.dml/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Ecre\\.dml/ })).toHaveCount(0);
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("custom/Telemetry.dml")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^custom\\/Telemetry\\.dml/ })).toBeVisible();
 
   await page.goto("/checkpoints");
   const downloadPromise = page.waitForEvent("download");
