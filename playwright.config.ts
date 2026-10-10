@@ -27,6 +27,7 @@ export default defineConfig({
         "**/auth-lifecycle.spec.ts",
         "**/release-journey.spec.ts",
         "**/production-release-journey.spec.ts",
+        "**/checkpoint-integrity.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"], baseURL: configuredBase },
     },
