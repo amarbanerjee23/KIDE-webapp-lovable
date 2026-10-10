@@ -33,9 +33,10 @@ This workflow:
 - proves Cloud Run auth persistence and 100% traffic on the latest ready revision;
 - matches the deployed image digest to the commit-tagged image in Artifact Registry;
 - executes the live auth/session/anonymous-route smoke with a unique identity;
-- runs the real Chromium engineering journey: signup, project creation, example
-  load, synthesis, approval, generated-code download, release-bundle verification
-  and sign-out;
+- runs the real Chromium engineering journey: signup, first **and second**
+  project creation in an existing organization, one-click example project creation,
+  model-file persistence after reload, blank-project isolation, synthesis,
+  approval, generated-code download, release-bundle verification and sign-out;
 - uploads a commit-scoped acceptance artifact containing schema-v2 evidence.
 
 Retain the **successful GitHub Actions run ID**. Do not copy/paste acceptance JSON
