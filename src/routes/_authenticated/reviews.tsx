@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { CircleCheck, CircleDot, MessageSquare, RotateCcw } from "lucide-react";
@@ -57,6 +57,7 @@ function ReviewsPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const reviewsGeneration = useRef(0);
 
   const design = useMemo(() => {
     const workspace = linkFrom(sources);
@@ -71,14 +72,24 @@ function ReviewsPage() {
   }, [sources, selectedId]);
 
   const refresh = useCallback(
-    async (projectId: string) => setReviews(await load({ data: { projectId } })),
+    async (projectId: string) => {
+      const generation = ++reviewsGeneration.current;
+      const rows = await load({ data: { projectId } });
+      if (reviewsGeneration.current === generation) setReviews(rows);
+    },
     [load],
   );
 
   useEffect(() => {
-    if (selection.projectId) void refresh(selection.projectId);
-    else setReviews([]);
-  }, [selection.projectId, refresh]);
+    reviewsGeneration.current += 1;
+    setReviews([]);
+    if (selection.projectId && !selection.projectsLoading) {
+      void refresh(selection.projectId).catch(() => toast.error("Could not load project reviews."));
+    }
+    return () => {
+      reviewsGeneration.current += 1;
+    };
+  }, [selection.projectId, selection.projectsLoading, refresh]);
 
   const run = async (message: string, fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -93,7 +104,10 @@ function ReviewsPage() {
     }
   };
 
-  const canDecide = ["owner", "administrator", "reviewer"].includes(selection.myRole);
+  const canDecide =
+    !selection.projectsLoading &&
+    !!selection.projectId &&
+    ["owner", "administrator", "reviewer"].includes(selection.myRole);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -112,6 +126,7 @@ function ReviewsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <select
               className="h-9 rounded-md border border-border bg-background px-2 text-xs"
+              aria-label="Review organization"
               value={selection.orgId ?? ""}
               onChange={(event) => selection.setOrgId(event.target.value)}
             >
@@ -124,6 +139,8 @@ function ReviewsPage() {
             </select>
             <select
               className="h-9 min-w-48 rounded-md border border-border bg-background px-2 text-xs"
+              aria-label="Review project"
+              disabled={selection.projectsLoading || Boolean(selection.error)}
               value={selection.projectId ?? ""}
               onChange={(event) => selection.setProjectId(event.target.value || null)}
             >
@@ -146,7 +163,7 @@ function ReviewsPage() {
             />
             <Button
               size="sm"
-              disabled={busy || !selection.projectId || !reviewTitle.trim()}
+              disabled={busy || selection.projectsLoading || !selection.projectId || !reviewTitle.trim()}
               onClick={() =>
                 void run("Review requested — reviewers have been notified.", async () => {
                   await request({
@@ -170,6 +187,21 @@ function ReviewsPage() {
               Request review
             </Button>
           </div>
+          {selection.projectsLoading && (
+            <p role="status" className="mt-2 text-xs text-muted-foreground">
+              Loading selected organization projects…
+            </p>
+          )}
+          {selection.error && (
+            <div role="alert" className="mt-2 flex items-center gap-2 text-xs text-destructive">
+              <span>{selection.error}</span>
+              {selection.orgId && (
+                <Button size="sm" variant="outline" onClick={() => void selection.refreshProjects(selection.orgId!)}>
+                  Retry
+                </Button>
+              )}
+            </div>
+          )}
         </section>
 
         {reviews.length === 0 ? (
@@ -231,7 +263,7 @@ function ReviewsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={busy || !(drafts[review.id] ?? "").trim()}
+                    disabled={busy || selection.projectsLoading || !selection.projectId || !(drafts[review.id] ?? "").trim()}
                     onClick={() =>
                       void run("Comment added.", async () => {
                         await comment({
@@ -261,7 +293,7 @@ function ReviewsPage() {
                     />
                     <Button
                       size="sm"
-                      disabled={busy}
+                      disabled={busy || selection.projectsLoading || !selection.projectId}
                       onClick={() =>
                         void run("Review approved.", () =>
                           decide({
@@ -280,7 +312,7 @@ function ReviewsPage() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      disabled={busy}
+                      disabled={busy || selection.projectsLoading || !selection.projectId}
                       onClick={() =>
                         void run("Sent back with your reason.", () =>
                           decide({
