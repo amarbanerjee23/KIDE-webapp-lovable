@@ -47,7 +47,13 @@ test("new and existing projects plus five prebuilt examples persist in PostgreSQ
     await expect(page.getByRole("heading", { name: org })).toBeVisible();
   }
 
-  // Reopening a different project must not silently reuse the previous copy.
-  await page.getByRole("link", { name: "Open new project" }).click();
-  await expect(page.getByRole("button", { name: /^Ecre\.dml/ })).toBeVisible();
+  // Empty projects remain empty and cannot inherit the last example's files.
+  await page
+    .locator("li")
+    .filter({ hasText: `First blank ${id}` })
+    .getByRole("link", { name: "Open models" })
+    .click();
+  await expect(page).toHaveURL("/models");
+  await expect(page.getByText("This project has no model files yet")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Ecre\.dml/ })).toHaveCount(0);
 });
