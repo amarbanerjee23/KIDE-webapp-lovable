@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { signUpThroughUi } from "./auth-helpers";
 
-test.describe.configure({ timeout: 180_000 });
+test.describe.configure({ timeout: 240_000 });
 
 const sha256 = (value: string) => createHash("sha256").update(value, "utf8").digest("hex");
 
@@ -39,8 +39,41 @@ test("production customer can qualify and export real generated code, then sign 
   await expect(page.getByRole("heading", { name: orgName })).toBeVisible();
 
   await page.getByPlaceholder("New project name").fill(projectName);
-  await page.getByRole("button", { name: /project/i }).click();
+  await page.getByRole("button", { name: "Project", exact: true }).click();
   await expect(page.getByText(projectName)).toBeVisible();
+  await expect(page.getByText("Project created successfully.", { exact: true })).toBeVisible();
+
+  // Qualify the reported failure: creating another project in an existing
+  // organization must work, not only creating the very first project.
+  const secondProjectName = `Additional QA Project ${suffix}`;
+  await page
+    .getByRole("textbox", { name: `New project name for ${orgName}` })
+    .fill(secondProjectName);
+  await page.getByRole("button", { name: "Project", exact: true }).click();
+  await expect(page.locator("li").filter({ hasText: secondProjectName })).toBeVisible();
+  await expect(page.getByText("Project created successfully.", { exact: true })).toBeVisible();
+
+  // The actual five-example feature also needs a live, durable project copy,
+  // separate from the original blank project and with saved model sources.
+  const starterTitle = "Commercial building air-quality control";
+  await page.getByRole("button", { name: `Use ${starterTitle} example` }).click();
+  await expect(page.getByRole("link", { name: "Open new project" })).toBeVisible();
+  await page.getByRole("link", { name: "Open new project" }).click();
+  await expect(page).toHaveURL("/models");
+  await expect(page.getByRole("button", { name: /^Building\.dml/ })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Building\.dml/ })).toBeVisible();
+
+  // Return to the explicitly selected blank project and prove no models leaked
+  // from the example before generating its actual release candidate.
+  await page.goto("/projects");
+  await page
+    .locator("li")
+    .filter({ hasText: projectName })
+    .getByRole("link", { name: "Open models" })
+    .click();
+  await expect(page).toHaveURL("/models");
+  await expect(page.getByText("This project has no model files yet")).toBeVisible();
 
   await page.goto("/models");
   await expect(page.getByText("This project has no model files yet")).toBeVisible();
