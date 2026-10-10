@@ -30,7 +30,7 @@ test("invitation link is shareable, reviewer access is restricted, and acceptanc
   const inviteUrl = await link.inputValue();
   await expect(page.getByText("Invitation links are not emailed automatically.")).toBeVisible();
 
-  const reviewerContext = await browser.newContext();
+  const reviewerContext = await browser.newContext({ baseURL: new URL(page.url()).origin });
   try {
     const reviewer = await reviewerContext.newPage();
     await reviewer.goto("/auth");
