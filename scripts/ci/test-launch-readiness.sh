@@ -10,6 +10,7 @@ bash -n deploy/gcp/launch-preflight.sh
 bash -n deploy/gcp/qualify-live-deployment.sh
 bash -n scripts/launch/live-smoke.sh
 bash scripts/ci/test-production-smoke-repeatability.sh
+bash scripts/ci/test-production-deploy-safety.sh
 
 grep -q 'pointInTimeRecoveryEnabled' deploy/gcp/launch-preflight.sh   || fail "launch preflight must enforce Cloud SQL PITR"
 grep -q 'backup.get("enabled")' deploy/gcp/launch-preflight.sh   || fail "launch preflight must enforce automated backups"

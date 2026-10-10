@@ -19,24 +19,48 @@ All of the following must be true before public launch:
 - production monitoring and alert recipients have been configured;
 - graph-assisted synthesis remains disabled unless its production owner explicitly enables it.
 
-## Deploy
+## Deploy — guarded exact-main Cloud Build rollout
 
-Deploy only from a green `main` commit through the existing Cloud Build pipeline.
+Do not deploy directly from a local feature branch or a pull-request checkout.
 
-After Cloud Build reports success:
+1. Merge the approved release candidate and confirm the new `main` SHA has a
+   successful **push-event CI** run.
+2. In GitHub Actions, choose **Deploy production from approved main**, select
+   the `main` branch, and provide:
+   - `expected_commit_sha`: that exact **40-character lowercase main SHA**;
+   - `confirmation`: exactly `DEPLOY <the-same-40-character-SHA>`.
+3. The workflow enforces the GitHub `production` environment, verifies
+   current main and its successful post-merge CI, and authenticates to GCP via
+   short-lived Workload Identity Federation credentials.
+4. It submits the canonical `cloudbuild.yaml` from the exact checkout, with
+   an explicit `COMMIT_SHA` substitution, `_REQUIRE_AUTH=true`, and
+   `_BOOTSTRAP_CLOUD_SQL=true`. It does **not** deploy an arbitrary image,
+   downgrade authentication, or allow overriding the Git SHA.
+5. After the build completes, the workflow verifies Cloud Run authentication,
+   the expected commit, the Cloud SQL attachment, 100% ready-revision traffic,
+   and matching immutable Cloud Run/Artifact Registry image digests. It retains
+   a commit-specific deployment evidence artifact for 90 days.
 
-```sh
-PROJECT_ID=<project> bash deploy/gcp/launch-preflight.sh
-KIDE_URL=https://<production-origin> bash scripts/launch/live-smoke.sh
-```
+The GitHub `production` environment must provide `GCP_PROJECT_ID`,
+`GCP_WORKLOAD_IDENTITY_PROVIDER`, and `GCP_PRODUCTION_SERVICE_ACCOUNT`.
+Optional configuration is `GCP_REGION` (default `us-central1`),
+`GCP_SERVICE_NAME` (default `kide-webapp`),
+`GCP_ARTIFACT_REPOSITORY` (default `kide`), and
+`GCP_CLOUD_SQL_INSTANCE` (default `kide-web-app`).
 
-Record:
+The identity must have permission to submit and inspect Cloud Build builds and
+stage build source, as well as the service-specific Cloud SQL/Secret Manager/IAM
+permissions already described in the deployment bootstrap documentation.
+Configure protected-environment reviewers and least-privilege access before use.
 
-- Git commit SHA;
-- Cloud Run revision;
-- deployment time;
-- smoke-test run ID;
-- operator.
+After the deployment workflow succeeds, perform the restore drill and launch
+sign-offs, then dispatch **Production deployment qualification** for the same
+`main` SHA. Use its successful numeric run ID with the guarded **Publish
+official release** workflow. The deploy workflow deliberately does not publish
+a release.
+
+Record the approved commit, deployment workflow run, Cloud Build run,
+Cloud Run revision/digest, release-qualification run, operator and time.
 
 ## Rollback
 

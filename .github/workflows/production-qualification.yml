@@ -106,6 +106,8 @@ jobs:
       - name: Capture exact-commit launch acceptance evidence
         env:
           PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          CLOUD_SQL_INSTANCE: ${{ vars.GCP_CLOUD_SQL_INSTANCE }}
+          ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
           OPERATOR: github-actions:${{ github.actor }}
           RESTORE_DRILL_REF: ${{ inputs.restore_drill_reference }}
           KIDE_ACCEPTANCE_BRANCH: main

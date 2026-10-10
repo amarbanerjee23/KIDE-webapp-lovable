@@ -123,7 +123,17 @@ software-license cost.
 
 ## Production launch acceptance
 
-Before an official production launch, run the read-only GCP preflight and the live smoke test against
+To deploy a release candidate, use **Deploy production from approved main** in GitHub
+Actions on the exact post-merge `main` commit. Supply `expected_commit_sha`
+and `DEPLOY <full-SHA>` confirmation. The protected `production` workflow verifies
+successful main CI, submits the canonical Cloud Build with the explicit commit
+substitution, and validates the deployed Cloud Run revision against Artifact Registry.
+
+After the deployment workflow passes, complete the database restore drill, then
+run **Production deployment qualification** on that same `main` SHA. Publication
+requires its successful run ID and cannot be triggered by CI alone.
+
+For independent read-only checks, run GCP preflight and live smoke against
 the deployed origin:
 
 ```sh
