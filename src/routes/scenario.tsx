@@ -100,15 +100,15 @@ function ScenarioRunner() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2 sm:gap-3 sm:px-4">
         <EngineeringBackButton />
-        <div>
+        <div className="min-w-0">
           <h1 className="text-sm font-semibold">Scenario runner</h1>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="truncate text-[10px] text-muted-foreground">
             {scenario.diagram ?? "No workflow"} · {scenario.steps.length} steps
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
           <Button asChild variant="outline" size="sm">
             <Link to="/models">
               <FileCode2 />
@@ -138,7 +138,7 @@ function ScenarioRunner() {
       )}
 
       <div className="mx-auto grid w-full max-w-7xl gap-4 p-5 lg:grid-cols-[260px_minmax(0,1fr)_minmax(0,360px)]">
-        <section className="rounded-lg border border-border bg-card p-3">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-3">
           <p className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase">
             Workflow steps
           </p>
@@ -156,8 +156,8 @@ function ScenarioRunner() {
                       : "border-transparent"
                 }`}
               >
-                <p className="text-xs font-medium">{entry.activity}</p>
-                <p className="font-mono text-[10px] text-muted-foreground">
+                <p className="break-words text-xs font-medium">{entry.activity}</p>
+                <p className="break-words font-mono text-[10px] text-muted-foreground">
                   {entry.capability ?? entry.operation ?? "unassigned"}
                   {entry.duration ? ` · ${entry.duration}` : ""}
                 </p>
@@ -171,7 +171,7 @@ function ScenarioRunner() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-4">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-4">
           {!current && !finished && (
             <p className="text-sm text-muted-foreground">
               Press <span className="font-medium text-foreground">Start run</span> to execute the
@@ -197,7 +197,7 @@ function ScenarioRunner() {
               <p className="text-[10px] font-semibold text-muted-foreground uppercase">
                 Current step
               </p>
-              <h2 className="text-lg font-semibold">{step.activity}</h2>
+              <h2 className="break-words text-lg font-semibold">{step.activity}</h2>
               {step.description && (
                 <p className="text-xs text-muted-foreground">{step.description}</p>
               )}
@@ -207,7 +207,7 @@ function ScenarioRunner() {
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase">
                     Performed by
                   </p>
-                  <p className="font-mono text-xs text-capability">
+                  <p className="break-words font-mono text-xs text-capability">
                     {step.capability ?? step.operation ?? "unassigned"}
                   </p>
                 </div>
@@ -215,7 +215,9 @@ function ScenarioRunner() {
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase">
                     Commands issued
                   </p>
-                  <p className="font-mono text-xs">{step.commands.join(", ") || "none"}</p>
+                  <p className="break-words font-mono text-xs">
+                    {step.commands.join(", ") || "none"}
+                  </p>
                 </div>
               </div>
 
@@ -241,7 +243,7 @@ function ScenarioRunner() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-3">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-3">
           <p className="mb-2 text-[10px] font-semibold text-muted-foreground uppercase">
             Execution trace
           </p>

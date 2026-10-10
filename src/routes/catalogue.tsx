@@ -98,23 +98,24 @@ function Catalogue() {
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-2 sm:gap-3 sm:px-4">
         <EngineeringBackButton />
-        <div>
+        <div className="min-w-0">
           <h1 className="text-sm font-semibold">Capability catalogue</h1>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="truncate text-[10px] text-muted-foreground">
             {catalogue.eligibleCount} of {catalogue.capabilities.length} capabilities eligible ·{" "}
             {catalogue.devices.length} device interfaces
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <label className="relative block">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+          <label className="relative block min-w-0 flex-1 sm:flex-none">
             <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Find capabilities"
-              className="h-8 w-56 rounded-md border border-input bg-background pl-8 pr-2 text-xs"
+              aria-label="Find capabilities"
+              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs sm:w-56"
             />
           </label>
           <Button
@@ -128,7 +129,7 @@ function Catalogue() {
       </header>
 
       <div className="mx-auto grid w-full max-w-7xl gap-5 p-5 lg:grid-cols-[2fr_1fr]">
-        <section className="space-y-2">
+        <section className="min-w-0 space-y-2">
           {capabilities.map((entry) => (
             <article
               key={entry.name}
@@ -136,7 +137,7 @@ function Catalogue() {
                 entry.eligible ? "border-border bg-card" : "border-destructive/40 bg-destructive/5"
               }`}
             >
-              <header className="flex items-center gap-2">
+              <header className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-semibold">{entry.name}</h2>
                 <span className="text-[11px] text-muted-foreground">
                   on {entry.componentInterface ?? "no interface"}
@@ -213,7 +214,7 @@ function Catalogue() {
         </section>
 
         <aside className="space-y-4">
-          <section className="space-y-2">
+          <section className="min-w-0 space-y-2">
             <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Cpu className="size-3.5" />
               Device interfaces

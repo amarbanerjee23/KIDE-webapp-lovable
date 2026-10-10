@@ -37,7 +37,13 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const readAuthReadiness = useServerFn(getAuthReadiness);
   const readServerSession = useServerFn(getServerSession);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  // Public sign-up CTAs should open the sign-up form directly.
+  const [mode, setMode] = useState<"signin" | "signup">(() => {
+    if (typeof window === "undefined") return "signin";
+    return new URLSearchParams(window.location.search).get("mode") === "signup"
+      ? "signup"
+      : "signin";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");

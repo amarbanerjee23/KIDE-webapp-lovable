@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FolderKanban, Plus, Users } from "lucide-react";
+import { ArrowRight, FolderKanban, Plus, Users } from "lucide-react";
 import { WorkspaceHeader } from "@/components/kide/WorkspaceHeader";
 import { Button } from "@/components/ui/button";
 import { listAllProjects, createProject } from "@/lib/projects.functions";
@@ -100,6 +100,8 @@ function ProjectsHome() {
   };
 
   const totalProjects = (orgs ?? []).reduce((sum, org) => sum + org.projects.length, 0);
+  const starterOrg = (orgs ?? []).find((org) => org.projects.length > 0);
+  const starterProject = starterOrg?.projects[0];
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -166,6 +168,7 @@ function ProjectsHome() {
               <input
                 value={orgName}
                 onChange={(event) => setOrgName(event.target.value)}
+                aria-label="Organization name"
                 placeholder="Acme Robotics"
                 className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-ring"
               />
@@ -173,6 +176,57 @@ function ProjectsHome() {
                 Create
               </Button>
             </form>
+          </section>
+        )}
+
+        {orgs && orgs.length > 0 && totalProjects === 0 && (
+          <section
+            aria-labelledby="first-project-guide"
+            className="mt-6 rounded-lg border border-primary/40 bg-card p-5"
+          >
+            <p className="text-[11px] font-semibold uppercase text-primary">Start here</p>
+            <h2 id="first-project-guide" className="mt-1 text-lg font-semibold">
+              Build your first engineering project
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Give your project a name in the organization below. You can then open Model languages
+              and load a reference example or build your own models.
+            </p>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Next: link models, run synthesis, review evidence and export a qualified release.
+            </p>
+          </section>
+        )}
+
+        {orgs && totalProjects === 1 && starterOrg && starterProject && (
+          <section
+            aria-labelledby="first-model-guide"
+            className="mt-6 flex flex-wrap items-center gap-4 rounded-lg border border-primary/40 bg-card p-5"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase text-primary">Next step</p>
+              <h2 id="first-model-guide" className="mt-1 text-lg font-semibold">
+                Start your first design
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Open Model languages to create your five linked models, or load a reference example
+                to explore a complete workflow. Changes save to the selected project.
+              </p>
+            </div>
+            <Button asChild>
+              <Link
+                to="/models"
+                onClick={() =>
+                  setActiveProject({
+                    projectId: starterProject.id,
+                    organizationId: starterOrg.id,
+                  })
+                }
+              >
+                Start modelling
+                <ArrowRight />
+              </Link>
+            </Button>
           </section>
         )}
 
@@ -205,6 +259,7 @@ function ProjectsHome() {
                     onChange={(event) =>
                       setProjectName((current) => ({ ...current, [org.id]: event.target.value }))
                     }
+                    aria-label={`New project name for ${org.name}`}
                     placeholder="New project name"
                     className="h-8 w-48 rounded-md border border-input bg-background px-3 text-xs outline-none focus:ring-1 focus:ring-ring"
                   />

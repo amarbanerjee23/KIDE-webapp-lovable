@@ -43,7 +43,7 @@ export function WorkspaceHeader({ current }: { current?: string }) {
 
       <nav
         aria-label="Primary workspace navigation"
-        className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]"
+        className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] sm:flex"
       >
         {PRIMARY_ITEMS.map((item) => (
           <Button
@@ -56,32 +56,42 @@ export function WorkspaceHeader({ current }: { current?: string }) {
             <Link to={item.to}>{item.label}</Link>
           </Button>
         ))}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant={secondaryActive ? "secondary" : "ghost"}
-              size="sm"
-              className="shrink-0 text-xs"
-              aria-label="More workspace destinations"
-            >
-              <MoreHorizontal className="size-4" />
-              More
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuLabel>Governance &amp; workspace</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {SECONDARY_ITEMS.map((item) => (
-              <DropdownMenuItem key={item.to} asChild>
-                <Link to={item.to} className={current === item.label ? "bg-accent" : ""}>
-                  {item.label}
-                </Link>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </nav>
+
+      {/* The menu is outside the desktop scroll area, so it remains reachable on phones. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant={secondaryActive ? "secondary" : "ghost"}
+            size="sm"
+            className="ml-auto shrink-0 text-xs sm:ml-0"
+            aria-label="More workspace destinations"
+          >
+            <MoreHorizontal className="size-4" />
+            <span className="hidden sm:inline">More</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="sm:hidden">Design &amp; engineering</DropdownMenuLabel>
+          {PRIMARY_ITEMS.map((item) => (
+            <DropdownMenuItem key={item.to} asChild className="sm:hidden">
+              <Link to={item.to} className={current === item.label ? "bg-accent" : ""}>
+                {item.label}
+              </Link>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator className="sm:hidden" />
+          <DropdownMenuLabel>Governance &amp; workspace</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {SECONDARY_ITEMS.map((item) => (
+            <DropdownMenuItem key={item.to} asChild>
+              <Link to={item.to} className={current === item.label ? "bg-accent" : ""}>
+                {item.label}
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
         <Button
