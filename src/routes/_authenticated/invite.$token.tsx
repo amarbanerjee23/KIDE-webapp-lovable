@@ -120,7 +120,8 @@ function InvitePage() {
           <>
             <h1 className="text-lg font-semibold">Join {state.organizationName}</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Invited as <strong className="text-foreground">{state.role}</strong> for {state.email}.
+              Invited as <strong className="text-foreground">{state.role}</strong> for{" "}
+              {state.email}.
             </p>
             {state.status !== "pending" && (
               <p className="mt-3 text-sm text-warning">
@@ -128,9 +129,7 @@ function InvitePage() {
               </p>
             )}
             {state.expired && state.status === "pending" && (
-              <p className="mt-3 text-sm text-warning">
-                This invitation has expired.
-              </p>
+              <p className="mt-3 text-sm text-warning">This invitation has expired.</p>
             )}
             <Button
               className="mt-5 w-full"
