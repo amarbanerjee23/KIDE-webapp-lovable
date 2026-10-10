@@ -35,9 +35,9 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   await expect(page.getByText("Warehouse baseline")).toBeVisible();
 
   await page.goto("/models");
-  await page.getByRole("combobox", { name: "Reference example workspace" }).selectOption(
-    "precision-irrigation",
-  );
+  await page
+    .getByRole("combobox", { name: "Reference example workspace" })
+    .selectOption("precision-irrigation");
   await page.getByRole("button", { name: "Load selected" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "Replace workspace" }).click();
@@ -47,7 +47,7 @@ test("checkpoint restore removes extra files and a custom model set imports comp
 
   await page.goto("/checkpoints");
   await page.getByRole("button", { name: "Restore" }).click();
-  await expect(page.getByRole("alertdialog")).toContainText("Restore \"Warehouse baseline\" exactly");
+  await expect(page.getByRole("alertdialog")).toContainText('Restore "Warehouse baseline" exactly');
   await page.getByRole("button", { name: "Keep current workspace" }).click();
   await page.goto("/models");
   await expect(page.getByText("Agri.dml")).toBeVisible();
