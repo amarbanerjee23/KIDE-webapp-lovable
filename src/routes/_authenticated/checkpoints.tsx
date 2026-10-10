@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getActiveProject } from "@/lib/active-project";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Download, History, Save, Upload } from "lucide-react";
@@ -65,6 +66,11 @@ function CheckpointsPage() {
     access.canEdit &&
     saveState.projectId === selection.projectId &&
     saveState.status === "saved";
+
+  useEffect(() => {
+    setPendingRestore(null);
+    setPendingImport(null);
+  }, [selection.projectId]);
 
   const counts = useMemo(() => {
     const workspace = linkFrom(sources);
@@ -133,7 +139,12 @@ function CheckpointsPage() {
   };
 
   const importSet = async (file: File) => {
+    const targetProjectId = selection.projectId;
     const outcome = importModelSet(await file.text());
+    if (getActiveProject()?.projectId !== targetProjectId) {
+      toast.error("The active project changed while reading the model set. Retry the import.");
+      return;
+    }
     if (!outcome.ok) {
       toast.error(outcome.problems[0] ?? "This model set could not be imported.");
       return;
@@ -266,6 +277,7 @@ function CheckpointsPage() {
                   accept="application/json"
                   className="hidden"
                   aria-label="Choose model set JSON file"
+                  disabled={!canEdit}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = "";
