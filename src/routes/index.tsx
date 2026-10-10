@@ -64,9 +64,9 @@ function LandingPage() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link to="/auth" onClick={clearPostAuthRedirect}>
+              <a href="/auth?mode=signup" onClick={clearPostAuthRedirect}>
                 Create account
-              </Link>
+              </a>
             </Button>
           </div>
           <div className="mt-10 grid gap-3 sm:grid-cols-3">
