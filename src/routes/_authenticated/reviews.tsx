@@ -163,7 +163,9 @@ function ReviewsPage() {
             />
             <Button
               size="sm"
-              disabled={busy || selection.projectsLoading || !selection.projectId || !reviewTitle.trim()}
+              disabled={
+                busy || selection.projectsLoading || !selection.projectId || !reviewTitle.trim()
+              }
               onClick={() =>
                 void run("Review requested — reviewers have been notified.", async () => {
                   await request({
@@ -196,7 +198,11 @@ function ReviewsPage() {
             <div role="alert" className="mt-2 flex items-center gap-2 text-xs text-destructive">
               <span>{selection.error}</span>
               {selection.orgId && (
-                <Button size="sm" variant="outline" onClick={() => void selection.refreshProjects(selection.orgId!)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void selection.refreshProjects(selection.orgId!)}
+                >
                   Retry
                 </Button>
               )}
@@ -263,7 +269,12 @@ function ReviewsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={busy || selection.projectsLoading || !selection.projectId || !(drafts[review.id] ?? "").trim()}
+                    disabled={
+                      busy ||
+                      selection.projectsLoading ||
+                      !selection.projectId ||
+                      !(drafts[review.id] ?? "").trim()
+                    }
                     onClick={() =>
                       void run("Comment added.", async () => {
                         await comment({
