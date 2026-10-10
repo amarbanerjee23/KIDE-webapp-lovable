@@ -97,19 +97,21 @@ const restoreFromFile = JSON.parse(
 if (!isDeepStrictEqual(restoreFromFile, restore)) {
   fail("embedded restore drill metadata does not match the verified source evidence");
 }
-if (restore["schemaVersion"] !== 1 ||
-    restore["projectId"] !== record(payload["deployment"], "deployment")["projectId"] ||
-    restore["operationId"] !== payload["restoreDrillReference"] ||
-    restore["operationType"] !== "CLONE" ||
-    restore["operationStatus"] !== "DONE" ||
-    restore["sourceInstance"] === restore["recoveryInstance"] ||
-    restore["recoveryState"] !== "RUNNABLE" ||
-    restore["backupConfigured"] !== true ||
-    restore["pitrConfigured"] !== true ||
-    restore["recoveryDatabaseListed"] !== true ||
-    restore["contentQueriesVerified"] !== false ||
-    restore["sourceRequestVerified"] !== false ||
-    restore["secretsCaptured"] !== false) {
+if (
+  restore["schemaVersion"] !== 1 ||
+  restore["projectId"] !== record(payload["deployment"], "deployment")["projectId"] ||
+  restore["operationId"] !== payload["restoreDrillReference"] ||
+  restore["operationType"] !== "CLONE" ||
+  restore["operationStatus"] !== "DONE" ||
+  restore["sourceInstance"] === restore["recoveryInstance"] ||
+  restore["recoveryState"] !== "RUNNABLE" ||
+  restore["backupConfigured"] !== true ||
+  restore["pitrConfigured"] !== true ||
+  restore["recoveryDatabaseListed"] !== true ||
+  restore["contentQueriesVerified"] !== false ||
+  restore["sourceRequestVerified"] !== false ||
+  restore["secretsCaptured"] !== false
+) {
   fail("Cloud SQL restore drill metadata verification is incomplete or inconsistent");
 }
 
