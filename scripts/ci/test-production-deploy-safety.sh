@@ -42,6 +42,12 @@ grep -q 'qualify-live-deployment.sh' "$workflow" ||
 grep -Fq 'verified-production-deploy-' "$workflow" ||
   fail "deployment evidence artifact is required"
 
+qualification_workflow=".github/workflows/production-qualification.yml"
+grep -q 'GCP_CLOUD_SQL_INSTANCE' "$qualification_workflow" ||
+  fail "production qualification must target the same Cloud SQL instance"
+grep -q 'GCP_ARTIFACT_REPOSITORY' "$qualification_workflow" ||
+  fail "production qualification must target the same Artifact Registry repository"
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 sha="$(git rev-parse HEAD)"
@@ -84,6 +90,9 @@ if TEST_EXPECTED_SHA=0000000000000000000000000000000000000000 test_authorize "$t
 fi
 if TEST_MAIN_SHA=0000000000000000000000000000000000000000 test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
   fail "stale main commit was accepted"
+fi
+if TEST_HEAD_SHA=0000000000000000000000000000000000000000 test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
+  fail "stale dispatched commit was accepted"
 fi
 if TEST_CONFIRMATION='DEPLOY wrong' test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
   fail "invalid operator confirmation was accepted"
