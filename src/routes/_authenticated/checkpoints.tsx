@@ -241,6 +241,7 @@ function CheckpointsPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             <input
               className="h-9 min-w-64 flex-1 rounded-md border border-border bg-background px-2 text-xs"
+              aria-label="Checkpoint name"
               placeholder="What is this checkpoint? e.g. Before recharge rework"
               value={label}
               onChange={(event) => setLabel(event.target.value)}
