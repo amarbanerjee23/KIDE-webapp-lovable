@@ -238,9 +238,7 @@ function CheckpointsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={
-                      busy || !canCreateProject || !selection.orgId || !projectName.trim()
-                    }
+                    disabled={busy || !canCreateProject || !selection.orgId || !projectName.trim()}
                     onClick={() =>
                       void run("Project created.", async () => {
                         await addProject({
