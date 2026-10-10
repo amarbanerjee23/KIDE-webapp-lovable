@@ -120,8 +120,9 @@ function InvitePage() {
           <>
             <h1 className="text-lg font-semibold">Join {state.organizationName}</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Invited as <strong className="text-foreground">{state.role}</strong> for{" "}
-              {state.email}.
+              <span>Invited as </span>
+              <strong className="text-foreground">{state.role}</strong>
+              <span> for {state.email}.</span>
             </p>
             {state.status !== "pending" && (
               <p className="mt-3 text-sm text-warning">
