@@ -67,7 +67,10 @@ fi
 
 echo "Running full production engineering customer journey..."
 if KIDE_E2E_URL="${KIDE_URL}" \
-   bunx playwright test tests/e2e/production-release-journey.spec.ts \
+   bunx playwright test \
+     tests/e2e/production-release-journey.spec.ts \
+     tests/e2e/project-creation-examples.spec.ts \
+     tests/e2e/organization-selection-integrity.spec.ts \
      --project=configured-auth --workers=1 --retries=0 >"${browser_log}" 2>&1; then
   browser_status="passed"
 else

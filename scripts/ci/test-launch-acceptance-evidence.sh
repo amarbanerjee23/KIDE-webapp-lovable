@@ -110,6 +110,14 @@ grep -q 'qualify-live-deployment.sh' scripts/launch/capture-acceptance.sh ||
   fail "collector must qualify the exact deployed Cloud Run revision"
 grep -q 'production-release-journey.spec.ts' scripts/launch/capture-acceptance.sh ||
   fail "collector must run the production browser engineering journey"
+grep -q 'project-creation-examples.spec.ts' scripts/launch/capture-acceptance.sh ||
+  fail "production qualification must validate all five example source maps after reload"
+grep -q 'organization-selection-integrity.spec.ts' scripts/launch/capture-acceptance.sh ||
+  fail "production qualification must exercise independent organization isolation"
+grep -q 'exportVerifiedWorkingCopy' tests/e2e/project-creation-examples.spec.ts ||
+  fail "example acceptance must verify downloaded sources and SHA-256 checksums"
+grep -q 'Paid checkout is unavailable' tests/e2e/production-release-journey.spec.ts ||
+  fail "production journey must prove unqualified checkout is unavailable"
 grep -q 'productionBrowserJourney' scripts/launch/capture-acceptance.sh ||
   fail "collector must bind the browser journey to acceptance evidence"
 grep -q 'deploymentQualification' scripts/launch/capture-acceptance.sh ||

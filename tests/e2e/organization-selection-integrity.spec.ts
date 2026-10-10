@@ -36,6 +36,13 @@ test("Reviews and Checkpoints cannot reuse another organization’s projects or 
     await signUpThroughUi(other, `beta-${id}@example.com`, "Kide-Tenant-Beta!Aa1");
     await expect(other).toHaveURL("/projects");
     await makeOrganizationAndProject(other, orgB, projectB);
+
+    // Separate authenticated organizations must never enumerate one another.
+    await other.goto("/projects");
+    await expect(other.getByText(projectA, { exact: true })).toHaveCount(0);
+    await page.goto("/projects");
+    await expect(page.getByText(projectB, { exact: true })).toHaveCount(0);
+
     await other.goto("/team");
     await expect(other.getByRole("heading", { name: orgB })).toBeVisible();
     await other.getByRole("textbox", { name: "Invitee email" }).fill(userA);

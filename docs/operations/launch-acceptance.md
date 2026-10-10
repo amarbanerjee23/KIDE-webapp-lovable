@@ -33,7 +33,7 @@ The command:
 4. verifies the deployed Cloud Run service carries that exact commit and commit-tagged image;
 5. verifies 100% traffic is on the latest ready revision and compares its immutable digest with the independently resolved Artifact Registry commit-tagged image;
 6. re-verifies Better Auth runtime configuration and the Cloud SQL attachment;
-7. runs the full live Chromium engineering journey (signup, organization/project, example models, synthesis, approval, generated-code and release-bundle integrity, sign-out);
+7. runs the live Chromium signup-to-release journey plus complete five-example source/checksum persistence and independently authenticated cross-organization isolation suites;
 8. hashes the preflight, smoke, browser and deployment outputs;
 9. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity and browser-journey evidence;
 10. verifies that the evidence is internally consistent.
@@ -98,6 +98,6 @@ installs both automatically.
 
 Repeated smoke and browser runs use cryptographically randomized unique test accounts
 (`launch-smoke-` and `kide-qualification-` prefixes) and do not reuse passwords.
-They create real production records. Treat them as operational qualification data and
+They create real production records, including multiple starter projects and independently authenticated tenant test accounts. Treat them as operational qualification data and
 retain them until the operations owner approves cleanup under the database audit and
 evidence-retention policy. Do not commit logs, browser traces or credentials.
