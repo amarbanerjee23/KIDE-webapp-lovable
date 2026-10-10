@@ -30,6 +30,7 @@ export default defineConfig({
         "**/checkpoint-integrity.spec.ts",
         "**/team-and-billing.spec.ts",
         "**/organization-selection-integrity.spec.ts",
+        "**/invitation-onboarding.spec.ts",
         "**/responsive-cx.spec.ts",
       ],
       use: { ...devices["Desktop Chrome"], baseURL: configuredBase },
