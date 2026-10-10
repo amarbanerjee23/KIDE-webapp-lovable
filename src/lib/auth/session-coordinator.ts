@@ -3,7 +3,7 @@ import type { AnyRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AUTH_CHANGED_EVENT } from "@/lib/auth-client";
 import { clearActiveProject } from "@/lib/active-project";
-import { waitForActiveBrowserSession } from "@/lib/auth/active-session";
+import { getServerSession } from "@/lib/auth.functions";
 import { rememberPostAuthRedirect } from "@/lib/auth/post-auth-redirect";
 import {
   isPublicSessionPath,
@@ -71,14 +71,22 @@ export function useAuthSessionCoordinator(
         );
       }
 
-      // Cookie propagation, rate-limited responses and transient network
-      // errors must not cause spurious logout after one failed client read.
-      // Three bounded checks still fail closed if no valid session exists.
-      const activeSession = await waitForActiveBrowserSession({
-        attempts: 3,
-        delayMs: 150,
-        attemptTimeoutMs: 2_000,
-      });
+      // Use the same server-side session source as the protected-route guard.
+      // Better Auth's public browser session endpoint can rate-limit repeated
+      // navigation requests behind a proxy's shared client-IP bucket, which
+      // otherwise falsely logs out an authenticated workspace.
+      let activeSession: Awaited<ReturnType<typeof getServerSession>> = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          activeSession = await getServerSession();
+        } catch {
+          activeSession = null;
+        }
+        if (activeSession?.session && activeSession.user) break;
+        if (attempt < 2) {
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+        }
+      }
 
       // Ignore results of obsolete focus/visibility/route checks. Without
       // this guard a slower null response could override a newer success.
