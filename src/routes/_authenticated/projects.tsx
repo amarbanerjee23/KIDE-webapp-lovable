@@ -107,19 +107,14 @@ function ProjectsHome() {
     }
   };
 
-  const canCreateIn = (org: Org) =>
-    ["owner", "administrator", "engineer"].includes(org.role);
+  const canCreateIn = (org: Org) => ["owner", "administrator", "engineer"].includes(org.role);
 
   const writableOrgs = (orgs ?? []).filter(canCreateIn);
   const exampleOrgId = writableOrgs.some((org) => org.id === selectedExampleOrgId)
     ? selectedExampleOrgId
     : (writableOrgs[0]?.id ?? "");
 
-  const createNewProject = async (
-    organizationId: string,
-    name: string,
-    templateId?: string,
-  ) => {
+  const createNewProject = async (organizationId: string, name: string, templateId?: string) => {
     if (busy) return;
     setProjectErrors((current) => ({ ...current, [organizationId]: "" }));
     const cleanName = name.trim();
@@ -283,17 +278,23 @@ function ProjectsHome() {
         )}
 
         {orgs && orgs.length > 0 && (
-          <section aria-labelledby="example-gallery-title" className="mt-6 rounded-lg border border-border bg-card p-5">
+          <section
+            aria-labelledby="example-gallery-title"
+            className="mt-6 rounded-lg border border-border bg-card p-5"
+          >
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase text-primary">Ready-made examples</p>
+                <p className="text-[11px] font-semibold uppercase text-primary">
+                  Ready-made examples
+                </p>
                 <h2 id="example-gallery-title" className="mt-1 text-lg font-semibold">
                   Explore five real-world control systems
                 </h2>
                 <p className="mt-2 max-w-3xl text-xs text-muted-foreground">
                   Start with a building HVAC controller and progress to autonomous fleet operations.
-                  Each example creates a private, editable copy containing five linked model-language files.
-                  The scenarios are educational references, not validated physical-device configurations.
+                  Each example creates a private, editable copy containing five linked
+                  model-language files. The scenarios are educational references, not validated
+                  physical-device configurations.
                 </p>
               </div>
               {writableOrgs.length > 0 && (
@@ -307,7 +308,9 @@ function ProjectsHome() {
                     onChange={(event) => setSelectedExampleOrgId(event.target.value)}
                   >
                     {writableOrgs.map((org) => (
-                      <option key={org.id} value={org.id}>{org.name}</option>
+                      <option key={org.id} value={org.id}>
+                        {org.name}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -315,14 +318,18 @@ function ProjectsHome() {
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {PROJECT_TEMPLATE_CATALOG.map((template) => (
-                <article key={template.id} className="flex min-w-0 flex-col rounded-lg border border-border bg-background p-4">
+                <article
+                  key={template.id}
+                  className="flex min-w-0 flex-col rounded-lg border border-border bg-background p-4"
+                >
                   <p className="text-[10px] font-semibold uppercase text-primary">
                     Level {template.level} of 5 · {template.difficulty} · {template.domain}
                   </p>
                   <h3 className="mt-2 text-sm font-semibold">{template.title}</h3>
                   <p className="mt-2 flex-1 text-xs text-muted-foreground">{template.summary}</p>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    <strong className="text-foreground">You will learn:</strong> {template.learningGoal}
+                    <strong className="text-foreground">You will learn:</strong>{" "}
+                    {template.learningGoal}
                   </p>
                   <Button
                     className="mt-4 self-start"
@@ -390,22 +397,30 @@ function ProjectsHome() {
                 )}
               </header>
               {projectErrors[org.id] && (
-                <p role="alert" className="border-b border-destructive/30 px-4 py-2 text-xs text-destructive">
+                <p
+                  role="alert"
+                  className="border-b border-destructive/30 px-4 py-2 text-xs text-destructive"
+                >
                   {projectErrors[org.id]}
                 </p>
               )}
               {recentCreated?.organizationId === org.id && (
-                <div role="status" className="flex flex-wrap items-center gap-2 border-b border-primary/30 bg-primary/5 px-4 py-3 text-xs">
+                <div
+                  role="status"
+                  className="flex flex-wrap items-center gap-2 border-b border-primary/30 bg-primary/5 px-4 py-3 text-xs"
+                >
                   <span className="min-w-0 flex-1 font-medium">
                     Project created: {recentCreated.name}
                   </span>
                   <Button asChild size="sm">
                     <Link
                       to="/models"
-                      onClick={() => setActiveProject({
-                        projectId: recentCreated.projectId,
-                        organizationId: org.id,
-                      })}
+                      onClick={() =>
+                        setActiveProject({
+                          projectId: recentCreated.projectId,
+                          organizationId: org.id,
+                        })
+                      }
                     >
                       Open new project
                       <ArrowRight className="size-3.5" />
