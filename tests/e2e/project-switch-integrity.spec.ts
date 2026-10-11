@@ -4,9 +4,8 @@ import { signUpThroughUi } from "./auth-helpers";
 
 test.describe.configure({ timeout: 180_000 });
 
-test("a different tab cannot switch away from unsaved engineering models", async ({
+test("a cross-tab storage event cannot switch away from unsaved engineering models", async ({
   page,
-  context,
 }) => {
   const id = randomBytes(8).toString("hex");
   const org = `Switch Guard ${id}`;
@@ -44,10 +43,8 @@ test("a different tab cannot switch away from unsaved engineering models", async
   await expect(page.getByRole("button", { name: /^Ecre\.dml/ })).toBeVisible();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
-  const otherTab = await context.newPage();
   try {
-    await otherTab.goto("/projects");
-    await context.setOffline(true);
+    await page.context().setOffline(true);
     await page
       .getByRole("combobox", { name: "Reference example workspace" })
       .selectOption("precision-irrigation");
@@ -60,22 +57,29 @@ test("a different tab cannot switch away from unsaved engineering models", async
       }),
     ).toBeVisible();
 
-    // A storage event from a distinct authenticated tab must not mutate the
-    // open editor's current project, even when localStorage now points away.
-    await otherTab.evaluate((selection) => {
+    // Simulate the native cross-tab StorageEvent in this authenticated tab.
+    // This avoids a second tab's auth/network navigation failing while offline,
+    // yet exercises the same synchronous event handler and changed storage.
+    await page.evaluate((selection) => {
       window.localStorage.setItem("kide:active-project", selection);
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "kide:active-project",
+          newValue: selection,
+          storageArea: window.localStorage,
+        }),
+      );
     }, secondSelection!);
     await expect(page.getByRole("button", { name: /^Agri\.dml/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Ecre\.dml/ })).toHaveCount(0);
   } finally {
-    await context.setOffline(false);
+    await page.context().setOffline(false);
   }
 
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
-  await otherTab.evaluate((selection) => {
+  await page.evaluate((selection) => {
     window.localStorage.setItem("kide:active-project", selection);
   }, firstSelection!);
-  await otherTab.close();
   await page.reload();
   await expect(page.getByRole("button", { name: /^Agri\.dml/ })).toBeVisible();
 
