@@ -54,9 +54,11 @@ test("a different tab cannot switch away from unsaved engineering models", async
     await page.getByRole("button", { name: "Load selected" }).click();
     await page.getByRole("button", { name: "Replace with example" }).click();
     await expect(page.getByRole("button", { name: /^Agri\.dml/ })).toBeVisible();
-    await expect(page.getByRole("alert").filter({
-      hasText: "These models are still in this browser and are not safely saved.",
-    })).toBeVisible();
+    await expect(
+      page.getByRole("alert").filter({
+        hasText: "These models are still in this browser and are not safely saved.",
+      }),
+    ).toBeVisible();
 
     // A storage event from a distinct authenticated tab must not mutate the
     // open editor's current project, even when localStorage now points away.
