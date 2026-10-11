@@ -80,7 +80,52 @@ project_id="$(psql -c "
   insert into public.projects(organization_id, name, created_by)
   values ('$org_id'::uuid, 'CI Controller', '$user_id'::uuid)
   returning id;
-" | head -1)"
+" | head -1)
+
+# Prove the migration refuses existing historical corruption instead of
+# resolving/removing potentially valuable customer source records implicitly.
+test -f db/migrations/20261011_unique_project_working_copy.sql
+test -f db/queries/working_copy_duplicate_audit.sql
+psql -c "
+  insert into public.model_checkpoints(project_id, label, sources, created_by)
+  values
+    ('$project_id'::uuid, '__kide_working_copy__', '{\"first.dml\":\"alpha\"}'::jsonb, '$user_id'::uuid),
+    ('$project_id'::uuid, '__kide_working_copy__', '{\"second.dml\":\"beta\"}'::jsonb, '$user_id'::uuid);
+" >/dev/null
+duplicate_count="$(psql -c "select count(*) from public.model_checkpoints where project_id = '$project_id'::uuid and label = '__kide_working_copy__';")"
+[[ "$duplicate_count" == "2" ]] || { echo "CI duplicate fixture missing" >&2; exit 1; }
+if cat db/migrations/20261011_unique_project_working_copy.sql | docker exec -i "$name" \
+  psql -v ON_ERROR_STOP=1 -U kide -d kide -f - >/dev/null 2>&1; then
+  echo "Migration must reject historical duplicate working copies" >&2
+  exit 1
+fi
+# Delete ONLY the deliberately inserted ephemeral CI fixture; never customer data.
+psql -c "delete from public.model_checkpoints where project_id = '$project_id'::uuid and label = '__kide_working_copy__';" >/dev/null
+for pass in 1 2; do
+  cat db/migrations/20261011_unique_project_working_copy.sql | docker exec -i "$name" \
+    psql -v ON_ERROR_STOP=1 -U kide -d kide -f - >/dev/null
+done
+[[ "$(psql -c "select to_regclass('public.model_checkpoints_single_working_copy_idx') is not null;")" == "t" ]] || {
+  echo "Working copy unique index not installed" >&2
+  exit 1
+}
+psql -c "
+  insert into public.model_checkpoints(project_id, label, sources, created_by)
+  values ('$project_id'::uuid, '__kide_working_copy__', '{}'::jsonb, '$user_id'::uuid);
+" >/dev/null
+"
+
+expect_sql_failure "
+  insert into public.model_checkpoints(project_id, label, sources, created_by)
+  values ('$project_id'::uuid, '__kide_working_copy__', '{}'::jsonb, '$user_id'::uuid);
+"
+# Named checkpoints remain non-unique and retain their existing semantics.
+psql -c "
+  insert into public.model_checkpoints(project_id, label, sources, created_by)
+  values
+    ('$project_id'::uuid, 'review checkpoint', '{}'::jsonb, '$user_id'::uuid),
+    ('$project_id'::uuid, 'review checkpoint', '{}'::jsonb, '$user_id'::uuid);
+" >/dev/null
 
 expect_sql_failure "
   insert into public.organization_roles(organization_id, user_id, role)
