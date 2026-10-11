@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getActiveProject, setActiveProject } from "@/lib/active-project";
+import { clearActiveProject, getActiveProject, setActiveProject } from "@/lib/active-project";
 import { getOrganization, getWorkspace } from "@/lib/teams.functions";
 
 export interface ProjectOption {
@@ -80,7 +80,7 @@ export function useProjectSelection() {
         const preferred = preferredExplicitProjectId(list, active, id);
         setProjectIdState(preferred);
         if (active && !preferred && active.organizationId === id) {
-          setActiveProject(null);
+          clearActiveProject();
         }
       } catch (cause) {
         if (selectedOrgRef.current !== id || requestGeneration.current !== generation) return;
@@ -124,7 +124,7 @@ export function useProjectSelection() {
             : (organizations[0]?.id ?? null);
         selectedOrgRef.current = preferredOrg;
         setOrgIdState(preferredOrg);
-        if (!preferredOrg && active) setActiveProject(null);
+        if (!preferredOrg && active) clearActiveProject();
       } catch (cause) {
         if (mounted) {
           setError(cause instanceof Error ? cause.message : "Could not load organizations.");
@@ -152,6 +152,8 @@ export function useProjectSelection() {
 
   const setOrgId = (nextOrgId: string | null) => {
     if (nextOrgId === selectedOrgRef.current) return;
+    // Never clear a dirty active project just because another tenant was selected.
+    if (getActiveProject() && !setActiveProject(null)) return;
     // Invalidate in-flight requests *before* React processes the state change.
     requestGeneration.current += 1;
     selectedOrgRef.current = nextOrgId;
@@ -162,7 +164,6 @@ export function useProjectSelection() {
     setProjectIdState(null);
     setProjectsLoading(Boolean(nextOrgId));
     setError("");
-    if (getActiveProject()) setActiveProject(null);
   };
 
   const setProjectId = (nextProjectId: string | null) => {
@@ -172,15 +173,15 @@ export function useProjectSelection() {
     ) {
       return;
     }
-    setProjectIdState(nextProjectId);
     if (nextProjectId && selectedOrgRef.current) {
-      setActiveProject({
+      if (!setActiveProject({
         projectId: nextProjectId,
         organizationId: selectedOrgRef.current,
-      });
-    } else if (!nextProjectId && getActiveProject()) {
-      setActiveProject(null);
+      })) return;
+    } else if (!nextProjectId && getActiveProject() && !setActiveProject(null)) {
+      return;
     }
+    setProjectIdState(nextProjectId);
   };
 
   return {
