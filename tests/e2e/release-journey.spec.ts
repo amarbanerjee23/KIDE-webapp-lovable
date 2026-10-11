@@ -82,6 +82,33 @@ test("customer can go from an empty project to a verified generated release bund
   await expect(page.getByText("validated", { exact: true })).toBeVisible();
   await expect(page.getByText("A reviewer approved this exact design")).toBeVisible();
 
+  // Invalid user-entered versions must never create a releasable manifest or
+  // a download filename, even though all engineering approval gates passed.
+  const releaseVersion = page.getByRole("textbox", { name: "Version" });
+  for (const value of ["../1.0.0", "1.2.3-rc.01", ""]) {
+    await releaseVersion.fill(value);
+    await expect(releaseVersion).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByText(/Enter a valid semantic version/)).toBeVisible();
+    await expect(exportBundle).toBeDisabled();
+    await expect(downloadCode).toBeDisabled();
+  }
+  await releaseVersion.fill("1.2.3-rc.1");
+  await expect(releaseVersion).toHaveAttribute("aria-invalid", "false");
+  await expect(exportBundle).toBeEnabled();
+  const previewWait = page.waitForEvent("download");
+  await exportBundle.click();
+  const preview = await previewWait;
+  expect(preview.suggestedFilename()).toBe("kide-release-1.2.3-rc.1.json");
+  const previewContents = JSON.parse(await readFile((await preview.path())!, "utf8")) as {
+    manifest: { version: string; releasable: boolean };
+  };
+  expect(previewContents.manifest.version).toBe("1.2.3-rc.1");
+  expect(previewContents.manifest.releasable).toBe(true);
+
+  await releaseVersion.fill("1.0.0");
+  await expect(exportBundle).toBeEnabled();
+  await expect(downloadCode).toBeEnabled();
+
   const codeDownloadPromise = page.waitForEvent("download");
   await downloadCode.click();
   const codeDownload = await codeDownloadPromise;

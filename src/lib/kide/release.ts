@@ -58,6 +58,27 @@ function canonical(value: unknown): string {
   });
 }
 
+/**
+ * SemVer 2.0 release identifiers are also used in exported filenames.
+ * Reject unsafe separators, Unicode control characters, malformed versions
+ * and numeric prerelease identifiers with leading zeroes at the domain layer.
+ */
+const RELEASE_VERSION_PATTERN =
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+
+export function isValidReleaseVersion(value: string): boolean {
+  if (value.length === 0 || value.length > 64) return false;
+  const match = RELEASE_VERSION_PATTERN.exec(value);
+  if (!match) return false;
+
+  const prerelease = match[4];
+  if (!prerelease) return true;
+  return prerelease.split(".").every((identifier) => {
+    if (!/^[0-9]+$/.test(identifier)) return true;
+    return identifier === "0" || !identifier.startsWith("0");
+  });
+}
+
 export interface ReleaseEvidenceContext {
   graphSynthesisInputs?: GraphSynthesisInputEvidence | null;
   approvalFingerprint?: string | null;
@@ -149,6 +170,9 @@ export function buildRelease(
   const blockedBy = assurance.gates
     .filter((gate) => gate.status === "fail")
     .map((gate) => gate.label);
+  if (!isValidReleaseVersion(version)) {
+    blockedBy.push("Valid semantic release version");
+  }
   if (evidenceContext?.approvalCurrent === false) {
     blockedBy.push("Current reviewer approval");
   }
