@@ -78,7 +78,9 @@ export function validateCheckpointLabel(value: unknown): string {
   if (label.toLowerCase() === WORKING_COPY_LABEL.toLowerCase()) {
     throw new Error("Checkpoint name is reserved for the internal working copy.");
   }
-  if (Array.from(label).some((letter) => letter.charCodeAt(0) < 32 || letter.charCodeAt(0) === 127)) {
+  if (
+    Array.from(label).some((letter) => letter.charCodeAt(0) < 32 || letter.charCodeAt(0) === 127)
+  ) {
     throw new Error("Checkpoint name must not contain control characters.");
   }
   return label;
