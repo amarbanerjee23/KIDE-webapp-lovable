@@ -19,6 +19,7 @@ import {
 } from "@/lib/kide/workspace-access";
 import { clearWorkspaceSaveState, setWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
 import { requestWorkspaceReload, useWorkspaceReloadVersion } from "@/lib/kide/workspace-reload";
+import { useWorkspaceSaveRetryVersion } from "@/lib/kide/workspace-save-retry";
 import {
   clearWorkspace,
   replaceWorkspaceSources,
@@ -45,6 +46,7 @@ export function useWorkspacePersistence(enabled: boolean) {
   const saveErrorNotifiedRef = useRef(false);
   const [connectivityVersion, setConnectivityVersion] = useState(0);
   const workspaceReloadVersion = useWorkspaceReloadVersion();
+  const workspaceSaveRetryVersion = useWorkspaceSaveRetryVersion();
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
@@ -77,6 +79,24 @@ export function useWorkspacePersistence(enabled: boolean) {
       window.removeEventListener("online", handleOnline);
     };
   }, [activeProject, enabled]);
+
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (
+        loadedProjectRef.current &&
+        canEditRef.current &&
+        JSON.stringify(latestSourcesRef.current) !== lastSavedSourcesRef.current
+      ) {
+        // Browser-native unsaved changes prompt on refresh/close. A deliberate
+        // project switch is separate and still needs a dedicated save guard.
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [enabled]);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -140,7 +160,7 @@ export function useWorkspacePersistence(enabled: boolean) {
         const offline = typeof window !== "undefined" && !window.navigator.onLine;
         setWorkspaceSaveState({
           projectId: activeProject.projectId,
-          status: offline ? "offline" : "error",
+          status: offline ? "offline" : "load-error",
           savedAt: null,
           message: offline
             ? "Browser is offline. KIDE will retry workspace loading after connectivity returns."
@@ -279,5 +299,5 @@ export function useWorkspacePersistence(enabled: boolean) {
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeProject, connectivityVersion, enabled, save, sources]);
+  }, [activeProject, connectivityVersion, enabled, save, sources, workspaceSaveRetryVersion]);
 }
