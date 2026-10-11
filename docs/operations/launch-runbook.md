@@ -57,12 +57,13 @@ After the deployment workflow succeeds, perform the restore drill and launch
 sign-offs, then dispatch **Production deployment qualification** for the same
 `main` SHA. After live qualification succeeds, dispatch **Production operations
 release approval** from that exact SHA and retain its independently reviewed
-sign-off run ID. Publication requires both the qualified production run ID and
-the separately reviewed operational release approval run ID. A successful
+sign-off run ID. Publication requires **all three** run IDs: the successful protected
+production deployment, exact-SHA live qualification and separately reviewed
+operational release approval. A successful
 technical qualification alone is not sufficient. The deploy workflow deliberately
 does not publish a release.
 
-Record the approved commit, deployment workflow run, Cloud Build run,
+Record the approved commit, protected deployment workflow run, Cloud Build run,
 Cloud Run revision/digest, release-qualification run, operations-approval run,
 independent reviewer, operator and time.
 

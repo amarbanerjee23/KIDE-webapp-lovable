@@ -74,6 +74,8 @@ parameters in the evidence URLs.
 
 In GitHub Actions select **Publish official release**, choose `main` and enter:
 
+- `deployment_run_id`: the numeric ID of a **successful protected Deploy
+  production from approved main** run for the same exact main SHA;
 - `qualification_run_id`: the numeric ID of a **successful Production deployment
   qualification** run for the current `main` SHA;
 - `operations_approval_run_id`: successful, **independently reviewed**
@@ -84,7 +86,8 @@ The workflow downloads the matching release acceptance artifact itself. It retai
 all acceptance sidecar files and rejects missing or tampered preflight, smoke,
 browser or deployment logs, a mismatched standalone deployment JSON,
 failed/stale/non-`main` runs, mismatched commit or image evidence,
-missing successful main CI, missing or unreviewed operations sign-off, and an existing release or tag. On
+missing successful main CI, missing protected deployment proof, missing or unreviewed
+operations sign-off, stale main, and an existing release or tag. On
 success it creates `v1.0.0` pointing to the accepted commit and records the SHA-256
 of its acceptance JSON in the release notes.
 
@@ -110,3 +113,29 @@ corrected `main` commit, then run qualification again; its run ID and artifact
 must match the new commit. Never override release evidence or force-move a
 published tag. For a Cloud Run incident follow
 `docs/operations/launch-runbook.md`.
+
+## PR82 — Protected deployment provenance and main race prevention
+
+GitHub publication requires the original successful **Deploy production from
+approved main** run ID, not merely a live Cloud Run deployment tagged with
+the same commit SHA. The publication job retrieves that run and its
+`verified-production-deploy-<sha>` artifact and requires all of the following:
+
+- dispatch from `main`, exact current commit, successful protected deployment
+  workflow identity and first attempt;
+- original Cloud Run/Artifact Registry revision, image SHA-256, auth state,
+  100% traffic, Cloud SQL attachment, service URL and commit tag;
+- identity with the **independently captured live qualification evidence**
+  from the protected production acceptance run.
+
+This prevents release publication when production was deployed through another
+workflow or when live revision/image/runtime identity drifted after the guarded
+deployment. The original deployment artifact's SHA-256 and workflow run ID are
+preserved in the official release notes.
+
+Immediately before `gh release create`, publication fetches remote `main`
+again, requires that it still matches both the workflow-dispatched SHA and
+the checked-out SHA, and rechecks tag/release nonexistence. If `main` advanced,
+restart the **entire** exact-commit deployment, live qualification and sign-off
+sequence. The remote comparison narrows the race window; only repository tag
+permissions and branch protection can prevent unrelated concurrent writes.

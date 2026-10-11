@@ -13,6 +13,7 @@ test -s "$workflow" || fail "publish-release workflow missing"
 test -s "$qualification_workflow" || fail "production qualification workflow missing"
 test -s "$operations_workflow" || fail "independent operations approval workflow missing"
 node scripts/ci/test-operations-approval.mjs
+node scripts/ci/test-protected-deploy-provenance.mjs
 bash -n scripts/release/validate-publication.sh
 
 grep -q '^  workflow_dispatch:$' "$workflow" ||
@@ -27,6 +28,16 @@ grep -q 'actions: read' "$workflow" ||
   fail "release workflow must be able to verify CI and qualification evidence"
 grep -q 'PUBLISH v1.0.0' "$workflow" ||
   fail "release workflow must require explicit publication confirmation"
+grep -q 'deployment_run_id' "$workflow" ||
+  fail "publication must require the actual protected deployment workflow run"
+grep -q 'Require protected exact-main deployment provenance' "$workflow" ||
+  fail "publication must compare original protected deployment evidence with live qualification"
+grep -q 'verified-production-deploy-' "$workflow" ||
+  fail "publisher must retrieve the original commit-scoped protected rollout artifact"
+grep -q 'verify-protected-deployment.mjs' "$workflow" ||
+  fail "publication must validate the original protected rollout artifact against live evidence"
+grep -q 'Protected deployment artifact SHA-256' "$workflow" ||
+  fail "release notes must retain the protected rollout artifact digest"
 grep -q 'operations_approval_run_id' "$workflow" ||
   fail "publication must require the independent operations approval run"
 grep -q 'Require independent reviewed operations approval' "$workflow" ||
@@ -51,6 +62,10 @@ grep -q 'Require successful main CI for accepted commit' "$workflow" ||
   fail "release workflow must verify successful main CI"
 grep -q 'git ls-remote --exit-code --tags' "$workflow" ||
   fail "release workflow must refuse an existing tag"
+grep -q 'require-current-main.mjs' "$workflow" ||
+  fail "publication must check fresh main SHA immediately before creating the release"
+grep -q 'git fetch --no-tags origin main' "$workflow" ||
+  fail "publisher must refetch the remote main tip before release"
 grep -q 'gh release create' "$workflow" ||
   fail "release workflow must publish through GitHub Releases"
 grep -q 'KIDE_QUALIFICATION_ACCEPTANCE_PATH' "$workflow" ||
