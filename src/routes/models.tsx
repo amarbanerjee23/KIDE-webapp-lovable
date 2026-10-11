@@ -387,9 +387,10 @@ function ModelLanguages() {
                     setSource(activeFile.path, next);
                     return true;
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Could not update model.", {
-                      id: "workspace-model-limit",
-                    });
+                    toast.error(
+                      error instanceof Error ? error.message : "Could not update model.",
+                      { id: "workspace-model-limit" },
+                    );
                     return false;
                   }
                 }}
