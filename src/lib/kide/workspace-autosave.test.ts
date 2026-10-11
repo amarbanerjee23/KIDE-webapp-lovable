@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  autosaveDecision,
-  hasQueuedAutosave,
-  isCurrentAutosaveTicket,
-} from "./workspace-autosave";
+import { autosaveDecision, hasQueuedAutosave, isCurrentAutosaveTicket } from "./workspace-autosave";
 
 describe("project-scoped sequential autosave", () => {
   it("ignores responses from a previous project, a reload, or an anonymous session", () => {
