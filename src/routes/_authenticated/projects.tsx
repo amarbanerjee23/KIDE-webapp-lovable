@@ -419,7 +419,9 @@ function ProjectsHome() {
                   <Button asChild size="sm">
                     <Link
                       to="/models"
-                      onClick={(event) => selectProjectForLink(event, recentCreated.projectId, org.id)}
+                      onClick={(event) =>
+                        selectProjectForLink(event, recentCreated.projectId, org.id)
+                      }
                     >
                       Open new project
                       <ArrowRight className="size-3.5" />
