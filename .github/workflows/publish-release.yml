@@ -3,6 +3,10 @@ name: Publish official release
 on:
   workflow_dispatch:
     inputs:
+      deployment_run_id:
+        description: Successful protected Deploy production from approved main workflow run ID
+        required: true
+        type: string
       qualification_run_id:
         description: Successful Production deployment qualification workflow run ID for current main
         required: true
@@ -113,6 +117,42 @@ jobs:
             EXPECTED_COMMIT_SHA="$main_sha" \
             bash scripts/release/validate-publication.sh
 
+      - name: Require protected exact-main deployment provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_RUN_ID: ${{ inputs.deployment_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          [[ "$DEPLOYMENT_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "deployment_run_id must be a positive numeric GitHub Actions run ID." >&2
+            exit 1
+          }
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${DEPLOYMENT_RUN_ID}" \
+            > /tmp/kide-protected-deploy-run.json
+
+          rm -rf /tmp/kide-protected-deploy
+          mkdir -p /tmp/kide-protected-deploy
+          gh run download "$DEPLOYMENT_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "verified-production-deploy-$sha" \
+            --dir /tmp/kide-protected-deploy
+
+          mapfile -t deployment_files < <(
+            find /tmp/kide-protected-deploy -type f -name "deployment-$sha.json" -print
+          )
+          if (( ${#deployment_files[@]} != 1 )); then
+            echo "Expected exactly one original protected deployment qualification artifact." >&2
+            exit 1
+          fi
+          node scripts/release/verify-protected-deployment.mjs \
+            "$KIDE_QUALIFICATION_ACCEPTANCE_PATH" \
+            "${deployment_files[0]}" /tmp/kide-protected-deploy-run.json \
+            "$sha" "$DEPLOYMENT_RUN_ID" "$GITHUB_REPOSITORY"
+          echo "KIDE_DEPLOYMENT_EVIDENCE_PATH=${deployment_files[0]}" >> "$GITHUB_ENV"
+          echo "KIDE_DEPLOYMENT_RUN_ID=$DEPLOYMENT_RUN_ID" >> "$GITHUB_ENV"
+
       - name: Require independent reviewed operations approval
         env:
           GH_TOKEN: ${{ github.token }}
@@ -213,6 +253,7 @@ jobs:
           set -euo pipefail
           acceptance_sha="$(sha256sum "$KIDE_QUALIFICATION_ACCEPTANCE_PATH" | awk '{print $1}')"
           operations_sha="$(sha256sum "$KIDE_OPERATIONS_APPROVAL_PATH" | awk '{print $1}')"
+          deployment_sha="$(sha256sum "$KIDE_DEPLOYMENT_EVIDENCE_PATH" | awk '{print $1}')"
           {
             cat "docs/releases/v${RELEASE_VERSION}.md"
             echo
@@ -221,6 +262,9 @@ jobs:
             printf 'Release commit: `%s`\n' "$(git rev-parse HEAD)"
             echo
             printf 'Launch acceptance evidence SHA-256: `%s`\n' "$acceptance_sha"
+            echo
+            printf 'Protected production deployment run: `%s`\n' "$KIDE_DEPLOYMENT_RUN_ID"
+            printf 'Protected deployment artifact SHA-256: `%s`\n' "$deployment_sha"
             echo
             printf 'Independently reviewed operations approval run: `%s`\n' "$KIDE_OPERATIONS_APPROVAL_RUN_ID"
             printf 'Operations approval evidence SHA-256: `%s`\n' "$operations_sha"
@@ -231,6 +275,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          git fetch --no-tags origin main
+          node scripts/release/require-current-main.mjs \
+            "$(git rev-parse HEAD)" "$GITHUB_SHA" \
+            "$(git rev-parse origin/main)" "$GITHUB_REF"
+          # Tag protection is rechecked after all evidence and fresh-main checks.
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Release tag appeared during qualification; refusing to overwrite it." >&2
+            exit 1
+          fi
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Official release already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
           gh release create "${RELEASE_TAG}" \
             --target "$(git rev-parse HEAD)" \
             --title "KIDE ${RELEASE_VERSION}" \
@@ -243,5 +300,5 @@ jobs:
             echo
             printf -- '- Tag: `%s`\n' "$RELEASE_TAG"
             printf -- '- Commit: `%s`\n' "$(git rev-parse HEAD)"
-            echo "- Acceptance evidence came from a successful production qualification run for current main, plus a separately reviewed operations sign-off, and was validated alongside successful main CI."
+            echo "- Protected deployment provenance, live production acceptance, independent operations approval, current main and successful main CI were verified for this exact SHA."
           } >> "$GITHUB_STEP_SUMMARY"
