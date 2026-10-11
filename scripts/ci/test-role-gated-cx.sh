@@ -6,6 +6,14 @@ fail() {
   exit 1
 }
 
+grep -q 'validateCheckpointLabel(data.label)' src/lib/projects.functions.ts ||
+  fail "checkpoint API must reject the private working-copy label"
+grep -q 'validateWorkingCopySources(data.sources)' src/lib/projects.functions.ts ||
+  fail "checkpoint API must enforce bounded relative model paths and sources"
+grep -q 'coerceStoredSources(row.sources)' src/lib/projects.functions.ts ||
+  fail "checkpoint list must fail closed on invalid persisted model sources"
+grep -q 'checkpoint.sources === null' src/routes/_authenticated/checkpoints.tsx ||
+  fail "corrupt checkpoint restores must be disabled in the customer UI"
 grep -q 'const canCreateProject' src/routes/_authenticated/checkpoints.tsx ||
   fail "checkpoint project creation must be role gated"
 grep -q 'canCreateProject ?' src/routes/_authenticated/checkpoints.tsx ||
