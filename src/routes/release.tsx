@@ -336,7 +336,8 @@ function ReleaseCentre() {
 
             {!canRelease && (
               <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-[11px] text-destructive">
-                Release blocked. Resolve the issues above, including the semantic version, or see the{" "}
+                Release blocked. Resolve the issues above, including the semantic version, or see
+                the{" "}
                 <Link to="/trust" className="underline">
                   Trust Centre
                 </Link>{" "}
