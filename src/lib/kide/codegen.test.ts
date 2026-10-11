@@ -49,6 +49,39 @@ describe("semantic multi-target code generation", () => {
     );
   }
 
+  it("retains only the two required empty ROS 2 packaging markers", () => {
+    const example = EXAMPLE_WORKSPACES[0]!;
+    const workspace = linkWorkspace(example.files.map((file) => ({ ...file })));
+    const candidate = synthesize(workspace).candidates[0]!;
+    const bundle = generateCode(workspace, candidate, "ros2-python");
+
+    expect(bundle.validation.ready).toBe(true);
+    const controller = bundle.artifacts.find((entry) => entry.path.endsWith("/controller.py"));
+    expect(controller?.content).toContain("class ");
+    expect(controller?.content).toContain("create_publisher");
+    const packageName = controller?.path.split("/")[1] ?? "";
+    expect(packageName).not.toBe("");
+    expect(controller?.path).toBe(`ros2/${packageName}/${packageName}/controller.py`);
+
+    const empty = bundle.artifacts
+      .filter((entry) => entry.content.length === 0)
+      .map((entry) => entry.path)
+      .sort();
+    expect(empty).toEqual(
+      [
+        `ros2/${packageName}/resource/${packageName}`,
+        `ros2/${packageName}/${packageName}/__init__.py`,
+      ].sort(),
+    );
+    for (const entry of bundle.artifacts) {
+      expect(entry.sha256).toBe(sha256(entry.content));
+      expect(entry.bytes).toBe(new TextEncoder().encode(entry.content).length);
+      if (!empty.includes(entry.path)) {
+        expect(entry.content.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("builds a typed semantic IR from source interface parameters", () => {
     const example = EXAMPLE_WORKSPACES[0]!;
     const workspace = linkWorkspace(example.files.map((file) => ({ ...file })));

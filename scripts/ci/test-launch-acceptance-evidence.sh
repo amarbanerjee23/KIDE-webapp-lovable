@@ -166,6 +166,14 @@ grep -q 'project-creation-examples.spec.ts' scripts/launch/capture-acceptance.sh
   fail "production qualification must validate all five example source maps after reload"
 grep -q 'organization-selection-integrity.spec.ts' scripts/launch/capture-acceptance.sh ||
   fail "production qualification must exercise independent organization isolation"
+grep -q 'qualifyExampleGeneration' tests/e2e/project-creation-examples.spec.ts ||
+  fail "production starter qualification must synthesize and release all five examples"
+grep -q 'bundleFingerprint: code.bundleFingerprint' tests/e2e/project-creation-examples.spec.ts ||
+  fail "starter code download fingerprint must match the release manifest"
+grep -q 'bundle.manifestSha256' tests/e2e/project-creation-examples.spec.ts ||
+  fail "starter release must verify checksummed manifest"
+grep -q 'releasedModels' tests/e2e/project-creation-examples.spec.ts ||
+  fail "starter release model sources must match the persisted source map"
 grep -q 'exportVerifiedWorkingCopy' tests/e2e/project-creation-examples.spec.ts ||
   fail "example acceptance must verify downloaded sources and SHA-256 checksums"
 grep -q 'Paid checkout is unavailable' tests/e2e/production-release-journey.spec.ts ||
