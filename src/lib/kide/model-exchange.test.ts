@@ -57,7 +57,10 @@ describe("verified model-set exchange", () => {
   });
 
   it("round-trips uppercase extensions supported by the editor and PostgreSQL", () => {
-    const sources = { "nested/Controller.MNCSPEC": "Model Controller", "PLANT.DML": "DataModel Plant {}" };
+    const sources = {
+      "nested/Controller.MNCSPEC": "Model Controller",
+      "PLANT.DML": "DataModel Plant {}",
+    };
     const exported = exportModelSet(sources);
     expect(exported.files.map((file) => file.kind).sort()).toEqual(["dml", "mncspec"]);
     expect(importModelSet(JSON.stringify(exported))).toMatchObject({
