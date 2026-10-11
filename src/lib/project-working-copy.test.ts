@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   assertWorkingCopyVersion,
   coerceStoredSources,
+  validateCheckpointCounts,
+  validateCheckpointLabel,
   validateWorkingCopySources,
   WORKING_COPY_CONFLICT_MESSAGE,
   WORKING_COPY_LABEL,
@@ -75,6 +77,69 @@ describe("project working-copy storage contract", () => {
       "model.dml": "DataModel Demo {}",
     });
     expect(coerceStoredSources({ "model.dml": 42 })).toBeNull();
+  });
+
+  it.each([
+    "../secret.dml",
+    "/absolute.dml",
+    "nested/../escape.dml",
+    "nested/./model.dml",
+    "nested//empty.dml",
+    "nested\\windows.dml",
+    "bad name.dml",
+    "bad:character.dml",
+    "notes.txt",
+    "__proto__",
+    "model.dml/",
+  ])("rejects unsafe API model paths and unsupported languages: %s", (path) => {
+    expect(() => validateWorkingCopySources({ [path]: "source" })).toThrow("invalid file");
+    expect(coerceStoredSources({ [path]: "source" })).toBeNull();
+  });
+
+  it("rejects case-insensitive duplicate model paths", () => {
+    const sources = { "plant/Device.dml": "first", "plant/device.dml": "second" };
+    expect(() => validateWorkingCopySources(sources)).toThrow("duplicate model path");
+    expect(coerceStoredSources(sources)).toBeNull();
+  });
+
+  it("accepts canonical nested model paths and uppercase extensions", () => {
+    const sources = {
+      "controls/Main.mncspec": "Model Main",
+      "custom/PLANT.DML": "DataModel Plant {}",
+    };
+    expect(validateWorkingCopySources(sources)).toEqual(sources);
+    expect(coerceStoredSources(sources)).toEqual(sources);
+  });
+
+  it("rejects corrupt stored file counts and oversized records", () => {
+    const tooMany = Object.fromEntries(
+      Array.from({ length: 101 }, (_, index) => [`file${index}.dml`, "x"]),
+    );
+    expect(coerceStoredSources(tooMany)).toBeNull();
+    expect(coerceStoredSources({ "big.dml": "x".repeat(1_000_001) })).toBeNull();
+    expect(coerceStoredSources({ "bad.dml": 42 })).toBeNull();
+  });
+
+  it("prohibits forging the private working-copy checkpoint label", () => {
+    for (const label of [
+      WORKING_COPY_LABEL,
+      ` ${WORKING_COPY_LABEL} `,
+      WORKING_COPY_LABEL.toUpperCase(),
+    ]) {
+      expect(() => validateCheckpointLabel(label)).toThrow("reserved");
+    }
+    expect(validateCheckpointLabel("Named baseline")).toBe("Named baseline");
+    expect(validateCheckpointLabel("  ")).toBe("Checkpoint");
+    expect(validateCheckpointLabel("x".repeat(200))).toBe("x".repeat(120));
+    expect(() => validateCheckpointLabel("Invalid\nlabel")).toThrow("control characters");
+  });
+
+  it("rejects forged or malformed checkpoint diagnostic totals", () => {
+    expect(() => validateCheckpointCounts(0, 42)).not.toThrow();
+    for (const invalid of [-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, "1", null]) {
+      expect(() => validateCheckpointCounts(invalid, 0)).toThrow("nonnegative integers");
+      expect(() => validateCheckpointCounts(0, invalid)).toThrow("nonnegative integers");
+    }
   });
 
   it("accepts matching working-copy versions", () => {
