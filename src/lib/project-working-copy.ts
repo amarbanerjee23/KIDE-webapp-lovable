@@ -71,6 +71,20 @@ export function coerceStoredSources(value: unknown): Record<string, string> | nu
   }
 }
 
+/**
+ * A missing working copy is an intentional new/empty project; an existing
+ * corrupt working-copy row is different and must block the workspace loader.
+ */
+export function requireVerifiedStoredSources(value: unknown): Record<string, string> {
+  const sources = coerceStoredSources(value);
+  if (sources === null) {
+    throw new Error(
+      "This project's saved models failed integrity validation. Contact an administrator or restore a verified backup before editing.",
+    );
+  }
+  return sources;
+}
+
 /** A named checkpoint may never impersonate the internal working copy. */
 export function validateCheckpointLabel(value: unknown): string {
   if (typeof value !== "string") throw new Error("Checkpoint name must be text.");
