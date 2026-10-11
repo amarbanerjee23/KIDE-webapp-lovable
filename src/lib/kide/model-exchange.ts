@@ -5,11 +5,19 @@
  * its language, plus the checksum of each file so an imported set can be shown
  * to be exactly what was exported.
  */
-import { DSL_LANGUAGES, type DslKind } from "@/lib/dsl";
+import { dslKindForPath, type DslKind } from "@/lib/dsl";
+import { MAX_WORKING_COPY_FILES, validateWorkingCopySources } from "@/lib/project-working-copy";
 import { normalizeWorkspaceFilePath } from "@/lib/kide/workspace-files";
 import { sha256 } from "./sha256";
 
 export const EXCHANGE_FORMAT = "kide.modelset/1";
+// Allows the complete 5M-character server-side source budget even when the
+// JSON document escapes characters. Reject oversized uploads before file.text().
+export const MAX_MODEL_SET_IMPORT_BYTES = 40 * 1024 * 1024;
+
+export function isAcceptableModelSetSize(size: number): boolean {
+  return Number.isSafeInteger(size) && size >= 0 && size <= MAX_MODEL_SET_IMPORT_BYTES;
+}
 
 export interface ExchangeFile {
   path: string;
@@ -24,20 +32,16 @@ export interface ExchangeDocument {
   files: ExchangeFile[];
 }
 
-function kindFor(path: string): DslKind | null {
-  const language = DSL_LANGUAGES.find((entry) => path.endsWith(entry.extension));
-  return language?.kind ?? null;
-}
-
 export function exportModelSet(
   sources: Record<string, string>,
   exportedAt = new Date().toISOString(),
 ): ExchangeDocument {
-  const files = Object.keys(sources)
+  const validated = validateWorkingCopySources(sources);
+  const files = Object.keys(validated)
     .sort()
     .map((path) => {
-      const source = sources[path] ?? "";
-      const kind = kindFor(path);
+      const source = validated[path]!;
+      const kind = dslKindForPath(path);
       if (!kind) throw new Error(`Cannot export unsupported model file "${path}".`);
       return { path, kind, source, sha256: sha256(source) };
     });
@@ -54,6 +58,9 @@ export interface ImportOutcome {
 /** Reads an exported model set back, refusing anything it cannot verify. */
 export function importModelSet(text: string): ImportOutcome {
   const empty: ImportOutcome = { ok: false, problems: [], sources: {}, fileCount: 0 };
+  if (!isAcceptableModelSetSize(text.length)) {
+    return { ...empty, problems: ["Model set is too large (maximum 40 MiB)."] };
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -73,6 +80,12 @@ export function importModelSet(text: string): ImportOutcome {
   if (!Array.isArray(doc.files) || doc.files.length === 0) {
     return { ...empty, problems: ["The file contains no models."] };
   }
+  if (doc.files.length > MAX_WORKING_COPY_FILES) {
+    return {
+      ...empty,
+      problems: [`Workspace may contain at most ${MAX_WORKING_COPY_FILES} files.`],
+    };
+  }
 
   const problems: string[] = [];
   const sources: Record<string, string> = {};
@@ -88,7 +101,7 @@ export function importModelSet(text: string): ImportOutcome {
       continue;
     }
 
-    const kind = kindFor(file.path);
+    const kind = dslKindForPath(file.path);
     if (!kind || kind !== file.kind) {
       problems.push(`"${file.path}" has an unknown or mismatched model language.`);
       continue;
@@ -123,10 +136,22 @@ export function importModelSet(text: string): ImportOutcome {
     sources[file.path] = file.source;
   }
 
-  return {
-    ok: problems.length === 0,
-    problems,
-    sources: problems.length === 0 ? sources : {},
-    fileCount: problems.length === 0 ? Object.keys(sources).length : 0,
-  };
+  if (problems.length > 0) return { ...empty, problems };
+
+  // A checksum-valid JSON document can still exceed the PostgreSQL working-copy
+  // contract. Never let the UI replace the current workspace with unsaveable data.
+  try {
+    const validated = validateWorkingCopySources(sources);
+    return {
+      ok: true,
+      problems: [],
+      sources: validated,
+      fileCount: Object.keys(validated).length,
+    };
+  } catch (error) {
+    return {
+      ...empty,
+      problems: [error instanceof Error ? error.message : "Invalid model sources."],
+    };
+  }
 }

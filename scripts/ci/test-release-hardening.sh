@@ -25,6 +25,13 @@ grep -q 'inFlightSaveRef.current' src/lib/kide/useWorkspacePersistence.ts ||
 grep -q 'hasQueuedAutosave' src/lib/kide/useWorkspacePersistence.ts ||
   fail "autosave must flush edits made while a request is pending"
 
+grep -q 'validateWorkingCopySources(sources)' src/lib/kide/model-exchange.ts ||
+  fail "model imports must satisfy the server's real persistence limits"
+grep -q 'isAcceptableModelSetSize(file.size)' src/routes/_authenticated/checkpoints.tsx ||
+  fail "oversized model-set files must be rejected before reading in the browser"
+grep -q 'over-limit-model-set.json' tests/e2e/checkpoint-integrity.spec.ts ||
+  fail "PostgreSQL-backed import E2E must prove over-limit files cannot replace saved models"
+
 bash scripts/ci/test-role-gated-cx.sh
 
 bunx vitest run   src/lib/kide/release-hardening.test.ts   src/lib/kide/qualification.test.ts   src/lib/kide/assurance.test.ts   src/lib/kide/kide.test.ts

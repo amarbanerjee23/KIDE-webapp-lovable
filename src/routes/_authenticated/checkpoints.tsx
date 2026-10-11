@@ -22,7 +22,12 @@ import { useWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
 import { createProject, listCheckpoints, saveCheckpoint } from "@/lib/projects.functions";
 import { WORKING_COPY_LABEL } from "@/lib/project-working-copy";
 import { linkFrom, replaceWorkspaceSources, useWorkspaceSources } from "@/lib/kide/workspace-store";
-import { exportModelSet, importModelSet, type ImportOutcome } from "@/lib/kide/model-exchange";
+import {
+  exportModelSet,
+  importModelSet,
+  isAcceptableModelSetSize,
+  type ImportOutcome,
+} from "@/lib/kide/model-exchange";
 
 const title = "Checkpoints & model exchange — KIDE";
 const description =
@@ -149,20 +154,28 @@ function CheckpointsPage() {
   };
 
   const exportSet = () => {
-    const doc = exportModelSet(sources);
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "kide-model-set.json";
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${doc.files.length} models.`);
+    try {
+      const doc = exportModelSet(sources);
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "kide-model-set.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${doc.files.length} models.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not export the model set.");
+    }
   };
 
   const importSet = async (file: File) => {
     const targetProjectId = selection.projectId;
+    if (!isAcceptableModelSetSize(file.size)) {
+      toast.error("Model set is too large (maximum 40 MiB).");
+      return;
+    }
     const outcome = importModelSet(await file.text());
     if (getActiveProject()?.projectId !== targetProjectId) {
       toast.error("The active project changed while reading the model set. Retry the import.");

@@ -2,7 +2,7 @@ export const WORKING_COPY_LABEL = "__kide_working_copy__";
 export const WORKING_COPY_CONFLICT_MESSAGE =
   "This project changed in another browser session. Your local edits are preserved; reload before saving again.";
 
-const MAX_WORKING_COPY_FILES = 100;
+export const MAX_WORKING_COPY_FILES = 100;
 const MAX_WORKING_COPY_PATH_LENGTH = 512;
 const MAX_WORKING_COPY_FILE_CHARACTERS = 1_000_000;
 const MAX_WORKING_COPY_TOTAL_CHARACTERS = 5_000_000;
