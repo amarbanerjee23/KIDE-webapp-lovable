@@ -21,9 +21,9 @@ function isCanonicalModelPath(path: string): boolean {
   ) {
     return false;
   }
-  return path.split("/").every(
-    (segment) => segment !== "." && segment !== ".." && MODEL_SEGMENT.test(segment),
-  );
+  return path
+    .split("/")
+    .every((segment) => segment !== "." && segment !== ".." && MODEL_SEGMENT.test(segment));
 }
 
 export function validateWorkingCopySources(value: unknown): Record<string, string> {
@@ -78,7 +78,7 @@ export function validateCheckpointLabel(value: unknown): string {
   if (label.toLowerCase() === WORKING_COPY_LABEL.toLowerCase()) {
     throw new Error("Checkpoint name is reserved for the internal working copy.");
   }
-  if (/[\x00-\x1f\x7f]/.test(label)) {
+  if (Array.from(label).some((letter) => letter.charCodeAt(0) < 32 || letter.charCodeAt(0) === 127)) {
     throw new Error("Checkpoint name must not contain control characters.");
   }
   return label;
