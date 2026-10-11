@@ -1,0 +1,126 @@
+name: Production operations release approval
+
+on:
+  workflow_dispatch:
+    inputs:
+      qualification_run_id:
+        description: Successful exact-main production qualification workflow run ID
+        required: true
+        type: string
+      restore_sql_inspection_url:
+        description: Private signed evidence for restored Better Auth/KIDE tables and known organization/project
+        required: true
+        type: string
+      clone_source_audit_url:
+        description: Audit evidence that the completed recovery CLONE originated from production
+        required: true
+        type: string
+      monitoring_rollback_url:
+        description: Verified alert delivery, on-call owner and rollback exercise evidence
+        required: true
+        type: string
+      privacy_terms_approval_url:
+        description: Business/legal approval of published Privacy, Terms and free-evaluation wording
+        required: true
+        type: string
+      incident_review_url:
+        description: Reviewed open critical/high launch-incident register
+        required: true
+        type: string
+      confirmation:
+        description: Type APPROVE v1.0.0 followed by the exact 40-character main SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-operations-release-approval
+  cancel-in-progress: false
+
+jobs:
+  attest:
+    name: Review and attest production operations readiness
+    runs-on: ubuntu-24.04
+    environment: production-release-approval
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact manually dispatched main commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Require current main SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || {
+            echo "Production sign-off only accepts main." >&2
+            exit 1
+          }
+          git fetch --no-tags origin main
+          [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || {
+            echo "Main advanced since approval dispatch; requalify and dispatch again." >&2
+            exit 1
+          }
+
+      - name: Verify qualified deployment before human attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$QUALIFICATION_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "Qualification run ID must be numeric." >&2
+            exit 1
+          }
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${QUALIFICATION_RUN_ID}"             > /tmp/qualified-deployment-run.json
+          node - "$GITHUB_SHA" /tmp/qualified-deployment-run.json <<'JS'
+          const fs = require("node:fs");
+          const [sha, file] = process.argv.slice(2);
+          const run = JSON.parse(fs.readFileSync(file, "utf8"));
+          if (
+            run.name !== "Production deployment qualification" ||
+            run.event !== "workflow_dispatch" ||
+            run.head_branch !== "main" ||
+            run.head_sha !== sha ||
+            run.status !== "completed" ||
+            run.conclusion !== "success"
+          ) throw new Error("Qualification must be successful for this exact main commit");
+          JS
+
+      - name: Record accountable operations evidence references
+        env:
+          RELEASE_APPROVAL_CONFIRMATION: ${{ inputs.confirmation }}
+          RELEASE_QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
+          RESTORE_SQL_INSPECTION_URL: ${{ inputs.restore_sql_inspection_url }}
+          CLONE_SOURCE_AUDIT_URL: ${{ inputs.clone_source_audit_url }}
+          MONITORING_ROLLBACK_URL: ${{ inputs.monitoring_rollback_url }}
+          PRIVACY_TERMS_APPROVAL_URL: ${{ inputs.privacy_terms_approval_url }}
+          INCIDENT_REVIEW_URL: ${{ inputs.incident_review_url }}
+        run: |
+          set -euo pipefail
+          node scripts/release/create-operations-approval.mjs
+          node scripts/release/verify-operations-approval.mjs             "operations-approval/release-operations-approval-${GITHUB_SHA}.json"             "$GITHUB_SHA" "$RELEASE_QUALIFICATION_RUN_ID" "$GITHUB_REPOSITORY"
+
+      - name: Retain protected production approval artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-operations-approval-${{ github.sha }}-${{ inputs.qualification_run_id }}
+          path: operations-approval/release-operations-approval-${{ github.sha }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Summarize attested release conditions
+        run: |
+          {
+            echo "## Operations release approval evidence"
+            printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
+            printf -- '- Attesting GitHub actor: `%s`\n' "$GITHUB_ACTOR"
+            echo "- References recorded for recovery SQL, clone source, monitoring/rollback, legal scope and incident review."
+            echo "- Protected environment reviewer approval is independently verified during publication."
+          } >> "$GITHUB_STEP_SUMMARY"
