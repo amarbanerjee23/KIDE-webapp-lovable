@@ -271,15 +271,12 @@ describe("release-hardening mutation and fail-closed matrix", () => {
 describe("release version correctness and export safety", () => {
   const baseline = EXAMPLE_WORKSPACES[0]!;
 
-  it.each([
-    "1.0.0",
-    "0.0.0",
-    "12.34.56",
-    "1.0.0-rc.1",
-    "1.2.3-alpha.1+build.20261011",
-  ])("accepts a well-formed semantic version %s", (version) => {
-    expect(isValidReleaseVersion(version)).toBe(true);
-  });
+  it.each(["1.0.0", "0.0.0", "12.34.56", "1.0.0-rc.1", "1.2.3-alpha.1+build.20261011"])(
+    "accepts a well-formed semantic version %s",
+    (version) => {
+      expect(isValidReleaseVersion(version)).toBe(true);
+    },
+  );
 
   it.each([
     "",
