@@ -40,6 +40,7 @@ describe("project-scoped sequential autosave", () => {
     expect(hasQueuedAutosave(pending, original)).toBe(true);
     expect(autosaveDecision(original, pending, false)).toBe("send");
   });
+
   it("blocks selection during debounce, pending commit and failed offline edits", () => {
     const old = JSON.stringify({ "model.dml": "old" });
     const edited = JSON.stringify({ "model.dml": "edited" });
@@ -49,5 +50,4 @@ describe("project-scoped sequential autosave", () => {
     expect(blocksProjectSwitch(old, old, true)).toBe(true);
     expect(blocksProjectSwitch(old, null, false)).toBe(false);
   });
-
 });
