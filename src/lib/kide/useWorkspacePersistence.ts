@@ -102,13 +102,20 @@ export function useWorkspacePersistence(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     return registerProjectSwitchGuard(() => {
-      if (!activeProject || loadedProjectRef.current !== activeProject.projectId ||
-          !canEditRef.current) return true;
-      if (!blocksProjectSwitch(
-        JSON.stringify(getWorkspaceSources()),
-        lastSavedSourcesRef.current,
-        inFlightSaveRef.current,
-      )) return true;
+      if (
+        !activeProject ||
+        loadedProjectRef.current !== activeProject.projectId ||
+        !canEditRef.current
+      )
+        return true;
+      if (
+        !blocksProjectSwitch(
+          JSON.stringify(getWorkspaceSources()),
+          lastSavedSourcesRef.current,
+          inFlightSaveRef.current,
+        )
+      )
+        return true;
       toast.error("Finish saving before switching projects", {
         id: "kide-unsaved-project-switch",
         description:
@@ -372,5 +379,13 @@ export function useWorkspacePersistence(enabled: boolean) {
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeProject, connectivityVersion, enabled, save, sources, workspaceSaveRetryVersion, cancelRetry]);
+  }, [
+    activeProject,
+    connectivityVersion,
+    enabled,
+    save,
+    sources,
+    workspaceSaveRetryVersion,
+    cancelRetry,
+  ]);
 }
