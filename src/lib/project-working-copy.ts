@@ -85,6 +85,14 @@ export function requireVerifiedStoredSources(value: unknown): Record<string, str
   return sources;
 }
 
+export const DUPLICATE_WORKING_COPY_MESSAGE =
+  "This project contains multiple active working copies. Editing is disabled until an administrator reconciles the records against a verified backup.";
+
+/** Never choose an arbitrary winner when legacy duplicate working copies exist. */
+export function assertSingleWorkingCopy<T>(rows: readonly T[]): void {
+  if (rows.length > 1) throw new Error(DUPLICATE_WORKING_COPY_MESSAGE);
+}
+
 /** A named checkpoint may never impersonate the internal working copy. */
 export function validateCheckpointLabel(value: unknown): string {
   if (typeof value !== "string") throw new Error("Checkpoint name must be text.");

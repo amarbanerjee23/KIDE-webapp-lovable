@@ -82,3 +82,24 @@ Project model files are created, renamed, and deleted entirely in the browser wo
 - PR #10 working-copy autosave persists the resulting source map.
 
 This keeps project file lifecycle aligned with the client-compute architecture.
+
+## PR89 — Race-free first save and historical duplicate detection
+
+When two authenticated tabs first edit an empty project, optimistic revision
+checks are not sufficient: both could previously observe no hidden working-copy
+row and independently insert one. PR89 serializes the *initial insert* and all
+updates by locking the owning `projects` row (`SELECT ... FOR UPDATE`) inside
+a PostgreSQL transaction before reading or writing the working-copy record.
+The losing tab then sees the newly created revision and receives the existing
+explicit conflict response, preserving its local edits.
+
+A legacy project with multiple hidden working-copy records is rejected by
+both read and write paths rather than choosing an arbitrary winner by
+timestamp. Administrators must inspect those rows against verified backups
+and reconcile under an approved recovery procedure; the application never
+automatically deletes or silently merges them.
+
+Production-container E2E runs two browser tabs editing the same initially
+empty project and verifies one succeeds and the other conflicts. PostgreSQL
+CI additionally checks there are no project IDs with multiple reserved-label
+working-copy rows after the browser suite.

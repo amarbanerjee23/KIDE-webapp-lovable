@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertSingleWorkingCopy,
   assertWorkingCopyVersion,
   coerceStoredSources,
   validateCheckpointCounts,
   validateCheckpointLabel,
   validateWorkingCopySources,
   requireVerifiedStoredSources,
+  DUPLICATE_WORKING_COPY_MESSAGE,
   WORKING_COPY_CONFLICT_MESSAGE,
   WORKING_COPY_LABEL,
 } from "./project-working-copy";
@@ -155,6 +157,14 @@ describe("project working-copy storage contract", () => {
       expect(() => validateCheckpointCounts(invalid, 0)).toThrow("nonnegative integers");
       expect(() => validateCheckpointCounts(0, invalid)).toThrow("nonnegative integers");
     }
+  });
+
+  it("allows only zero or one durable working-copy row per project", () => {
+    expect(() => assertSingleWorkingCopy([])).not.toThrow();
+    expect(() => assertSingleWorkingCopy([{ id: "one" }])).not.toThrow();
+    expect(() => assertSingleWorkingCopy([{ id: "one" }, { id: "two" }])).toThrow(
+      DUPLICATE_WORKING_COPY_MESSAGE,
+    );
   });
 
   it("accepts matching working-copy versions", () => {

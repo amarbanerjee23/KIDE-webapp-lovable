@@ -631,6 +631,20 @@ jobs:
           [[ "$orgs" -ge 1 ]] || { echo "No persisted KIDE organizations"; exit 1; }
           [[ "$projects" -ge 1 ]] || { echo "No persisted KIDE projects"; exit 1; }
 
+          # The two-tab first-save regression must never create two hidden
+          # working copies for one project in the actual PostgreSQL container.
+          duplicates="$(docker exec kide-e2e-db psql -At -U kide -d kide -c             "SELECT count(*) FROM (
+              SELECT project_id
+              FROM public.model_checkpoints
+              WHERE label = '__kide_working_copy__'
+              GROUP BY project_id
+              HAVING count(*) > 1
+            ) conflicts;")"
+          [[ "$duplicates" == "0" ]] || {
+            echo "Found $duplicates projects with duplicate active working copies."
+            exit 1
+          }
+
       - name: Prove authentication survives an application-container restart
         shell: bash
         env:
