@@ -10,6 +10,8 @@ grep -q 'validateCheckpointLabel(data.label)' src/lib/projects.functions.ts ||
   fail "checkpoint API must reject the private working-copy label"
 grep -q 'validateWorkingCopySources(data.sources)' src/lib/projects.functions.ts ||
   fail "checkpoint API must enforce bounded relative model paths and sources"
+grep -q 'requireVerifiedStoredSources(row.sources)' src/lib/project-working-copy.functions.ts ||
+  fail "corrupt saved working copies must not appear as empty projects"
 grep -q 'coerceStoredSources(row.sources)' src/lib/projects.functions.ts ||
   fail "checkpoint list must fail closed on invalid persisted model sources"
 grep -q 'checkpoint.sources === null' src/routes/_authenticated/checkpoints.tsx ||
