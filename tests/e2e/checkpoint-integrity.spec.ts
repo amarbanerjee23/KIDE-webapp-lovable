@@ -92,7 +92,27 @@ test("checkpoint restore removes extra files and a custom model set imports comp
   await page.reload();
   await expect(page.getByRole("button", { name: /^custom\/Telemetry\.dml/ })).toBeVisible();
 
+  // A checksum-valid import with 101 files must be rejected before showing
+  // the destructive replacement dialog, preserving the saved customer models.
   await page.goto("/checkpoints");
+  const tooManyFiles = {
+    format: "kide.modelset/1",
+    exportedAt: "2026-10-10T00:00:00Z",
+    files: Array.from({ length: 101 }, (_, index) => ({
+      path: `extra/model${index}.dml`,
+      kind: "dml",
+      source: "DataModel Sample {}",
+      sha256: digest("DataModel Sample {}"),
+    })),
+  };
+  await page.locator('input[type="file"][accept="application/json"]').setInputFiles({
+    name: "over-limit-model-set.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(tooManyFiles)),
+  });
+  await expect(page.getByText("Workspace may contain at most 100 files.")).toBeVisible();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export model set" }).click();
   const download = await downloadPromise;
@@ -104,6 +124,9 @@ test("checkpoint restore removes extra files and a custom model set imports comp
     source,
     sha256: digest(source),
   });
+  await page.reload();
+  await page.goto("/models");
+  await expect(page.getByRole("button", { name: /^custom\/Telemetry\.dml/ })).toBeVisible();
 
   // Rapid successive replacements must preserve the *last* source map
   // across the autosave debounce/in-flight boundary, not a previous snapshot.

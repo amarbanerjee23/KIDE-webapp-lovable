@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { exportModelSet, importModelSet } from "@/lib/kide/model-exchange";
+import {
+  exportModelSet,
+  importModelSet,
+  isAcceptableModelSetSize,
+  MAX_MODEL_SET_IMPORT_BYTES,
+} from "@/lib/kide/model-exchange";
+import { sha256 } from "@/lib/kide/sha256";
 
 describe("verified model-set exchange", () => {
   const custom = {
@@ -48,6 +54,74 @@ describe("verified model-set exchange", () => {
     const imported = importModelSet(JSON.stringify(exported));
     expect(imported.ok).toBe(false);
     expect(imported.problems.join(" ")).toContain("Duplicate model file");
+  });
+
+  it("round-trips uppercase extensions supported by the editor and PostgreSQL", () => {
+    const sources = { "nested/Controller.MNCSPEC": "Model Controller", "PLANT.DML": "DataModel Plant {}" };
+    const exported = exportModelSet(sources);
+    expect(exported.files.map((file) => file.kind).sort()).toEqual(["dml", "mncspec"]);
+    expect(importModelSet(JSON.stringify(exported))).toMatchObject({
+      ok: true,
+      sources,
+      fileCount: 2,
+    });
+  });
+
+  it("enforces the same 100-file limit before replacing a project", () => {
+    const sources = Object.fromEntries(
+      Array.from({ length: 100 }, (_, index) => [`models/${index}.dml`, "DataModel Test {}"]),
+    );
+    const exported = exportModelSet(sources);
+    expect(importModelSet(JSON.stringify(exported))).toMatchObject({
+      ok: true,
+      fileCount: 100,
+      sources,
+    });
+
+    expect(() => exportModelSet({ ...sources, "extra.dml": "DataModel Extra {}" })).toThrow(
+      "at most 100 files",
+    );
+    exported.files.push({ ...exported.files[0]!, path: "extra.dml" });
+    const imported = importModelSet(JSON.stringify(exported));
+    expect(imported).toMatchObject({ ok: false, sources: {}, fileCount: 0 });
+    expect(imported.problems.join(" ")).toContain("at most 100 files");
+  });
+
+  it("refuses a checksum-valid model that exceeds the per-file storage limit", () => {
+    const file = exportModelSet({ "large.dml": "x".repeat(1_000_000) });
+    file.files[0]!.source += "y";
+    file.files[0]!.sha256 = sha256(file.files[0]!.source);
+    const outcome = importModelSet(JSON.stringify(file));
+    expect(outcome).toMatchObject({ ok: false, sources: {}, fileCount: 0 });
+    expect(outcome.problems.join(" ")).toContain("storage limit");
+  });
+
+  it("refuses a checksum-valid model set that exceeds the aggregate storage limit", () => {
+    const source = "x".repeat(900_000);
+    const large = {
+      format: "kide.modelset/1",
+      exportedAt: "2026-10-10T00:00:00Z",
+      files: Array.from({ length: 6 }, (_, index) => ({
+        path: `models/${index}.dml`,
+        kind: "dml",
+        source,
+        sha256: sha256(source),
+      })),
+    };
+    expect(() =>
+      exportModelSet(Object.fromEntries(large.files.map((file) => [file.path, file.source]))),
+    ).toThrow("total storage limit");
+    const outcome = importModelSet(JSON.stringify(large));
+    expect(outcome).toMatchObject({ ok: false, sources: {}, fileCount: 0 });
+    expect(outcome.problems.join(" ")).toContain("total storage limit");
+  });
+
+  it("screens large upload sizes before loading or parsing the file", () => {
+    expect(isAcceptableModelSetSize(0)).toBe(true);
+    expect(isAcceptableModelSetSize(MAX_MODEL_SET_IMPORT_BYTES)).toBe(true);
+    for (const size of [-1, Number.NaN, 1.5, MAX_MODEL_SET_IMPORT_BYTES + 1]) {
+      expect(isAcceptableModelSetSize(size)).toBe(false);
+    }
   });
 
   it("rejects malformed paths, wrong languages and unsupported formats", () => {
