@@ -100,6 +100,16 @@ test("new engineer creates the first project, loads linked models and navigates 
   await expect(page.getByRole("button", { name: /^Ecre\.dml/ })).toBeVisible();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
+  // A user-authored model uses the same storage rules as imports and
+  // survives a genuine PostgreSQL working-copy save/reload cycle.
+  await page.getByRole("button", { name: "New model" }).click();
+  await page.getByRole("textbox", { name: "File path" }).fill("custom/FieldSensors");
+  await page.getByRole("button", { name: "Create model", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^custom\/FieldSensors\.dml/ })).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^custom\/FieldSensors\.dml/ })).toBeVisible();
+
   await page.goto("/overview");
   await expect(page.getByRole("heading", { name: projectName })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Engineering flow" })).toBeVisible();

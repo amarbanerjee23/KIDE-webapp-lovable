@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { DslKind } from "@/lib/dsl";
+import { validateWorkingCopySources } from "@/lib/project-working-copy";
 import {
   assertWorkspacePathAvailable,
   normalizeWorkspaceFilePath,
@@ -24,11 +25,14 @@ function emit() {
 }
 
 export function setSource(path: string, value: string) {
-  if (!(path in sources)) {
+  if (!Object.hasOwn(sources, path)) {
     throw new Error(`Model file '${path}' does not exist in the active workspace.`);
   }
+  if (sources[path] === value) return;
 
-  sources = { ...sources, [path]: value };
+  // Validate before mutation, so a rejected paste never makes the active
+  // workspace impossible for PostgreSQL to save.
+  sources = validateWorkingCopySources({ ...sources, [path]: value });
   emit();
 }
 
@@ -36,10 +40,10 @@ export function createWorkspaceFile(pathInput: string, kind: DslKind): string {
   const path = normalizeWorkspaceFilePath(pathInput, kind);
   assertWorkspacePathAvailable(sources, path);
 
-  sources = {
+  sources = validateWorkingCopySources({
     ...sources,
     [path]: starterSourceForKind(kind, path),
-  };
+  });
   emit();
   return path;
 }
@@ -63,7 +67,7 @@ export function renameWorkspaceFile(
     nextSources[path === currentPath ? nextPath : path] = source;
   }
 
-  sources = nextSources;
+  sources = validateWorkingCopySources(nextSources);
   emit();
   return nextPath;
 }
@@ -78,7 +82,7 @@ export function deleteWorkspaceFile(path: string): void {
 }
 
 export function replaceWorkspaceSources(nextSources: WorkspaceSources) {
-  sources = { ...nextSources };
+  sources = validateWorkingCopySources(nextSources);
   emit();
 }
 
@@ -88,8 +92,7 @@ export function clearWorkspace() {
 }
 
 export function loadExampleWorkspace(exampleId?: string) {
-  sources = exampleWorkspaceSources(exampleId);
-  emit();
+  replaceWorkspaceSources(exampleWorkspaceSources(exampleId));
 }
 
 function subscribe(listener: () => void) {

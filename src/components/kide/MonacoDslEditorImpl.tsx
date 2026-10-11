@@ -25,7 +25,8 @@ export interface MonacoDslEditorProps {
   getSymbols: () => SymbolTable | null;
   getLanguageIndex?: () => WorkspaceLanguageIndex | null;
   workspaceFiles?: WorkspaceFile[];
-  onChange: (next: string) => void;
+  // Returning false rejects an over-limit edit and restores the last accepted text.
+  onChange: (next: string) => void | boolean;
   onOpenPath?: (path: string) => void;
   onCursorLine?: (line: number) => void;
   height?: string;
@@ -86,6 +87,12 @@ export default function MonacoDslEditorImpl({
   const createdModelsRef = useRef<editor.ITextModel[]>([]);
   const workspaceFilesRef = useRef(workspaceFiles);
   const onOpenPathRef = useRef(onOpenPath);
+  const lastAcceptedRef = useRef({ path, value });
+  const revertingRef = useRef(false);
+
+  if (lastAcceptedRef.current.path !== path) {
+    lastAcceptedRef.current = { path, value };
+  }
 
   workspaceFilesRef.current = workspaceFiles;
   onOpenPathRef.current = onOpenPath;
@@ -96,6 +103,10 @@ export default function MonacoDslEditorImpl({
       registerKideLanguages(monaco, getSymbols, getLanguageIndex);
     }
   }, [getLanguageIndex, getSymbols]);
+
+  useEffect(() => {
+    lastAcceptedRef.current = { path, value };
+  }, [path, value]);
 
   useEffect(() => {
     const monaco = monacoRef.current;
@@ -161,7 +172,26 @@ export default function MonacoDslEditorImpl({
           if (target) onOpenPathRef.current?.(target.path);
         });
       }}
-      onChange={(next) => onChange(next ?? "")}
+      onChange={(next) => {
+        if (revertingRef.current) return;
+        const nextValue = next ?? "";
+        if (onChange(nextValue) !== false) {
+          lastAcceptedRef.current = { path, value: nextValue };
+          return;
+        }
+
+        // A rejected paste must not leave Monaco displaying an unsaved source
+        // that the workspace store refused to accept. Restore on the next
+        // microtask rather than re-entering a Monaco content-change callback.
+        revertingRef.current = true;
+        queueMicrotask(() => {
+          const model = editorRef.current?.getModel();
+          if (model && !model.isDisposed() && modelMatchesPath(model, path)) {
+            model.setValue(lastAcceptedRef.current.value);
+          }
+          revertingRef.current = false;
+        });
+      }}
       options={{
         readOnly,
         fontSize: 13,

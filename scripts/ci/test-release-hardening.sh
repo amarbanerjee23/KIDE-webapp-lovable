@@ -32,6 +32,15 @@ grep -q 'isAcceptableModelSetSize(file.size)' src/routes/_authenticated/checkpoi
 grep -q 'over-limit-model-set.json' tests/e2e/checkpoint-integrity.spec.ts ||
   fail "PostgreSQL-backed import E2E must prove over-limit files cannot replace saved models"
 
+grep -q 'validateWorkingCopySources({ ...sources, \[path\]: value })' src/lib/kide/workspace-store.ts ||
+  fail "Monaco edits must respect the persisted source-size and aggregate limits"
+grep -q 'validateWorkingCopySources({' src/lib/kide/workspace-store.ts ||
+  fail "local file creation must respect the persisted 100-file limit"
+grep -q 'revertingRef.current' src/components/kide/MonacoDslEditorImpl.tsx ||
+  fail "rejected Monaco edits must restore the last accepted editor contents"
+grep -q 'custom/FieldSensors' tests/e2e/first-run-ux-acceptance.spec.ts ||
+  fail "first-run browser suite must prove created source persists after reload"
+
 bash scripts/ci/test-role-gated-cx.sh
 
 bunx vitest run   src/lib/kide/release-hardening.test.ts   src/lib/kide/qualification.test.ts   src/lib/kide/assurance.test.ts   src/lib/kide/kide.test.ts

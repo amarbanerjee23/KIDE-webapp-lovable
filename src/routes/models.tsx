@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Check,
@@ -381,7 +382,16 @@ function ModelLanguages() {
                 workspaceFiles={editorFiles}
                 onOpenPath={setActivePath}
                 onChange={(next) => {
-                  if (canEdit) setSource(activeFile.path, next);
+                  if (!canEdit) return false;
+                  try {
+                    setSource(activeFile.path, next);
+                    return true;
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not update model.", {
+                      id: "workspace-model-limit",
+                    });
+                    return false;
+                  }
                 }}
                 readOnly={!canEdit}
               />
