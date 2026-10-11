@@ -20,7 +20,6 @@ type ExportedFile = {
   sha256: string;
 };
 
-
 const targets = ["ros2-python", "iec61131-st", "zetta-node"] as const;
 
 function sha256(value: string) {
@@ -97,7 +96,13 @@ async function qualifyExampleGeneration(
       artifacts: Array<{ path: string; kind: string; bytes: number; sha256: string }>;
     };
     manifestSha256: string;
-    artifacts: Array<{ path: string; kind: string; bytes: number; sha256: string; content: string }>;
+    artifacts: Array<{
+      path: string;
+      kind: string;
+      bytes: number;
+      sha256: string;
+      content: string;
+    }>;
   };
   expect(bundle.manifest.releasable).toBe(true);
   expect(bundle.manifest.blockedBy).toEqual([]);
@@ -117,9 +122,7 @@ async function qualifyExampleGeneration(
       sha256: hash,
     })),
   );
-  expect(new Set(bundle.artifacts.map((entry) => entry.path)).size).toBe(
-    bundle.artifacts.length,
-  );
+  expect(new Set(bundle.artifacts.map((entry) => entry.path)).size).toBe(bundle.artifacts.length);
   for (const artifact of bundle.artifacts) {
     expect(artifact.sha256).toBe(sha256(artifact.content));
     expect(artifact.bytes).toBe(Buffer.byteLength(artifact.content, "utf8"));
