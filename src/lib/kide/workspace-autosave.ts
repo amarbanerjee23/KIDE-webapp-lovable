@@ -39,6 +39,5 @@ export function blocksProjectSwitch(
   lastSavedSources: string | null,
   inFlight: boolean,
 ): boolean {
-  return lastSavedSources !== null &&
-    (inFlight || serializedSources !== lastSavedSources);
+  return lastSavedSources !== null && (inFlight || serializedSources !== lastSavedSources);
 }
