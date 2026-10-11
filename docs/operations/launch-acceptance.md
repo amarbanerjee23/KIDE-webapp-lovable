@@ -36,7 +36,7 @@ The command:
 5. verifies the deployed Cloud Run service carries that exact commit and commit-tagged image;
 6. verifies 100% traffic is on the latest ready revision and compares its immutable digest with the independently resolved Artifact Registry commit-tagged image;
 7. re-verifies Better Auth runtime configuration and the Cloud SQL attachment;
-8. runs the live Chromium signup-to-release journey plus complete five-example source/checksum persistence and independently authenticated cross-organization isolation suites;
+8. runs the live Chromium signup-to-release journey, including synthesis/approval/generated-code download/release-bundle checks for **all five** starter examples, persistent five-language source/checksum checks, and independently authenticated cross-organization isolation suites;
 9. hashes the recovery, preflight, smoke, browser and deployment outputs;
 10. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity and browser-journey evidence;
 11. verifies that the evidence is internally consistent and that each referenced log/JSON file actually exists, hashes to the claimed SHA-256 and matches the embedded deployment qualification.
@@ -131,3 +131,23 @@ This validates Cloud SQL metadata, not restored SQL table contents or the
 original clone command source. The operator must separately retain evidence
 that the clone originated from production and that real recovered application
 records and relationships were inspected read-only before signing off.
+
+## Five-example release matrix (PR84)
+
+The protected production qualification must do more than verify that the five
+progressively complex examples can be created and reloaded. For every example,
+it now executes a complete customer journey through synthesis, independent
+generation validation, approval, Trust Centre, generated target-code download
+and release-bundle export. ROS 2 Python, IEC 61131-3 Structured Text and Zetta
+Node are covered across the five domain scenarios.
+
+Tests compare actual downloaded bytes, file lengths and SHA-256 digests,
+require a release manifest whose digest matches its content, compare the
+downloaded code fingerprint against the release manifest, and prove that all
+five model artifacts exactly match the previously persisted source map for the
+current project. One failed example blocks production qualification and
+therefore official release publication.
+
+This proves the deployed software's generation/export acceptance paths, not
+physical-device safety certification or successful deployment of generated
+control software to hardware.
