@@ -34,7 +34,13 @@ import {
 import { buildWorkspaceLanguageIndex } from "@/lib/dsl/workspace-language-service";
 import { useActiveProject } from "@/lib/active-project";
 import { useWorkspaceAccess } from "@/lib/kide/workspace-access";
-import { useWorkspaceSaveState } from "@/lib/kide/workspace-save-state";
+import {
+  isManualSaveRetryAvailable,
+  isWorkspaceLoadFailure,
+  useWorkspaceSaveState,
+} from "@/lib/kide/workspace-save-state";
+import { requestWorkspaceSaveRetry } from "@/lib/kide/workspace-save-retry";
+import { exportModelSet } from "@/lib/kide/model-exchange";
 import { requestWorkspaceReload } from "@/lib/kide/workspace-reload";
 import {
   linkFrom,
@@ -88,6 +94,27 @@ function ModelLanguages() {
   const selectedExample =
     EXAMPLE_WORKSPACES.find((example) => example.id === selectedExampleId) ?? EXAMPLE_WORKSPACES[0];
 
+  const exportLocalBackup = () => {
+    try {
+      if (Object.keys(sources).length === 0) {
+        toast.error("This workspace has no models to export.");
+        return;
+      }
+      const doc = exportModelSet(sources);
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "kide-unsaved-model-backup.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Local model backup exported. Keep this file until your project is saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not export model backup.");
+    }
+  };
+
   const applySelectedExample = () => {
     loadExampleWorkspace(selectedExampleId);
     setActivePath("");
@@ -135,7 +162,9 @@ function ModelLanguages() {
                 ? "Save failed"
                 : activeSaveState?.status === "loading"
                   ? "Loading…"
-                  : null;
+                  : activeSaveState?.status === "load-error"
+                    ? "Load failed"
+                    : null;
 
   const allProblems = workspace.files.flatMap((file) =>
     file.diagnostics.map((diagnostic) => ({ path: file.path, diagnostic })),
@@ -224,6 +253,30 @@ function ModelLanguages() {
           </Button>
         </div>
       </header>
+
+      {activeSaveState &&
+        ["error", "offline", "conflict"].includes(activeSaveState.status) &&
+        workspaceAccess.status === "ready" && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 border-b border-destructive/30 bg-destructive/5 px-4 py-3 text-xs text-foreground"
+          >
+            <p className="min-w-0 flex-1">
+              <strong>These models are still in this browser and are not safely saved.</strong>{" "}
+              {activeSaveState.message ?? "Save your local models before leaving this project."}
+            </p>
+            {isManualSaveRetryAvailable(activeSaveState.status) && (
+              <Button variant="outline" size="sm" onClick={requestWorkspaceSaveRetry}>
+                Retry save (keep edits)
+              </Button>
+            )}
+            {workspace.files.length > 0 && (
+              <Button variant="outline" size="sm" onClick={exportLocalBackup}>
+                Export local backup
+              </Button>
+            )}
+          </div>
+        )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="overflow-auto border-r border-border bg-sidebar p-3">
@@ -323,7 +376,7 @@ function ModelLanguages() {
                   </p>
                 </div>
               </div>
-            ) : activeSaveState?.status === "error" ? (
+            ) : activeSaveState && isWorkspaceLoadFailure(activeSaveState.status) ? (
               <div className="grid h-full place-items-center p-8 text-center">
                 <div className="max-w-md">
                   <p className="text-sm font-semibold">Project workspace could not be loaded</p>

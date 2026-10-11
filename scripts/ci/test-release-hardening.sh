@@ -41,6 +41,17 @@ grep -q 'revertingRef.current' src/components/kide/MonacoDslEditorImpl.tsx ||
 grep -q 'custom/FieldSensors' tests/e2e/first-run-ux-acceptance.spec.ts ||
   fail "first-run browser suite must prove created source persists after reload"
 
+grep -q 'status: offline ? "offline" : "load-error"' src/lib/kide/useWorkspacePersistence.ts ||
+  fail "initial workspace load failures must differ from failed autosaves"
+grep -q 'isWorkspaceLoadFailure(activeSaveState.status)' src/routes/models.tsx ||
+  fail "autosave errors must never replace the in-memory model editor"
+grep -q 'requestWorkspaceSaveRetry' src/routes/models.tsx ||
+  fail "the model editor must retry saving without reloading and losing local edits"
+grep -q 'Export local backup' src/routes/models.tsx ||
+  fail "unsaved or conflicted model sources must have a local recovery export"
+grep -q 'offline-model-recovery.spec.ts' playwright.config.ts ||
+  fail "offline local export and reconnect must be in the configured browser matrix"
+
 bash scripts/ci/test-role-gated-cx.sh
 
 bunx vitest run   src/lib/kide/release-hardening.test.ts   src/lib/kide/qualification.test.ts   src/lib/kide/assurance.test.ts   src/lib/kide/kide.test.ts

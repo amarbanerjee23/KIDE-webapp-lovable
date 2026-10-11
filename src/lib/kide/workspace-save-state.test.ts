@@ -2,11 +2,24 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearWorkspaceSaveState,
   getWorkspaceSaveState,
+  isManualSaveRetryAvailable,
+  isWorkspaceLoadFailure,
   setWorkspaceSaveState,
 } from "@/lib/kide/workspace-save-state";
 
 describe("workspace save state", () => {
   beforeEach(() => clearWorkspaceSaveState());
+
+  it("never treats a failed autosave as a failed workspace load", () => {
+    expect(isWorkspaceLoadFailure("load-error")).toBe(true);
+    for (const status of ["error", "offline", "conflict", "saved", "saving"] as const) {
+      expect(isWorkspaceLoadFailure(status)).toBe(false);
+    }
+    expect(isManualSaveRetryAvailable("error")).toBe(true);
+    for (const status of ["load-error", "conflict", "saved", "offline"] as const) {
+      expect(isManualSaveRetryAvailable(status)).toBe(false);
+    }
+  });
 
   it("starts idle", () => {
     expect(getWorkspaceSaveState()).toEqual({

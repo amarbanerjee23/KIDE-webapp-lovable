@@ -1,7 +1,25 @@
 import { useSyncExternalStore } from "react";
 
 export type WorkspaceSaveStatus =
-  "idle" | "loading" | "saving" | "saved" | "read-only" | "offline" | "conflict" | "error";
+  | "idle"
+  | "loading"
+  | "load-error"
+  | "saving"
+  | "saved"
+  | "read-only"
+  | "offline"
+  | "conflict"
+  | "error";
+
+/** Only a failed initial load may hide the model editor. */
+export function isWorkspaceLoadFailure(status: WorkspaceSaveStatus): boolean {
+  return status === "load-error";
+}
+
+/** Save retry must not reload or discard locally modified models. */
+export function isManualSaveRetryAvailable(status: WorkspaceSaveStatus): boolean {
+  return status === "error";
+}
 
 export interface WorkspaceSaveState {
   projectId: string | null;
