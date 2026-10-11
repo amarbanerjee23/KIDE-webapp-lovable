@@ -32,9 +32,11 @@ test("offline edits remain visible, can be exported locally, and save on reconne
     await page.getByRole("button", { name: "Replace with example" }).click();
 
     await expect(page.getByRole("button", { name: /^Agri\.dml/ })).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText(
-      "These models are still in this browser and are not safely saved.",
-    );
+    await expect(
+      page.getByRole("alert").filter({
+        hasText: "These models are still in this browser and are not safely saved.",
+      }),
+    ).toBeVisible();
     await expect(page.getByText("Project workspace could not be loaded")).toHaveCount(0);
 
     const downloadPromise = page.waitForEvent("download");
