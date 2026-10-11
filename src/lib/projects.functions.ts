@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireKideAuth } from "@/lib/auth-middleware";
-import { WORKING_COPY_LABEL, validateWorkingCopySources } from "@/lib/project-working-copy";
+import {
+  coerceStoredSources,
+  validateCheckpointCounts,
+  validateCheckpointLabel,
+  validateWorkingCopySources,
+  WORKING_COPY_LABEL,
+} from "@/lib/project-working-copy";
 import { projectTemplateById, projectTemplateSources } from "@/lib/project-templates";
 import {
   createNotifications,
@@ -177,7 +183,9 @@ export const saveCheckpoint = createServerFn({ method: "POST" })
       data.projectId,
       EDIT_ROLES,
     );
-    const label = data.label.trim().slice(0, 120) || "Checkpoint";
+    const label = validateCheckpointLabel(data.label);
+    const sources = validateWorkingCopySources(data.sources);
+    validateCheckpointCounts(data.errorCount, data.warningCount);
     const rows = await context.db<{ id: string; label: string; created_at: string | Date }[]>`
       INSERT INTO public.model_checkpoints (
         project_id, label, sources, error_count, warning_count, created_by
@@ -185,7 +193,7 @@ export const saveCheckpoint = createServerFn({ method: "POST" })
       VALUES (
         ${data.projectId}::uuid,
         ${label},
-        ${context.db.json(data.sources)},
+        ${context.db.json(sources)},
         ${data.errorCount},
         ${data.warningCount},
         ${context.userId}::uuid
@@ -232,7 +240,11 @@ export const listCheckpoints = createServerFn({ method: "POST" })
       LIMIT 50
     `;
 
-    return rows.map((row) => ({ ...row, created_at: iso(row.created_at) ?? "" }));
+    return rows.map((row) => ({
+      ...row,
+      sources: coerceStoredSources(row.sources),
+      created_at: iso(row.created_at) ?? "",
+    }));
   });
 
 export const requestReview = createServerFn({ method: "POST" })

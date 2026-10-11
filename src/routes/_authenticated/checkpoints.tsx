@@ -133,7 +133,12 @@ function CheckpointsPage() {
       return;
     }
     if (pendingRestore) {
-      replaceWorkspaceSources(pendingRestore.sources ?? {});
+      if (!pendingRestore.sources) {
+        toast.error("This checkpoint contains invalid models and cannot be restored.");
+        setPendingRestore(null);
+        return;
+      }
+      replaceWorkspaceSources(pendingRestore.sources);
       toast.success(`Restored "${pendingRestore.label}".`);
     } else if (pendingImport) {
       replaceWorkspaceSources(pendingImport.sources);
@@ -365,6 +370,11 @@ function CheckpointsPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{checkpoint.label}</p>
+                    {checkpoint.sources === null && (
+                      <p role="alert" className="mt-1 text-xs text-destructive">
+                        Invalid stored models. This checkpoint cannot be restored.
+                      </p>
+                    )}
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(checkpoint.created_at).toLocaleString()} ·{" "}
                       {Object.keys(checkpoint.sources ?? {}).length} models ·{" "}
@@ -374,7 +384,7 @@ function CheckpointsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={!canEdit}
+                    disabled={!canEdit || checkpoint.sources === null}
                     onClick={() => setPendingRestore(checkpoint)}
                   >
                     Restore

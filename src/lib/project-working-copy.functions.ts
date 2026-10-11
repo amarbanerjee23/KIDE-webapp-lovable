@@ -3,7 +3,7 @@ import { requireKideAuth } from "@/lib/auth-middleware";
 import { EDIT_ROLES, iso, requireProjectAccess } from "@/lib/data-access.server";
 import {
   assertWorkingCopyVersion,
-  coerceStoredSources,
+  requireVerifiedStoredSources,
   validateWorkingCopySources,
   WORKING_COPY_CONFLICT_MESSAGE,
   WORKING_COPY_LABEL,
@@ -26,7 +26,7 @@ export const loadProjectWorkingCopy = createServerFn({ method: "POST" })
     const row = rows[0];
 
     return {
-      sources: coerceStoredSources(row?.sources) ?? null,
+      sources: row ? requireVerifiedStoredSources(row.sources) : null,
       savedAt: iso(row?.created_at),
       canEdit: EDIT_ROLES.includes(project.role),
     };
