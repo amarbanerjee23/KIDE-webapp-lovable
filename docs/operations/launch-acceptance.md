@@ -9,7 +9,8 @@ The operator must provide:
 - `PROJECT_ID`: production Google Cloud project;
 - `KIDE_URL`: deployed HTTPS production origin;
 - `OPERATOR`: accountable launch operator or team identifier;
-- `RESTORE_DRILL_REF`: reference to the completed database restore drill;
+- `RESTORE_DRILL_REF`: completed Cloud SQL `CLONE` operation ID;
+- `RESTORE_DRILL_RECOVERY_INSTANCE`: name of the distinct recovery Cloud SQL instance;
 - optional `RELEASE_VERSION`, default `1.0.0`.
 
 ## Capture acceptance
@@ -20,7 +21,8 @@ Run from the exact green commit intended for release:
 PROJECT_ID=<project> \
 KIDE_URL=https://<production-origin> \
 OPERATOR=<operator> \
-RESTORE_DRILL_REF=<ticket-or-record> \
+RESTORE_DRILL_REF=<completed-cloud-sql-clone-operation-id> \
+RESTORE_DRILL_RECOVERY_INSTANCE=<separate-recovery-instance> \
 RELEASE_VERSION=1.0.0 \
 bash scripts/launch/capture-acceptance.sh
 ```
@@ -29,14 +31,15 @@ The command:
 
 1. records the exact Git commit;
 2. runs the read-only GCP launch preflight;
-3. runs the live deployed-environment smoke test;
-4. verifies the deployed Cloud Run service carries that exact commit and commit-tagged image;
-5. verifies 100% traffic is on the latest ready revision and compares its immutable digest with the independently resolved Artifact Registry commit-tagged image;
-6. re-verifies Better Auth runtime configuration and the Cloud SQL attachment;
-7. runs the live Chromium signup-to-release journey plus complete five-example source/checksum persistence and independently authenticated cross-organization isolation suites;
-8. hashes the preflight, smoke, browser and deployment outputs;
-9. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity and browser-journey evidence;
-10. verifies that the evidence is internally consistent and that each referenced log/JSON file actually exists, hashes to the claimed SHA-256 and matches the embedded deployment qualification.
+3. validates a recent completed Cloud SQL clone operation, distinct recovery instance and listed PostgreSQL database;
+4. runs the live deployed-environment smoke test;
+5. verifies the deployed Cloud Run service carries that exact commit and commit-tagged image;
+6. verifies 100% traffic is on the latest ready revision and compares its immutable digest with the independently resolved Artifact Registry commit-tagged image;
+7. re-verifies Better Auth runtime configuration and the Cloud SQL attachment;
+8. runs the live Chromium signup-to-release journey plus complete five-example source/checksum persistence and independently authenticated cross-organization isolation suites;
+9. hashes the recovery, preflight, smoke, browser and deployment outputs;
+10. creates schema-v2 machine-readable acceptance JSON with embedded deployment identity and browser-journey evidence;
+11. verifies that the evidence is internally consistent and that each referenced log/JSON file actually exists, hashes to the claimed SHA-256 and matches the embedded deployment qualification.
 
 It deliberately does not record credentials, secret values, database connection strings or payment data.
 
@@ -114,3 +117,17 @@ release publication. A standalone copied acceptance JSON is **not** evidence.
 The checks prove artifact consistency, not that a real Cloud SQL restore drill
 occurred: the accountable operator must still furnish a genuine restore
 record and GitHub protected environment approvals.
+
+## Verified clone provenance (PR80)
+
+Before accepting a launch candidate, the evidence collector queries the
+completed Cloud SQL clone operation, separate recovery instance and application
+database listing using the authorized production GCP identity. It retains
+`restore-operation-<sha>.json` and `restore-metadata-<sha>.log`, both SHA-256
+bound to the launch acceptance record. These must be present when the official
+release workflow validates downloaded acceptance artifacts.
+
+This validates Cloud SQL metadata, not restored SQL table contents or the
+original clone command source. The operator must separately retain evidence
+that the clone originated from production and that real recovered application
+records and relationships were inspected read-only before signing off.

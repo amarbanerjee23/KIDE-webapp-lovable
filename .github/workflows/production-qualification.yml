@@ -4,7 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       restore_drill_reference:
-        description: Reference to the completed production database restore drill
+        description: Completed Cloud SQL CLONE operation ID (not a ticket or note)
+        required: true
+        type: string
+      restore_recovery_instance:
+        description: Separate Cloud SQL recovery instance created for the drill
         required: true
         type: string
 
@@ -110,6 +114,8 @@ jobs:
           ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
           OPERATOR: github-actions:${{ github.actor }}
           RESTORE_DRILL_REF: ${{ inputs.restore_drill_reference }}
+          RESTORE_DRILL_RECOVERY_INSTANCE: ${{ inputs.restore_recovery_instance }}
+          RESTORE_DRILL_DATABASE_NAME: ${{ vars.GCP_RESTORE_DATABASE_NAME }}
           KIDE_ACCEPTANCE_BRANCH: main
           OUTPUT_DIR: launch-evidence
         shell: bash
@@ -136,5 +142,5 @@ jobs:
             printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
             printf -- '- Service: `%s`\n' "$KIDE_PRODUCTION_SERVICE"
             printf -- '- Origin: %s\n' "$KIDE_PRODUCTION_URL"
-            echo "- Launch preflight, repeatable live auth/session smoke, production Playwright engineering/release journey, Cloud SQL, 100% latest-revision traffic and Artifact Registry image digest verified."
+            echo "- Cloud SQL completed separate-instance clone operation, recovery database metadata, launch preflight, repeatable auth smoke, production Playwright engineering journey, 100% traffic and registry image digest verified. Recovered SQL row integrity requires independent operator sign-off."
           } >> "$GITHUB_STEP_SUMMARY"

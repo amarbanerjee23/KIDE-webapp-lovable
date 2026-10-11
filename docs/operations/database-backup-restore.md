@@ -15,7 +15,8 @@ For the launch drill:
 5. verify at least one known organization/project record from the chosen recovery point;
 6. run database integrity/read queries;
 7. record recovery point, start/end timestamps and result;
-8. destroy the recovery instance after evidence is retained.
+8. keep the separate recovery instance RUNNABLE through protected production qualification, which reads the completed clone operation and recovery database metadata;
+9. after qualification evidence and independent SQL integrity sign-off are retained, obtain operator approval and destroy only the designated recovery instance (never production).
 
 ## Recovery decision
 
@@ -41,3 +42,30 @@ Record:
 - operator;
 - timestamps;
 - final disposition.
+
+## PR80 — Real Cloud SQL operation validation for qualification
+
+The previous production qualification accepted any nonempty restore reference;
+that is insufficient proof of a recovery operation. The protected workflow now
+requires **two inputs**: the Cloud SQL `CLONE` operation ID and a separately
+named recovery instance. It reads live Cloud SQL metadata and refuses:
+
+- an incomplete/failed/non-clone operation or a clone older than 30 days;
+- an operation whose target or project differs from the requested recovery instance;
+- an unready recovery instance, a mismatched PostgreSQL engine or region;
+- disabled production backup/PITR or a missing recovery application database;
+- passing the production instance itself as the recovery target.
+
+The qualification evidence contains a checksummed recovery-operation sidecar
+and recovery-metadata log. The verifier cross-checks those bytes. The operation
+**does not** independently establish that the source of the clone command was
+the production instance, or that recovered tables and rows are intact.
+Before dispatching qualification, the accountable operator must also inspect
+the Cloud SQL clone request in Cloud Audit Logs and perform read-only SQL
+inspection of Better Auth tables, KIDE schema and a known organization/project
+on the isolated recovery instance. Record the SQL query results securely.
+Do not consider the release ready without that separate signed record.
+
+The workflow never provisions, modifies or deletes Cloud SQL instances; the
+operator manages the clone lifecycle and its cost using the protected GCP
+process. Never point app traffic or the live KIDE URL at the recovery instance.

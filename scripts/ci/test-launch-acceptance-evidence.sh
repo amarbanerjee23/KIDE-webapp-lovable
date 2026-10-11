@@ -8,6 +8,8 @@ fail() {
 
 bash -n scripts/launch/capture-acceptance.sh
 bash -n deploy/gcp/qualify-live-deployment.sh
+bash -n scripts/launch/check-restore-drill.sh
+bash scripts/ci/test-cloudsql-restore-operation.sh
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -118,6 +120,31 @@ if bun scripts/launch/verify-acceptance.ts "$tmp/tampered.json" >/dev/null 2>&1;
 fi
 
 sha=1234567890abcdef1234567890abcdef12345678
+cp "$tmp/good.json" "$tmp/good-copy.json"
+python3 - "$tmp/good.json" <<'PY'
+import json
+import sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    payload = json.load(handle)
+payload["restoreDrill"]["operationStatus"] = "PENDING"
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(payload, handle)
+PY
+if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; then
+  fail "verifier accepted pending restore operation"
+fi
+cp "$tmp/good-copy.json" "$tmp/good.json"
+
+cp "$tmp/restore-operation-${sha}.json" "$tmp/restore-operation-backup.json"
+printf 'tampered recovery metadata\n' >> "$tmp/restore-operation-${sha}.json"
+if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; then
+  fail "verifier accepted a modified recovery metadata sidecar"
+fi
+mv "$tmp/restore-operation-backup.json" "$tmp/restore-operation-${sha}.json"
+bun scripts/launch/verify-acceptance.ts "$tmp/good.json"
+
+
 printf 'post-qualification tampering\n' >> "$tmp/preflight-${sha}.log"
 if bun scripts/launch/verify-acceptance.ts "$tmp/good.json" >/dev/null 2>&1; then
   fail "verifier accepted modified preflight evidence"
@@ -147,6 +174,10 @@ grep -q 'productionBrowserJourney' scripts/launch/capture-acceptance.sh ||
   fail "collector must bind the browser journey to acceptance evidence"
 grep -q 'deploymentQualification' scripts/launch/capture-acceptance.sh ||
   fail "collector must record deployment qualification"
+grep -q 'check-restore-drill.sh' scripts/launch/capture-acceptance.sh ||
+  fail "production launch must query real Cloud SQL clone operation and recovery instance"
+grep -q 'restore_recovery_instance' .github/workflows/production-qualification.yml ||
+  fail "production qualification must name the independent recovery instance"
 grep -q 'logSha256' scripts/launch/capture-acceptance.sh ||
   fail "collector must checksum the deployment qualification log"
 grep -q 'KIDE_QUALIFICATION_ACCEPTANCE_PATH' .github/workflows/publish-release.yml ||
