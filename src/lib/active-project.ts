@@ -26,7 +26,6 @@ function isSameProject(left: ActiveProject | null, right: ActiveProject | null):
     left?.organizationId === right?.organizationId;
 }
 
-
 function hydrate() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
@@ -56,7 +55,10 @@ export function getActiveProject(): ActiveProject | null {
   return activeProject;
 }
 
-export function setActiveProject(project: ActiveProject | null, options?: { force?: boolean }): boolean {
+export function setActiveProject(
+  project: ActiveProject | null,
+  options?: { force?: boolean },
+): boolean {
   hydrate();
   // Reloading a picker often reselects the same project. Emitting an identical
   // selection makes the persistence hook discard its in-flight autosave timer.
@@ -91,8 +93,11 @@ function subscribe(listener: () => void) {
     const previous = activeProject;
     hydrated = false;
     hydrate();
-    if (!isSameProject(previous, activeProject) && projectSwitchGuard &&
-        !projectSwitchGuard(activeProject)) {
+    if (
+      !isSameProject(previous, activeProject) &&
+      projectSwitchGuard &&
+      !projectSwitchGuard(activeProject)
+    ) {
       // Other tabs cannot replace this tab's dirty in-memory project.
       // Do not ping-pong storage writes between tabs.
       activeProject = previous;
