@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -55,12 +55,12 @@ export function useWorkspacePersistence(enabled: boolean) {
   const retryTimerRef = useRef<number | null>(null);
   const manualRetryVersionRef = useRef(0);
 
-  const cancelRetry = () => {
+  const cancelRetry = useCallback(() => {
     if (retryTimerRef.current !== null && typeof window !== "undefined") {
       window.clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     }
-  };
+  }, []);
   const [connectivityVersion, setConnectivityVersion] = useState(0);
   const workspaceReloadVersion = useWorkspaceReloadVersion();
   const workspaceSaveRetryVersion = useWorkspaceSaveRetryVersion();
@@ -97,7 +97,7 @@ export function useWorkspacePersistence(enabled: boolean) {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };
-  }, [activeProject, enabled]);
+  }, [activeProject, enabled, cancelRetry]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -139,7 +139,7 @@ export function useWorkspacePersistence(enabled: boolean) {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [enabled]);
 
-  useEffect(() => () => cancelRetry(), []);
+  useEffect(() => () => cancelRetry(), [cancelRetry]);
 
   useEffect(() => {
     if (workspaceSaveRetryVersion !== manualRetryVersionRef.current) {
@@ -147,7 +147,7 @@ export function useWorkspacePersistence(enabled: boolean) {
       cancelRetry();
       retryAttemptRef.current = 0;
     }
-  }, [workspaceSaveRetryVersion]);
+  }, [workspaceSaveRetryVersion, cancelRetry]);
 
   useEffect(() => {
     cancelRetry();
@@ -221,7 +221,7 @@ export function useWorkspacePersistence(enabled: boolean) {
         });
         console.warn("[Workspace] Could not load project working copy:", message);
       });
-  }, [activeProject, enabled, load, workspaceReloadVersion]);
+  }, [activeProject, enabled, load, workspaceReloadVersion, cancelRetry]);
 
   useEffect(() => {
     if (
@@ -372,5 +372,5 @@ export function useWorkspacePersistence(enabled: boolean) {
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeProject, connectivityVersion, enabled, save, sources, workspaceSaveRetryVersion]);
+  }, [activeProject, connectivityVersion, enabled, save, sources, workspaceSaveRetryVersion, cancelRetry]);
 }
