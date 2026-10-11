@@ -80,7 +80,7 @@ project_id="$(psql -c "
   insert into public.projects(organization_id, name, created_by)
   values ('$org_id'::uuid, 'CI Controller', '$user_id'::uuid)
   returning id;
-" | head -1)
+" | head -1)"
 
 # Prove the migration refuses existing historical corruption instead of
 # resolving/removing potentially valuable customer source records implicitly.
