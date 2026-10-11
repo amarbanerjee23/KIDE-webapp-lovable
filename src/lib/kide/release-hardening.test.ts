@@ -13,7 +13,7 @@ import {
 } from "./approval-store";
 import { buildAssurance } from "./assurance";
 import { qualify } from "./qualification";
-import { buildRelease } from "./release";
+import { buildRelease, isValidReleaseVersion } from "./release";
 import { sha256 } from "./sha256";
 import { synthesize } from "./synthesis";
 
@@ -265,5 +265,69 @@ describe("release-hardening mutation and fail-closed matrix", () => {
     expect(b.artifacts.map((artifact) => artifact.sha256)).toEqual(
       a.artifacts.map((artifact) => artifact.sha256),
     );
+  });
+});
+
+describe("release version correctness and export safety", () => {
+  const baseline = EXAMPLE_WORKSPACES[0]!;
+
+  it.each([
+    "1.0.0",
+    "0.0.0",
+    "12.34.56",
+    "1.0.0-rc.1",
+    "1.2.3-alpha.1+build.20261011",
+  ])("accepts a well-formed semantic version %s", (version) => {
+    expect(isValidReleaseVersion(version)).toBe(true);
+  });
+
+  it.each([
+    "",
+    "1",
+    "v1.0.0",
+    "1.0",
+    "01.0.0",
+    "1.02.3",
+    "1.2.03",
+    "1.2.3-01",
+    "1.2.3-rc.01",
+    "1.2.3-",
+    "1.2.3+",
+    " 1.2.3 ",
+    "../1.2.3",
+    "1.2.3/../../export",
+    "1.2.3\\\\output",
+    "1.2.3\\n",
+    "1.2.3%00",
+    "1.2.3-".concat("a".repeat(90)),
+  ])("rejects unsafe or malformed release version %s", (version) => {
+    expect(isValidReleaseVersion(version)).toBe(false);
+  });
+
+  it("blocks versionless/malformed releases even when synthesis and approval gates pass", () => {
+    const workspace = linked(baseline);
+    const report = synthesize(workspace);
+    const selected = report.candidates[0]!;
+    const assurance = buildAssurance(workspace, report, selected.id);
+    const valid = buildRelease(workspace, report, assurance, "1.2.3-rc.1", {
+      approvalCurrent: true,
+    });
+    expect(valid.releasable).toBe(true);
+    expect(valid.blockedBy).toEqual([]);
+
+    for (const version of ["", "../1.0.0", "1.2.3-rc.01"]) {
+      const invalid = buildRelease(workspace, report, assurance, version, {
+        approvalCurrent: true,
+      });
+      expect(invalid.releasable).toBe(false);
+      expect(invalid.blockedBy).toContain("Valid semantic release version");
+      const manifest = JSON.parse(invalid.manifest) as {
+        releasable: boolean;
+        blockedBy: string[];
+      };
+      expect(manifest.releasable).toBe(false);
+      expect(manifest.blockedBy).toContain("Valid semantic release version");
+      expect(invalid.manifestHash).toBe(sha256(invalid.manifest));
+    }
   });
 });

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EngineeringBackButton } from "@/components/kide/EngineeringBackButton";
 import { EngineeringWorkspaceGuard } from "@/components/kide/EngineeringWorkspaceGuard";
 import { buildAssurance } from "@/lib/kide/assurance";
-import { buildRelease } from "@/lib/kide/release";
+import { buildRelease, isValidReleaseVersion } from "@/lib/kide/release";
 import { CODEGEN_TARGETS, generateCode, targetLabel, type CodegenTarget } from "@/lib/kide/codegen";
 import { synthesize } from "@/lib/kide/synthesis";
 import { linkFrom, useWorkspaceSources } from "@/lib/kide/workspace-store";
@@ -159,10 +159,11 @@ function ReleaseCentre() {
       codegenBundle,
     ],
   );
+  const validVersion = isValidReleaseVersion(version);
   const canRelease = bundle.releasable;
 
   const downloadCode = () => {
-    if (!codegenBundle?.validation.ready) return;
+    if (!canRelease || !validVersion || !codegenBundle?.validation.ready) return;
 
     const payload = JSON.stringify(
       {
@@ -188,6 +189,8 @@ function ReleaseCentre() {
   };
 
   const download = () => {
+    if (!canRelease || !validVersion) return;
+
     const payload = JSON.stringify(
       {
         manifest: JSON.parse(bundle.manifest),
@@ -220,14 +223,30 @@ function ReleaseCentre() {
           </p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0 max-sm:w-full">
-          <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            Version
-            <input
-              value={version}
-              onChange={(event) => setVersion(event.target.value)}
-              className="h-8 w-24 rounded-md border border-input bg-background px-2 font-mono text-xs"
-            />
-          </label>
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              Version
+              <input
+                aria-invalid={!validVersion}
+                aria-describedby="release-version-help"
+                value={version}
+                maxLength={80}
+                onChange={(event) => setVersion(event.target.value)}
+                className="h-8 w-36 rounded-md border border-input bg-background px-2 font-mono text-xs"
+              />
+            </label>
+            <p
+              id="release-version-help"
+              role={validVersion ? undefined : "alert"}
+              className={`max-w-72 text-[11px] ${
+                validVersion ? "text-muted-foreground" : "text-destructive"
+              }`}
+            >
+              {validVersion
+                ? "Semantic version (for example 1.0.0 or 1.1.0-rc.1)"
+                : "Enter a valid semantic version (for example 1.0.0). Exports are blocked."}
+            </p>
+          </div>
           <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
             Target
             <select
@@ -317,7 +336,7 @@ function ReleaseCentre() {
 
             {!canRelease && (
               <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-[11px] text-destructive">
-                Release blocked. Resolve everything above — see the{" "}
+                Release blocked. Resolve the issues above, including the semantic version, or see the{" "}
                 <Link to="/trust" className="underline">
                   Trust Centre
                 </Link>{" "}
