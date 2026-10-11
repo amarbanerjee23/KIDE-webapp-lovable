@@ -113,7 +113,6 @@ psql -c "
   insert into public.model_checkpoints(project_id, label, sources, created_by)
   values ('$project_id'::uuid, '__kide_working_copy__', '{}'::jsonb, '$user_id'::uuid);
 " >/dev/null
-"
 
 expect_sql_failure "
   insert into public.model_checkpoints(project_id, label, sources, created_by)
