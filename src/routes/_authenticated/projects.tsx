@@ -131,7 +131,10 @@ function ProjectsHome() {
       const created = await addProject({
         data: { organizationId, name: cleanName, ...(templateId ? { templateId } : {}) },
       });
-      setActiveProject({ projectId: created.id, organizationId });
+      const selected = setActiveProject({ projectId: created.id, organizationId });
+      if (!selected) {
+        toast.info("Project created. Save your previous project's models before opening it.");
+      }
       setRecentCreated({ organizationId, projectId: created.id, name: created.name });
       setProjectName((current) => ({ ...current, [organizationId]: "" }));
       await refresh();
@@ -263,12 +266,14 @@ function ProjectsHome() {
             <Button asChild>
               <Link
                 to="/models"
-                onClick={() =>
-                  setActiveProject({
-                    projectId: starterProject.id,
-                    organizationId: starterOrg.id,
-                  })
-                }
+                onClick={(event) => {
+                    if (!setActiveProject({
+                      projectId: starterProject.id,
+                      organizationId: starterOrg.id,
+                    })) {
+                      event.preventDefault();
+                    }
+                  }}
               >
                 Start modelling
                 <ArrowRight />
@@ -413,12 +418,14 @@ function ProjectsHome() {
                   <Button asChild size="sm">
                     <Link
                       to="/models"
-                      onClick={() =>
-                        setActiveProject({
-                          projectId: recentCreated.projectId,
-                          organizationId: org.id,
-                        })
-                      }
+                      onClick={(event) => {
+                    if (!setActiveProject({
+                      projectId: recentCreated.projectId,
+                      organizationId: org.id,
+                    })) {
+                      event.preventDefault();
+                    }
+                  }}
                     >
                       Open new project
                       <ArrowRight className="size-3.5" />
@@ -457,12 +464,14 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="outline" className="shrink-0">
                           <Link
                             to="/overview"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => {
+                    if (!setActiveProject({
+                      projectId: project.id,
+                      organizationId: org.id,
+                    })) {
+                      event.preventDefault();
+                    }
+                  }}
                           >
                             Open overview
                           </Link>
@@ -472,12 +481,14 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="ghost" className="text-xs">
                           <Link
                             to="/models"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => {
+                    if (!setActiveProject({
+                      projectId: project.id,
+                      organizationId: org.id,
+                    })) {
+                      event.preventDefault();
+                    }
+                  }}
                           >
                             Open models
                           </Link>
@@ -485,12 +496,14 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="ghost" className="text-xs">
                           <Link
                             to="/designer"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => {
+                    if (!setActiveProject({
+                      projectId: project.id,
+                      organizationId: org.id,
+                    })) {
+                      event.preventDefault();
+                    }
+                  }}
                           >
                             Activity designer
                           </Link>
@@ -498,12 +511,14 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="ghost" className="text-xs">
                           <Link
                             to="/workbench"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => {
+                    if (!setActiveProject({
+                      projectId: project.id,
+                      organizationId: org.id,
+                    })) {
+                      event.preventDefault();
+                    }
+                  }}
                           >
                             Workbench
                           </Link>
