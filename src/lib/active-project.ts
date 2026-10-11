@@ -22,8 +22,7 @@ export function registerProjectSwitchGuard(guard: ProjectSwitchGuard): () => voi
 }
 
 function isSameProject(left: ActiveProject | null, right: ActiveProject | null): boolean {
-  return left?.projectId === right?.projectId &&
-    left?.organizationId === right?.organizationId;
+  return left?.projectId === right?.projectId && left?.organizationId === right?.organizationId;
 }
 
 function hydrate() {
