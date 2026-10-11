@@ -174,10 +174,11 @@ export function useProjectSelection() {
       return;
     }
     if (nextProjectId && selectedOrgRef.current) {
-      if (!setActiveProject({
+      const changed = setActiveProject({
         projectId: nextProjectId,
         organizationId: selectedOrgRef.current,
-      })) return;
+      });
+      if (!changed) return;
     } else if (!nextProjectId && getActiveProject() && !setActiveProject(null)) {
       return;
     }
