@@ -8,8 +8,11 @@ fail() {
 
 workflow=".github/workflows/publish-release.yml"
 qualification_workflow=".github/workflows/production-qualification.yml"
+operations_workflow=".github/workflows/operations-approval.yml"
 test -s "$workflow" || fail "publish-release workflow missing"
 test -s "$qualification_workflow" || fail "production qualification workflow missing"
+test -s "$operations_workflow" || fail "independent operations approval workflow missing"
+node scripts/ci/test-operations-approval.mjs
 bash -n scripts/release/validate-publication.sh
 
 grep -q '^  workflow_dispatch:$' "$workflow" ||
@@ -24,6 +27,16 @@ grep -q 'actions: read' "$workflow" ||
   fail "release workflow must be able to verify CI and qualification evidence"
 grep -q 'PUBLISH v1.0.0' "$workflow" ||
   fail "release workflow must require explicit publication confirmation"
+grep -q 'operations_approval_run_id' "$workflow" ||
+  fail "publication must require the independent operations approval run"
+grep -q 'Require independent reviewed operations approval' "$workflow" ||
+  fail "publication must validate separately reviewed release operations evidence"
+grep -q '/approvals' "$workflow" ||
+  fail "publication must require GitHub's protected environment review events"
+grep -q 'verify-operations-approval.mjs' "$workflow" ||
+  fail "publication must validate immutable operations attestation"
+grep -q 'Operations approval evidence SHA-256' "$workflow" ||
+  fail "publication must retain sign-off artifact digest"
 grep -q 'qualification_run_id' "$workflow" ||
   fail "release workflow must require a production qualification run ID"
 grep -q 'Production deployment qualification' "$workflow" ||
@@ -61,6 +74,25 @@ grep -q 'capture-acceptance.sh' "$qualification_workflow" ||
   fail "production qualification must capture launch acceptance evidence"
 grep -q 'retention-days: 90' "$qualification_workflow" ||
   fail "production qualification evidence must be retained for release operations"
+
+grep -q '^  workflow_dispatch:$' "$operations_workflow" ||
+  fail "independent operations approval must be manual-only"
+! grep -Eq '^  (push|pull_request|schedule):' "$operations_workflow" ||
+  fail "sign-off cannot be automatic"
+grep -q 'environment: production-release-approval' "$operations_workflow" ||
+  fail "sign-off must use a dedicated approval environment"
+grep -q 'actions: read' "$operations_workflow" ||
+  fail "operations approval must verify a real successful production qualification"
+grep -q 'restore_sql_inspection_url' "$operations_workflow" ||
+  fail "operations approval must reference recovered SQL integrity"
+grep -q 'clone_source_audit_url' "$operations_workflow" ||
+  fail "operations approval must reference clone source provenance"
+grep -q 'monitoring_rollback_url' "$operations_workflow" ||
+  fail "operations approval must reference owner, alerts and rollback evidence"
+grep -q 'privacy_terms_approval_url' "$operations_workflow" ||
+  fail "operations approval must reference legal/business sign-off"
+grep -q 'incident_review_url' "$operations_workflow" ||
+  fail "operations approval must reference launch incident review"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

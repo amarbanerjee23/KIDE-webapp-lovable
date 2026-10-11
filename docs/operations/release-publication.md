@@ -21,6 +21,9 @@ Before publication:
    Secret Manager metadata and Artifact Registry image metadata.
 7. Confirm monitoring/alert owners, privacy/terms approval, and no active
    release-blocking incident.
+8. Configure the separate `production-release-approval` GitHub environment with
+   **required reviewers** and disable self-review; a workflow with no human review
+   cannot be accepted for publication.
 
 ## Qualify production
 
@@ -47,19 +50,41 @@ Retain the **successful GitHub Actions run ID**. Do not copy/paste acceptance JS
 into the publication workflow. Repeated qualification uses new disposable smoke and
 engineering accounts with randomized names and addresses.
 
+## Independently review production readiness
+
+Once production qualification succeeds, dispatch **Production operations release approval**
+from the **same current main SHA**, using the qualification run ID and private HTTPS
+references to each approved evidence record: (1) actual read-only recovered SQL
+tables and a known project; (2) Cloud SQL Audit Logs clone-source verification;
+(3) alert delivery/on-call ownership and rollback exercise; (4) approved Privacy,
+Terms and truthful free-evaluation copy; (5) unresolved critical/high incident
+review. Record the exact confirmation `APPROVE v1.0.0 <40-character-main-SHA>`.
+
+The workflow requires the independent `production-release-approval` environment
+and records the attesting GitHub identity and references in a 90-day run artifact.
+Publication **independently checks GitHub's approval history**, requiring an
+approving reviewer different from the workflow actor. A bare GitHub environment
+name without a real reviewer decision is insufficient. The operator remains
+responsible for the substance and correctness of the linked evidence: checking
+links and approvals cannot inspect private third-party records or replace
+professional/legal sign-off. Do not put passwords, user data or secret query
+parameters in the evidence URLs.
+
 ## Publish
 
 In GitHub Actions select **Publish official release**, choose `main` and enter:
 
 - `qualification_run_id`: the numeric ID of a **successful Production deployment
   qualification** run for the current `main` SHA;
+- `operations_approval_run_id`: successful, **independently reviewed**
+  operations sign-off workflow for the same main SHA and qualification run;
 - `confirmation`: exactly `PUBLISH v1.0.0`.
 
 The workflow downloads the matching release acceptance artifact itself. It retains
 all acceptance sidecar files and rejects missing or tampered preflight, smoke,
 browser or deployment logs, a mismatched standalone deployment JSON,
 failed/stale/non-`main` runs, mismatched commit or image evidence,
-missing successful main CI, and an existing release or tag. On
+missing successful main CI, missing or unreviewed operations sign-off, and an existing release or tag. On
 success it creates `v1.0.0` pointing to the accepted commit and records the SHA-256
 of its acceptance JSON in the release notes.
 

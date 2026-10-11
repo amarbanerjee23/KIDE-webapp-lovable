@@ -7,6 +7,10 @@ on:
         description: Successful Production deployment qualification workflow run ID for current main
         required: true
         type: string
+      operations_approval_run_id:
+        description: Successful independently reviewed Production operations release approval run ID
+        required: true
+        type: string
       confirmation:
         description: Type PUBLISH v1.0.0
         required: true
@@ -109,6 +113,50 @@ jobs:
             EXPECTED_COMMIT_SHA="$main_sha" \
             bash scripts/release/validate-publication.sh
 
+      - name: Require independent reviewed operations approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATIONS_APPROVAL_RUN_ID: ${{ inputs.operations_approval_run_id }}
+          QUALIFICATION_RUN_ID: ${{ inputs.qualification_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          [[ "$OPERATIONS_APPROVAL_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "operations_approval_run_id must be numeric." >&2
+            exit 1
+          }
+          [[ "$QUALIFICATION_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "qualification_run_id must be numeric." >&2
+            exit 1
+          }
+
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${OPERATIONS_APPROVAL_RUN_ID}" \
+            > /tmp/kide-operations-approval-run.json
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${OPERATIONS_APPROVAL_RUN_ID}/approvals" \
+            > /tmp/kide-operations-approval-reviews.json
+
+          rm -rf /tmp/kide-operations-approval
+          mkdir -p /tmp/kide-operations-approval
+          gh run download "$OPERATIONS_APPROVAL_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "release-operations-approval-$sha-$QUALIFICATION_RUN_ID" \
+            --dir /tmp/kide-operations-approval
+
+          mapfile -t approvals < <(
+            find /tmp/kide-operations-approval -type f \
+              -name "release-operations-approval-$sha.json" -print
+          )
+          if (( ${#approvals[@]} != 1 )); then
+            echo "Expected exactly one protected operations approval artifact." >&2
+            exit 1
+          fi
+          node scripts/release/verify-operations-approval.mjs \
+            "${approvals[0]}" "$sha" "$QUALIFICATION_RUN_ID" "$GITHUB_REPOSITORY" \
+            /tmp/kide-operations-approval-run.json /tmp/kide-operations-approval-reviews.json
+          echo "KIDE_OPERATIONS_APPROVAL_PATH=${approvals[0]}" >> "$GITHUB_ENV"
+          echo "KIDE_OPERATIONS_APPROVAL_RUN_ID=$OPERATIONS_APPROVAL_RUN_ID" >> "$GITHUB_ENV"
+
       - name: Require successful main CI for accepted commit
         env:
           GH_TOKEN: ${{ github.token }}
@@ -164,6 +212,7 @@ jobs:
         run: |
           set -euo pipefail
           acceptance_sha="$(sha256sum "$KIDE_QUALIFICATION_ACCEPTANCE_PATH" | awk '{print $1}')"
+          operations_sha="$(sha256sum "$KIDE_OPERATIONS_APPROVAL_PATH" | awk '{print $1}')"
           {
             cat "docs/releases/v${RELEASE_VERSION}.md"
             echo
@@ -172,6 +221,9 @@ jobs:
             printf 'Release commit: `%s`\n' "$(git rev-parse HEAD)"
             echo
             printf 'Launch acceptance evidence SHA-256: `%s`\n' "$acceptance_sha"
+            echo
+            printf 'Independently reviewed operations approval run: `%s`\n' "$KIDE_OPERATIONS_APPROVAL_RUN_ID"
+            printf 'Operations approval evidence SHA-256: `%s`\n' "$operations_sha"
           } > /tmp/kide-release-notes.md
 
       - name: Publish GitHub Release
@@ -191,5 +243,5 @@ jobs:
             echo
             printf -- '- Tag: `%s`\n' "$RELEASE_TAG"
             printf -- '- Commit: `%s`\n' "$(git rev-parse HEAD)"
-            echo "- Acceptance evidence came from a successful production qualification run for current main and was validated alongside successful main CI."
+            echo "- Acceptance evidence came from a successful production qualification run for current main, plus a separately reviewed operations sign-off, and was validated alongside successful main CI."
           } >> "$GITHUB_STEP_SUMMARY"

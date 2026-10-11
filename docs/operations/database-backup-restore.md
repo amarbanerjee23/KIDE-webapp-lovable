@@ -69,3 +69,18 @@ Do not consider the release ready without that separate signed record.
 The workflow never provisions, modifies or deletes Cloud SQL instances; the
 operator manages the clone lifecycle and its cost using the protected GCP
 process. Never point app traffic or the live KIDE URL at the recovery instance.
+
+## PR81 — Independent recovery-content inspection approval
+
+The real clone operation/instance metadata gate does not establish that the
+clone originated at the production source, nor that Better Auth and KIDE
+tables/relations or a known organization/project can be read from the
+recovered database. Retain protected read-only inspection results and Cloud
+SQL clone audit-source evidence in private, accountable records.
+
+After production qualification, the separate `Production operations release approval`
+workflow requires HTTPS references to **both** items, plus monitoring, legal
+and incident reviews, before its own protected independent review. The
+publication workflow checks the completed run, matching qualified SHA and
+the non-actor GitHub environment approval; it does not infer that external
+records are accurate. The recovery clone is never a production traffic target.
