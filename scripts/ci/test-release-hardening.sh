@@ -41,6 +41,13 @@ grep -q 'revertingRef.current' src/components/kide/MonacoDslEditorImpl.tsx ||
 grep -q 'custom/FieldSensors' tests/e2e/first-run-ux-acceptance.spec.ts ||
   fail "first-run browser suite must prove created source persists after reload"
 
+grep -q 'FOR UPDATE' src/lib/project-working-copy.functions.ts ||
+  fail "first working-copy insert must serialize on the project row"
+grep -q 'assertSingleWorkingCopy(existingRows)' src/lib/project-working-copy.functions.ts ||
+  fail "duplicate working-copy records must fail closed"
+grep -q 'initial-working-copy-race.spec.ts' playwright.config.ts ||
+  fail "two-tab concurrent initial saves must run in production browser E2E"
+
 bash scripts/ci/test-role-gated-cx.sh
 
 bunx vitest run   src/lib/kide/release-hardening.test.ts   src/lib/kide/qualification.test.ts   src/lib/kide/assurance.test.ts   src/lib/kide/kide.test.ts
