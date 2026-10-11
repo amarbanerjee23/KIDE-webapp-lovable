@@ -51,3 +51,13 @@ Before launch, every alert must have a human or team recipient and an escalation
 - **Critical:** production unavailable, auth unavailable, release safety gate bypass risk, data-loss incident.
 - **High:** sustained 5xx/latency, database degradation, repeated deployment failures.
 - **Medium:** graph assistance degraded while project-only fallback remains healthy, ingestion failures.
+
+## PR81 — Proof required before official v1.0.0 publication
+
+Record a private HTTPS evidence reference that documents **real alert delivery**
+(not just alert policy creation), the destination/on-call owner, tested escalation,
+a health probe alert for `/api/auth/health`, and a Cloud Run revision rollback
+exercise. The approved `Production operations release approval` workflow must
+reference the proof and obtain a different reviewer's approval. The publication
+workflow will refuse absent/unreviewed approvals; automation does not assert
+that monitoring has been configured merely because the code exists.

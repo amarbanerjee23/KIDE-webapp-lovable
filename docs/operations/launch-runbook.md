@@ -55,12 +55,16 @@ Configure protected-environment reviewers and least-privilege access before use.
 
 After the deployment workflow succeeds, perform the restore drill and launch
 sign-offs, then dispatch **Production deployment qualification** for the same
-`main` SHA. Use its successful numeric run ID with the guarded **Publish
-official release** workflow. The deploy workflow deliberately does not publish
-a release.
+`main` SHA. After live qualification succeeds, dispatch **Production operations
+release approval** from that exact SHA and retain its independently reviewed
+sign-off run ID. Publication requires both the qualified production run ID and
+the separately reviewed operational release approval run ID. A successful
+technical qualification alone is not sufficient. The deploy workflow deliberately
+does not publish a release.
 
 Record the approved commit, deployment workflow run, Cloud Build run,
-Cloud Run revision/digest, release-qualification run, operator and time.
+Cloud Run revision/digest, release-qualification run, operations-approval run,
+independent reviewer, operator and time.
 
 ## Rollback
 
