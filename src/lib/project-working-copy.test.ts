@@ -5,6 +5,7 @@ import {
   validateCheckpointCounts,
   validateCheckpointLabel,
   validateWorkingCopySources,
+  requireVerifiedStoredSources,
   WORKING_COPY_CONFLICT_MESSAGE,
   WORKING_COPY_LABEL,
 } from "./project-working-copy";
@@ -118,6 +119,20 @@ describe("project working-copy storage contract", () => {
     expect(coerceStoredSources(tooMany)).toBeNull();
     expect(coerceStoredSources({ "big.dml": "x".repeat(1_000_001) })).toBeNull();
     expect(coerceStoredSources({ "bad.dml": 42 })).toBeNull();
+  });
+
+  it("blocks corrupt persisted working copies without mistaking them for blank projects", () => {
+    expect(requireVerifiedStoredSources({})).toEqual({});
+    expect(requireVerifiedStoredSources({ "nested/Valid.cap": "Capability A" })).toEqual({
+      "nested/Valid.cap": "Capability A",
+    });
+    expect(() => requireVerifiedStoredSources(null)).toThrow("saved models failed integrity");
+    expect(() => requireVerifiedStoredSources({ "../escape.dml": "bad" })).toThrow(
+      "saved models failed integrity",
+    );
+    expect(() => requireVerifiedStoredSources({ "model.dml": 7 })).toThrow(
+      "saved models failed integrity",
+    );
   });
 
   it("prohibits forging the private working-copy checkpoint label", () => {
