@@ -8,6 +8,11 @@ import {
 import { useActiveProject } from "@/lib/active-project";
 import { WORKING_COPY_CONFLICT_MESSAGE } from "@/lib/project-working-copy";
 import {
+  autosaveDecision,
+  hasQueuedAutosave,
+  isCurrentAutosaveTicket,
+} from "@/lib/kide/workspace-autosave";
+import {
   clearWorkspaceAccess,
   setWorkspaceAccess,
   setWorkspaceAccessLoading,
@@ -30,6 +35,10 @@ export function useWorkspacePersistence(enabled: boolean) {
   const loadedProjectRef = useRef<string | null>(null);
   const canEditRef = useRef(false);
   const generationRef = useRef(0);
+  const inFlightSaveRef = useRef(false);
+  const latestSourcesRef = useRef(sources);
+  // Never compare a completed request against the stale render it originated from.
+  latestSourcesRef.current = sources;
   const lastSavedSourcesRef = useRef<string | null>(null);
   const savedAtRef = useRef<string | null>(null);
   const conflictedRef = useRef(false);
@@ -78,6 +87,9 @@ export function useWorkspacePersistence(enabled: boolean) {
     savedAtRef.current = null;
     conflictedRef.current = false;
     saveErrorNotifiedRef.current = false;
+    // Old project requests may still resolve; generation guards discard them.
+    // The next project's writes must never be held by an old in-flight request.
+    inFlightSaveRef.current = false;
     clearWorkspaceAccess();
     clearWorkspaceSaveState();
 
@@ -150,7 +162,12 @@ export function useWorkspacePersistence(enabled: boolean) {
     }
 
     const serialized = JSON.stringify(sources);
-    if (serialized === lastSavedSourcesRef.current) return;
+    const decision = autosaveDecision(
+      serialized,
+      lastSavedSourcesRef.current,
+      inFlightSaveRef.current,
+    );
+    if (decision === "clean") return;
 
     if (typeof window !== "undefined" && !window.navigator.onLine) {
       setWorkspaceSaveState({
@@ -169,32 +186,67 @@ export function useWorkspacePersistence(enabled: boolean) {
       message: null,
     });
 
+    // A preceding request is still in flight. Do not send a second write with
+    // the same expectedSavedAt: that would create an artificial save conflict.
+    // Its completion schedules a fresh write of the latest editor snapshot.
+    if (decision === "wait") return;
+
+    const ticket = {
+      projectId: activeProject.projectId,
+      generation: generationRef.current,
+    };
+    const isCurrent = () =>
+      isCurrentAutosaveTicket(ticket, generationRef.current, loadedProjectRef.current);
+
     const timer = window.setTimeout(() => {
+      if (!isCurrent() || inFlightSaveRef.current) return;
+      inFlightSaveRef.current = true;
+
       void save({
         data: {
-          projectId: activeProject.projectId,
+          projectId: ticket.projectId,
           sources,
           expectedSavedAt: savedAtRef.current,
         },
       })
         .then((result) => {
+          // Never let a save from an abandoned project/reload mutate the new
+          // project's revision, Saved badge, or conflict/error notification.
+          if (!isCurrent()) return;
+          inFlightSaveRef.current = false;
           savedAtRef.current = result.savedAt;
           lastSavedSourcesRef.current = serialized;
           saveErrorNotifiedRef.current = false;
+
+          if (hasQueuedAutosave(serialized, JSON.stringify(latestSourcesRef.current))) {
+            setWorkspaceSaveState({
+              projectId: ticket.projectId,
+              status: "saving",
+              savedAt: result.savedAt,
+              message: null,
+            });
+            // The pending write committed. Re-run the debounce with its new
+            // revision; never declare newer unsaved edits to be persisted.
+            setConnectivityVersion((version) => version + 1);
+            return;
+          }
+
           setWorkspaceSaveState({
-            projectId: activeProject.projectId,
+            projectId: ticket.projectId,
             status: "saved",
             savedAt: result.savedAt,
             message: null,
           });
         })
         .catch((error) => {
+          if (!isCurrent()) return;
+          inFlightSaveRef.current = false;
           const message = error instanceof Error ? error.message : String(error);
 
           if (message.includes(WORKING_COPY_CONFLICT_MESSAGE)) {
             conflictedRef.current = true;
             setWorkspaceSaveState({
-              projectId: activeProject.projectId,
+              projectId: ticket.projectId,
               status: "conflict",
               savedAt: savedAtRef.current,
               message: WORKING_COPY_CONFLICT_MESSAGE,
@@ -209,7 +261,7 @@ export function useWorkspacePersistence(enabled: boolean) {
           console.warn("[Workspace] Autosave failed:", message);
           const offline = typeof window !== "undefined" && !window.navigator.onLine;
           setWorkspaceSaveState({
-            projectId: activeProject.projectId,
+            projectId: ticket.projectId,
             status: offline ? "offline" : "error",
             savedAt: savedAtRef.current,
             message: offline

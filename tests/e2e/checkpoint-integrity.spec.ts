@@ -104,4 +104,25 @@ test("checkpoint restore removes extra files and a custom model set imports comp
     source,
     sha256: digest(source),
   });
+
+  // Rapid successive replacements must preserve the *last* source map
+  // across the autosave debounce/in-flight boundary, not a previous snapshot.
+  await page.goto("/models");
+  await page
+    .getByRole("combobox", { name: "Reference example workspace" })
+    .selectOption("solar-microgrid");
+  await page.getByRole("button", { name: "Load selected" }).click();
+  await page.getByRole("button", { name: "Replace with example" }).click();
+  await expect(page.getByRole("button", { name: /^Microgrid\.dml/ })).toBeVisible();
+
+  await page
+    .getByRole("combobox", { name: "Reference example workspace" })
+    .selectOption("precision-irrigation");
+  await page.getByRole("button", { name: "Load selected" }).click();
+  await page.getByRole("button", { name: "Replace with example" }).click();
+  await expect(page.getByRole("button", { name: /^Agri\.dml/ })).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Agri\.dml/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Microgrid\.dml/ })).toHaveCount(0);
 });

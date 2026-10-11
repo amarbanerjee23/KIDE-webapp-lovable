@@ -18,6 +18,13 @@ grep -q 'waitForEvent("download")' tests/e2e/release-journey.spec.ts   || fail "
 grep -q 'approval is invalidated' tests/e2e/release-journey.spec.ts   || fail "customer journey must prove approval drift blocks release"
 grep -q 'compact viewport' tests/e2e/release-journey.spec.ts   || fail "compact viewport CX coverage missing"
 
+grep -q 'isCurrentAutosaveTicket' src/lib/kide/useWorkspacePersistence.ts ||
+  fail "autosave must reject stale project or reload completions"
+grep -q 'inFlightSaveRef.current' src/lib/kide/useWorkspacePersistence.ts ||
+  fail "autosave must serialize writes against the PostgreSQL CAS revision"
+grep -q 'hasQueuedAutosave' src/lib/kide/useWorkspacePersistence.ts ||
+  fail "autosave must flush edits made while a request is pending"
+
 bash scripts/ci/test-role-gated-cx.sh
 
 bunx vitest run   src/lib/kide/release-hardening.test.ts   src/lib/kide/qualification.test.ts   src/lib/kide/assurance.test.ts   src/lib/kide/kide.test.ts
