@@ -19,6 +19,9 @@ On read, corrupt legacy source maps are never treated as valid saved
 models. An invalid named checkpoint appears with an explanatory warning
 and its Restore action disabled. The restoration handler also refuses a
 null source map instead of replacing the user's models with an empty set.
+An existing corrupt **active working-copy row** is a load error rather
+than a legitimately empty project: the workspace stays inaccessible and
+the existing recovery guard offers Retry and Choose another project.
 No records are rewritten or deleted by this patch.
 
 Verification: `bunx vitest run src/lib/project-working-copy.test.ts`,
