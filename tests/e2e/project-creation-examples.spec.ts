@@ -76,8 +76,42 @@ async function qualifyExampleGeneration(
   expect(code.modelFingerprint).toMatch(/^[0-9a-f]{64}$/);
   expect(code.bundleFingerprint).toMatch(/^[0-9a-f]{64}$/);
   expect(code.artifacts.length).toBeGreaterThan(0);
+
+  // ROS 2 requires two zero-byte packaging markers: the resource-index entry
+  // and Python's __init__.py. They are intentional, not missing source code.
+  // Require their *exact* paths and still verify the SHA-256 of the empty bytes.
+  const emptyPaths = code.artifacts
+    .filter((artifact) => artifact.content.length === 0)
+    .map((artifact) => artifact.path)
+    .sort();
+  if (target === "ros2-python") {
+    const controller = code.artifacts.find((artifact) => artifact.path.endsWith("/controller.py"));
+    const packageName = controller?.path.split("/")[1] ?? "";
+    expect(packageName).not.toBe("");
+    expect(controller?.path).toBe(`ros2/${packageName}/${packageName}/controller.py`);
+    expect(controller?.content).toContain("class ");
+    expect(controller?.content).toContain("create_publisher");
+    expect(emptyPaths).toEqual(
+      [
+        `ros2/${packageName}/resource/${packageName}`,
+        `ros2/${packageName}/${packageName}/__init__.py`,
+      ].sort(),
+    );
+  } else {
+    expect(emptyPaths).toEqual([]);
+    expect(
+      code.artifacts.some((artifact) =>
+        target === "iec61131-st"
+          ? artifact.path.endsWith(".st") && artifact.content.includes("FUNCTION_BLOCK")
+          : artifact.path.endsWith("index.js") && artifact.content.includes("module.exports"),
+      ),
+    ).toBe(true);
+  }
+
   for (const artifact of code.artifacts) {
-    expect(artifact.content.length).toBeGreaterThan(0);
+    if (!emptyPaths.includes(artifact.path)) {
+      expect(artifact.content.length).toBeGreaterThan(0);
+    }
     expect(artifact.sha256).toBe(sha256(artifact.content));
     expect(artifact.bytes).toBe(Buffer.byteLength(artifact.content, "utf8"));
   }
