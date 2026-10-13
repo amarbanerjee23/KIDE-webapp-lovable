@@ -3,6 +3,10 @@ name: Production deployment qualification
 on:
   workflow_dispatch:
     inputs:
+      recovery_run_id:
+        description: Successful protected recovery-drill run ID for the exact current main SHA
+        required: true
+        type: string
       restore_drill_reference:
         description: Completed Cloud SQL CLONE operation ID (not a ticket or note)
         required: true
@@ -14,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   id-token: write
 
 concurrency:
@@ -52,6 +57,31 @@ jobs:
             echo "Production qualification commit $current_head is not current main $current_main." >&2
             exit 1
           fi
+
+      - name: Verify protected recovery drill run and SHA-256 artifact provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
+          RECOVERY_OPERATION_ID: ${{ inputs.restore_drill_reference }}
+          RECOVERY_INSTANCE: ${{ inputs.restore_recovery_instance }}
+        run: |
+          set -euo pipefail
+          [[ "$RECOVERY_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
+            echo "Protected recovery run ID must be numeric." >&2
+            exit 1
+          }
+          mkdir -p protected-recovery
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RECOVERY_RUN_ID" \
+            > protected-recovery/workflow-run.json
+          gh run download "$RECOVERY_RUN_ID" \
+            --name "protected-recovery-${GITHUB_SHA}-${RECOVERY_RUN_ID}" \
+            --dir protected-recovery
+          node scripts/launch/verify-recovery-run.mjs \
+            protected-recovery/workflow-run.json \
+            protected-recovery/recovery-provenance.json \
+            protected-recovery/verified-clone.json \
+            "$GITHUB_SHA" "$RECOVERY_RUN_ID" "$RECOVERY_INSTANCE" "$RECOVERY_OPERATION_ID"
 
       - name: Require production GCP identity configuration
         env:
@@ -142,5 +172,6 @@ jobs:
             printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
             printf -- '- Service: `%s`\n' "$KIDE_PRODUCTION_SERVICE"
             printf -- '- Origin: %s\n' "$KIDE_PRODUCTION_URL"
+            echo "- Verified protected Cloud SQL recovery run: ${{ inputs.recovery_run_id }}"
             echo "- Cloud SQL completed separate-instance clone operation, recovery database metadata, launch preflight, repeatable auth smoke, production Playwright engineering journey, 100% traffic and registry image digest verified. Recovered SQL row integrity requires independent operator sign-off."
           } >> "$GITHUB_STEP_SUMMARY"
