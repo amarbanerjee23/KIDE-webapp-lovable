@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Existing release-check scripts use hand-formatted multi-line security guard clauses. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
