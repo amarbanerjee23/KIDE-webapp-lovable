@@ -84,3 +84,18 @@ and incident reviews, before its own protected independent review. The
 publication workflow checks the completed run, matching qualified SHA and
 the non-actor GitHub environment approval; it does not infer that external
 records are accurate. The recovery clone is never a production traffic target.
+
+## PR92 — Executable protected PITR recovery drill
+
+The [protected execution runbook](protected-release-execution.md) now provides
+a real `production-recovery` environment GitHub Actions workflow. It executes
+`gcloud sql instances clone --point-in-time` with an independently reviewed,
+exact-main, time-bounded destination guard and retains an immutable protected
+recovery artifact. The protected live qualification workflow requires the
+successful recovery run ID and validates the original operation/metadata
+SHA-256 before running production browser acceptance. This **does not**
+replace independent Cloud Audit Logs source verification, recovery-row
+inspection, or human approval. The contained
+`scripts/launch/recovery-readonly-inspection.sql` supports a non-destructive,
+operator-run SQL integrity check against the isolated clone. No automatic
+clone deletion is performed.
