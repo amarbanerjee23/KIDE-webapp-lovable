@@ -140,6 +140,7 @@ jobs:
           grep -q 'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY' scripts/launch/recovery-readonly-inspection.sql
           grep -q 'production-recovery' .github/workflows/production-recovery-drill.yml
           grep -q 'verify-recovery-run.mjs' .github/workflows/production-qualification.yml
+          grep -q 'Verify independent environment approval before attestation' .github/workflows/operations-approval.yml
 
       - name: Validate exact-commit live deployment qualification contracts
         run: bash scripts/ci/test-live-deployment-qualification.sh
