@@ -36,6 +36,20 @@ export function authorizeRecovery(request, now = Date.now()) {
   return { expectedSha, project, source, target, region, pointInTime: new Date(at).toISOString() };
 }
 
+export function verifyRecoveryApproval(reviews, actor) {
+  if (!Array.isArray(reviews) || !/^[a-zA-Z0-9-]{1,39}$/.test(actor ?? "")) {
+    fail("GitHub approval list or operator identity missing");
+  }
+  if (!reviews.some((review) =>
+    String(review.state ?? "").toLowerCase() === "approved" &&
+    typeof review.user?.login === "string" &&
+    review.user.login.toLowerCase() !== actor.toLowerCase()
+  )) {
+    fail("a different human GitHub reviewer must approve the protected recovery environment");
+  }
+  return true;
+}
+
 export function verifyRecoveryPreflight(source, listed, expected) {
   if (source?.name !== expected.source || source?.project !== expected.project ||
       source?.region !== expected.region || source?.state !== "RUNNABLE" ||
@@ -114,6 +128,9 @@ if (process.argv[1]?.endsWith("recovery-drill-policy.mjs")) {
     const approved = authorizeRecovery(request);
     if (mode === "authorize") {
       console.log("Exact-main, bounded-PITR isolated recovery authorized.");
+    } else if (mode === "approval") {
+      verifyRecoveryApproval(JSON.parse(readFileSync(args[0], "utf8")), env.GITHUB_ACTOR);
+      console.log("Independent protected recovery environment approval verified.");
     } else if (mode === "preflight") {
       verifyRecoveryPreflight(JSON.parse(readFileSync(args[0], "utf8")),
         JSON.parse(readFileSync(args[1], "utf8")), approved);
