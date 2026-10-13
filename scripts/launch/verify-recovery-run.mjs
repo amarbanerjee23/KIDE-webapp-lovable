@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Existing release-check scripts use hand-formatted multi-line security guard clauses. */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
