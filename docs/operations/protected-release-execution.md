@@ -43,7 +43,8 @@ from `main` with:
 - `point_in_time`: approved UTC RFC3339 timestamp at least one minute old
 - `confirmation`: `RESTORE <main SHA> TO <recovery instance ID>`
 
-The protected job validates exact-main CI, source readiness, backup/PITR and
+The protected job checks actual non-self GitHub approved-review events,
+then validates exact-main CI, source readiness, backup/PITR and
 unused destination **before** issuing `gcloud sql instances clone --point-in-time`.
 The clone is created with `--async`, waited for to complete, and verified by
 existing Cloud SQL operation/instance/database metadata checks. Original
