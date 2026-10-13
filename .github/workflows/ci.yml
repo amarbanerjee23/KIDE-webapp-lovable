@@ -132,6 +132,16 @@ jobs:
       - name: Verify persisted Cloud Run authentication configuration
         run: bash scripts/ci/test-gcp-runtime-config-verification.sh
 
+      - name: Validate protected PITR, recovery audit and qualification provenance
+        run: |
+          node scripts/ci/test-protected-recovery.mjs
+          bash -n scripts/launch/check-restore-drill.sh
+          test -f scripts/launch/recovery-readonly-inspection.sql
+          grep -q 'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY' scripts/launch/recovery-readonly-inspection.sql
+          grep -q 'production-recovery' .github/workflows/production-recovery-drill.yml
+          grep -q 'verify-recovery-run.mjs' .github/workflows/production-qualification.yml
+          grep -q 'Verify independent environment approval before attestation' .github/workflows/operations-approval.yml
+
       - name: Validate exact-commit live deployment qualification contracts
         run: bash scripts/ci/test-live-deployment-qualification.sh
 

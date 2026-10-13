@@ -1,0 +1,217 @@
+name: Protected Cloud SQL recovery drill
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit_sha:
+        description: Exact current main SHA, 40 lowercase hex characters
+        required: true
+        type: string
+      recovery_instance:
+        description: NEW isolated kide-recovery-* Cloud SQL instance; never production
+        required: true
+        type: string
+      point_in_time:
+        description: Approved UTC RFC3339 PITR timestamp within the last seven days
+        required: true
+        type: string
+      confirmation:
+        description: Type RESTORE <40-char SHA> TO <recovery_instance>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: kide-production-recovery-drill
+  cancel-in-progress: false
+
+jobs:
+  clone:
+    name: Approved isolated Cloud SQL PITR clone
+    runs-on: ubuntu-24.04
+    environment: production-recovery
+    timeout-minutes: 110
+    steps:
+      - name: Check out exact main commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact SHA, recovery confirmation and successful post-merge CI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+          RECOVERY_TARGET: ${{ inputs.recovery_instance }}
+          RECOVERY_POINT_IN_TIME: ${{ inputs.point_in_time }}
+          RECOVERY_CONFIRMATION: ${{ inputs.confirmation }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_CLOUD_SQL_INSTANCE: ${{ vars.GCP_CLOUD_SQL_INSTANCE }}
+        run: |
+          set -euo pipefail
+          : "${GCP_PROJECT_ID:?Configure GCP_PROJECT_ID in protected environment}"
+          export GCP_REGION="${GCP_REGION:-us-central1}"
+          export GCP_CLOUD_SQL_INSTANCE="${GCP_CLOUD_SQL_INSTANCE:-kide-web-app}"
+          git fetch --no-tags origin main
+          export CURRENT_MAIN_SHA="$(git rev-parse origin/main)"
+          [[ "$(git rev-parse HEAD)" == "$CURRENT_MAIN_SHA" ]]
+          node scripts/launch/recovery-drill-policy.mjs authorize
+          # Environment names alone are not protection. Inspect GitHub's
+          # actual approved reviewer events before any Cloud SQL mutation.
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/approvals" \
+            > /tmp/kide-recovery-approvals.json
+          node scripts/launch/recovery-drill-policy.mjs approval \
+            /tmp/kide-recovery-approvals.json
+
+          gh api -H "Accept: application/vnd.github+json" \
+            "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&event=push&per_page=100" \
+            > /tmp/kide-recovery-main-ci.json
+          node - "$GITHUB_SHA" <<'JS'
+          const fs = require("node:fs");
+          const sha = process.argv[2];
+          const runs = JSON.parse(fs.readFileSync("/tmp/kide-recovery-main-ci.json", "utf8")).workflow_runs;
+          if (!Array.isArray(runs) || !runs.some((r) =>
+            r.name === "CI" && r.head_sha === sha && r.head_branch === "main" &&
+            r.event === "push" && r.status === "completed" && r.conclusion === "success"
+          )) throw new Error("Exact-main successful post-merge push CI is mandatory");
+          JS
+
+      - name: Authenticate with protected recovery identity
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_RECOVERY_SERVICE_ACCOUNT }}
+
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          version: ">= 390.0.0"
+
+      - name: Validate backups, PITR and unused target without modifying production
+        shell: bash
+        env:
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+          RECOVERY_TARGET: ${{ inputs.recovery_instance }}
+          RECOVERY_POINT_IN_TIME: ${{ inputs.point_in_time }}
+          RECOVERY_CONFIRMATION: ${{ inputs.confirmation }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_CLOUD_SQL_INSTANCE: ${{ vars.GCP_CLOUD_SQL_INSTANCE }}
+        run: |
+          set -euo pipefail
+          export GCP_REGION="${GCP_REGION:-us-central1}"
+          export GCP_CLOUD_SQL_INSTANCE="${GCP_CLOUD_SQL_INSTANCE:-kide-web-app}"
+          export CURRENT_MAIN_SHA="$(git rev-parse HEAD)"
+          mkdir -p recovery-evidence
+          gcloud sql instances describe "$GCP_CLOUD_SQL_INSTANCE" \
+            --project="$GCP_PROJECT_ID" --format=json > recovery-evidence/source.json
+          gcloud sql instances list --project="$GCP_PROJECT_ID" --format=json \
+            > recovery-evidence/instance-inventory.json
+          node scripts/launch/recovery-drill-policy.mjs preflight \
+            recovery-evidence/source.json recovery-evidence/instance-inventory.json
+          # Reconfirm main before requesting the operation. No target exists yet.
+          git fetch --no-tags origin main
+          [[ "$(git rev-parse origin/main)" == "$GITHUB_SHA" ]] || {
+            echo "Main advanced before PITR clone; abort without creating a recovery target." >&2
+            exit 1
+          }
+
+      - name: Clone only into the protected new recovery instance
+        id: clone
+        shell: bash
+        env:
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+          RECOVERY_TARGET: ${{ inputs.recovery_instance }}
+          RECOVERY_POINT_IN_TIME: ${{ inputs.point_in_time }}
+          RECOVERY_CONFIRMATION: ${{ inputs.confirmation }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_CLOUD_SQL_INSTANCE: ${{ vars.GCP_CLOUD_SQL_INSTANCE }}
+        run: |
+          set -euo pipefail
+          export GCP_REGION="${GCP_REGION:-us-central1}"
+          export GCP_CLOUD_SQL_INSTANCE="${GCP_CLOUD_SQL_INSTANCE:-kide-web-app}"
+          export CURRENT_MAIN_SHA="$(git rev-parse HEAD)"
+          node scripts/launch/recovery-drill-policy.mjs authorize
+          # Cloud SQL clone creates an independent instance; it does NOT overwrite
+          # or route traffic to the production source. No automatic cleanup.
+          gcloud sql instances clone "$GCP_CLOUD_SQL_INSTANCE" "$RECOVERY_TARGET" \
+            --project="$GCP_PROJECT_ID" \
+            --point-in-time="$RECOVERY_POINT_IN_TIME" \
+            --async --quiet --format=json > recovery-evidence/clone-request.json
+          operation_id="$(node scripts/launch/recovery-drill-policy.mjs operation \
+            recovery-evidence/clone-request.json)"
+          [[ "$operation_id" =~ ^[a-zA-Z0-9_-]+$ ]]
+          echo "operation_id=$operation_id" >> "$GITHUB_OUTPUT"
+          gcloud sql operations wait "$operation_id" --project="$GCP_PROJECT_ID" \
+            --timeout=5400
+          echo "Cloud SQL clone complete: $operation_id"
+
+      - name: Verify live clone operation and isolate recovery metadata
+        shell: bash
+        env:
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+          RECOVERY_TARGET: ${{ inputs.recovery_instance }}
+          RECOVERY_POINT_IN_TIME: ${{ inputs.point_in_time }}
+          RECOVERY_CONFIRMATION: ${{ inputs.confirmation }}
+          RECOVERY_OPERATION_ID: ${{ steps.clone.outputs.operation_id }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          GCP_CLOUD_SQL_INSTANCE: ${{ vars.GCP_CLOUD_SQL_INSTANCE }}
+          RESTORE_DRILL_DATABASE_NAME: ${{ vars.GCP_RESTORE_DATABASE_NAME }}
+        run: |
+          set -euo pipefail
+          export GCP_REGION="${GCP_REGION:-us-central1}"
+          export GCP_CLOUD_SQL_INSTANCE="${GCP_CLOUD_SQL_INSTANCE:-kide-web-app}"
+          export CURRENT_MAIN_SHA="$(git rev-parse HEAD)"
+          export RESTORE_DRILL_DATABASE_NAME="${RESTORE_DRILL_DATABASE_NAME:-kide}"
+          PROJECT_ID="$GCP_PROJECT_ID" CLOUD_SQL_INSTANCE="$GCP_CLOUD_SQL_INSTANCE" \
+            RESTORE_DRILL_REF="$RECOVERY_OPERATION_ID" \
+            RESTORE_DRILL_RECOVERY_INSTANCE="$RECOVERY_TARGET" \
+            RESTORE_DRILL_DATABASE_NAME="$RESTORE_DRILL_DATABASE_NAME" \
+            OUTPUT_FILE="recovery-evidence/verified-clone.json" \
+            bash scripts/launch/check-restore-drill.sh
+          node scripts/launch/recovery-drill-policy.mjs evidence \
+            recovery-evidence/verified-clone.json \
+            recovery-evidence/recovery-provenance.json
+          echo "Restore drill run: $GITHUB_RUN_ID"
+          echo "Recovery operation: $RECOVERY_OPERATION_ID"
+          echo "Recovery instance: $RECOVERY_TARGET"
+
+      - name: Preserve protected recovery provenance and the completed clone
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protected-recovery-${{ github.sha }}-${{ github.run_id }}
+          path: recovery-evidence
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Require separate SQL and Cloud Audit inspection before qualification
+        env:
+          RECOVERY_TARGET: ${{ inputs.recovery_instance }}
+          RECOVERY_OPERATION_ID: ${{ steps.clone.outputs.operation_id }}
+        shell: bash
+        run: |
+          {
+            echo "## Protected PITR recovery drill — completed"
+            echo
+            echo "- Exact commit: \`$GITHUB_SHA\`"
+            echo "- Clone operation ID: \`$RECOVERY_OPERATION_ID\`"
+            echo "- Recovery target: \`$RECOVERY_TARGET\`"
+            echo "- Clone left RUNNABLE and isolated; cleanup is a separate reviewed change."
+            echo
+            echo "**HOLD:** An independent operator must inspect recovered SQL rows"
+            echo "and Cloud Audit Logs proving the production source, then retain"
+            echo "private evidence references for the protected operations approval."
+            echo "After this, dispatch Production deployment qualification using the"
+            echo "clone operation ID and recovery target. Do not self-approve."
+          } >> "$GITHUB_STEP_SUMMARY"

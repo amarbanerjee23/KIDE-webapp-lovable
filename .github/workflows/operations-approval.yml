@@ -67,6 +67,27 @@ jobs:
             exit 1
           }
 
+      - name: Verify independent environment approval before attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Do not record a sign-off merely because a GitHub environment has
+          # a protected-looking name. Require its actual GitHub review event.
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/approvals" \
+            > /tmp/kide-live-approval-reviews.json
+          node - /tmp/kide-live-approval-reviews.json "$GITHUB_ACTOR" <<'JS'
+          const fs = require("node:fs");
+          const [file, actor] = process.argv.slice(2);
+          const reviews = JSON.parse(fs.readFileSync(file, "utf8"));
+          if (!Array.isArray(reviews) || !reviews.some((r) =>
+            String(r.state ?? "").toLowerCase() === "approved" &&
+            typeof r.user?.login === "string" &&
+            r.user.login.toLowerCase() !== actor.toLowerCase()
+          )) throw new Error("Production operations sign-off requires a different GitHub reviewer");
+          JS
+
       - name: Verify qualified deployment before human attestation
         env:
           GH_TOKEN: ${{ github.token }}

@@ -139,3 +139,22 @@ the checked-out SHA, and rechecks tag/release nonexistence. If `main` advanced,
 restart the **entire** exact-commit deployment, live qualification and sign-off
 sequence. The remote comparison narrows the race window; only repository tag
 permissions and branch protection can prevent unrelated concurrent writes.
+
+## PR92 — Protected recovery workflow must precede live acceptance
+
+Protected production deployment remains the first operational step after
+successful **post-merge main CI**. After rollout, run
+`production-recovery-drill.yml` under the independently reviewed
+`production-recovery` environment, selecting a **new** isolated recovery
+instance and a bounded PITR timestamp. The clone remains RUNNABLE and is
+never routed to by production.
+
+Production deployment qualification now requires **three** exact-SHA inputs:
+`recovery_run_id`, `restore_drill_reference` (completed CLONE operation ID)
+and `restore_recovery_instance`. It downloads and verifies the protected
+recovery run plus the original hashed metadata sidecar before executing live
+qualification. Read-only recovered SQL row inspection and Cloud Audit Log source
+verification remain required independent references in the separate operations
+approval; they cannot be fabricated by a successful clone alone.
+
+See [the four-stage execution runbook](protected-release-execution.md).
