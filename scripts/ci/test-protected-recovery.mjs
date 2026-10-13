@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   authorizeRecovery,
+  verifyRecoveryApproval,
   verifyRecoveryPreflight,
   parseCloneOperation,
   createRecoveryEvidence,
@@ -30,6 +31,16 @@ const update = (value, change) => ({ ...value, ...change });
 function rejects(label, callback) {
   assert.throws(callback, /rejected:/i, label);
 }
+assert.equal(verifyRecoveryApproval([
+  { state: "approved", user: { login: "another-reviewer" } },
+], "operator"), true);
+rejects("no protected review", () => verifyRecoveryApproval([], "operator"));
+rejects("self review", () => verifyRecoveryApproval([
+  { state: "approved", user: { login: "operator" } },
+], "operator"));
+rejects("pending review", () => verifyRecoveryApproval([
+  { state: "pending", user: { login: "another-reviewer" } },
+], "operator"));
 const approved = authorizeRecovery(request, now);
 assert.equal(approved.target, request.target);
 for (const [name, change] of [
