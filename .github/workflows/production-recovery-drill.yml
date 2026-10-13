@@ -87,7 +87,7 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_PRODUCTION_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.GCP_RECOVERY_SERVICE_ACCOUNT }}
 
       - name: Install Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
