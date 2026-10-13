@@ -25,8 +25,10 @@ Better Auth health, Cloud SQL attachment, image digest and retained
 ## Gate 2 — perform real isolated Cloud SQL recovery
 
 Configure **separate protected environment `production-recovery`** with
-required independent reviewers (prevent self-review), the GCP project variable
-and Workload Identity Federation credentials. The principal must have
+required independent reviewers (prevent self-review), the GCP project variable,
+GCP workload-identity provider and **dedicated recovery service-account secret**
+\`GCP_RECOVERY_SERVICE_ACCOUNT\` (not the production deploy identity).
+The principal must have
 `cloudsql.instances.clone`, Cloud SQL operation read, source/list read and
 backup metadata permissions. Allocate sufficient quota, disk, and budget for
 one **new** independent Cloud SQL instance; it remains billable until separately
