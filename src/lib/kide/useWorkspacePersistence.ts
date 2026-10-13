@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   loadProjectWorkingCopy,
   saveProjectWorkingCopy,
 } from "@/lib/project-working-copy.functions";
-import { useActiveProject } from "@/lib/active-project";
+import { registerProjectSwitchGuard, useActiveProject } from "@/lib/active-project";
 import { WORKING_COPY_CONFLICT_MESSAGE } from "@/lib/project-working-copy";
 import {
   autosaveDecision,
+  blocksProjectSwitch,
   hasQueuedAutosave,
   isCurrentAutosaveTicket,
 } from "@/lib/kide/workspace-autosave";
@@ -21,7 +22,13 @@ import { clearWorkspaceSaveState, setWorkspaceSaveState } from "@/lib/kide/works
 import { requestWorkspaceReload, useWorkspaceReloadVersion } from "@/lib/kide/workspace-reload";
 import { useWorkspaceSaveRetryVersion } from "@/lib/kide/workspace-save-retry";
 import {
+  isTransientWorkspaceSaveError,
+  retryWorkspaceSaveDelay,
+  MAX_WORKSPACE_SAVE_RETRIES,
+} from "@/lib/kide/workspace-retry-policy";
+import {
   clearWorkspace,
+  getWorkspaceSources,
   replaceWorkspaceSources,
   useWorkspaceSources,
 } from "@/lib/kide/workspace-store";
@@ -44,6 +51,16 @@ export function useWorkspacePersistence(enabled: boolean) {
   const savedAtRef = useRef<string | null>(null);
   const conflictedRef = useRef(false);
   const saveErrorNotifiedRef = useRef(false);
+  const retryAttemptRef = useRef(0);
+  const retryTimerRef = useRef<number | null>(null);
+  const manualRetryVersionRef = useRef(0);
+
+  const cancelRetry = useCallback(() => {
+    if (retryTimerRef.current !== null && typeof window !== "undefined") {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, []);
   const [connectivityVersion, setConnectivityVersion] = useState(0);
   const workspaceReloadVersion = useWorkspaceReloadVersion();
   const workspaceSaveRetryVersion = useWorkspaceSaveRetryVersion();
@@ -62,6 +79,8 @@ export function useWorkspacePersistence(enabled: boolean) {
     };
 
     const handleOnline = () => {
+      cancelRetry();
+      retryAttemptRef.current = 0;
       saveErrorNotifiedRef.current = false;
       if (activeProject && loadedProjectRef.current !== activeProject.projectId) {
         requestWorkspaceReload();
@@ -78,6 +97,32 @@ export function useWorkspacePersistence(enabled: boolean) {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };
+  }, [activeProject, enabled, cancelRetry]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    return registerProjectSwitchGuard(() => {
+      if (
+        !activeProject ||
+        loadedProjectRef.current !== activeProject.projectId ||
+        !canEditRef.current
+      )
+        return true;
+      if (
+        !blocksProjectSwitch(
+          JSON.stringify(getWorkspaceSources()),
+          lastSavedSourcesRef.current,
+          inFlightSaveRef.current,
+        )
+      )
+        return true;
+      toast.error("Finish saving before switching projects", {
+        id: "kide-unsaved-project-switch",
+        description:
+          "Your previous project's edits are still pending. Wait for Saved, or return to Model languages to retry or export a backup.",
+      });
+      return false;
+    });
   }, [activeProject, enabled]);
 
   useEffect(() => {
@@ -86,10 +131,13 @@ export function useWorkspacePersistence(enabled: boolean) {
       if (
         loadedProjectRef.current &&
         canEditRef.current &&
-        JSON.stringify(latestSourcesRef.current) !== lastSavedSourcesRef.current
+        blocksProjectSwitch(
+          JSON.stringify(getWorkspaceSources()),
+          lastSavedSourcesRef.current,
+          inFlightSaveRef.current,
+        )
       ) {
-        // Browser-native unsaved changes prompt on refresh/close. A deliberate
-        // project switch is separate and still needs a dedicated save guard.
+        // Browser-native refresh/close prompt supplements the in-app switch guard.
         event.preventDefault();
         event.returnValue = "";
       }
@@ -98,7 +146,19 @@ export function useWorkspacePersistence(enabled: boolean) {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [enabled]);
 
+  useEffect(() => () => cancelRetry(), [cancelRetry]);
+
   useEffect(() => {
+    if (workspaceSaveRetryVersion !== manualRetryVersionRef.current) {
+      manualRetryVersionRef.current = workspaceSaveRetryVersion;
+      cancelRetry();
+      retryAttemptRef.current = 0;
+    }
+  }, [workspaceSaveRetryVersion, cancelRetry]);
+
+  useEffect(() => {
+    cancelRetry();
+    retryAttemptRef.current = 0;
     generationRef.current += 1;
     const generation = generationRef.current;
     loadedProjectRef.current = null;
@@ -168,7 +228,7 @@ export function useWorkspacePersistence(enabled: boolean) {
         });
         console.warn("[Workspace] Could not load project working copy:", message);
       });
-  }, [activeProject, enabled, load, workspaceReloadVersion]);
+  }, [activeProject, enabled, load, workspaceReloadVersion, cancelRetry]);
 
   useEffect(() => {
     if (
@@ -237,6 +297,8 @@ export function useWorkspacePersistence(enabled: boolean) {
           savedAtRef.current = result.savedAt;
           lastSavedSourcesRef.current = serialized;
           saveErrorNotifiedRef.current = false;
+          retryAttemptRef.current = 0;
+          cancelRetry();
 
           if (hasQueuedAutosave(serialized, JSON.stringify(latestSourcesRef.current))) {
             setWorkspaceSaveState({
@@ -264,6 +326,7 @@ export function useWorkspacePersistence(enabled: boolean) {
           const message = error instanceof Error ? error.message : String(error);
 
           if (message.includes(WORKING_COPY_CONFLICT_MESSAGE)) {
+            cancelRetry();
             conflictedRef.current = true;
             setWorkspaceSaveState({
               projectId: ticket.projectId,
@@ -280,14 +343,31 @@ export function useWorkspacePersistence(enabled: boolean) {
 
           console.warn("[Workspace] Autosave failed:", message);
           const offline = typeof window !== "undefined" && !window.navigator.onLine;
+          const mayRetry =
+            !offline &&
+            isTransientWorkspaceSaveError(error) &&
+            retryAttemptRef.current < MAX_WORKSPACE_SAVE_RETRIES;
+          const nextAttempt = mayRetry ? ++retryAttemptRef.current : 0;
+          const retryDelay = mayRetry ? retryWorkspaceSaveDelay(nextAttempt) : 0;
           setWorkspaceSaveState({
             projectId: ticket.projectId,
             status: offline ? "offline" : "error",
             savedAt: savedAtRef.current,
             message: offline
               ? "Browser is offline. Unsaved changes will retry when connectivity returns."
-              : message,
+              : mayRetry
+                ? `Save temporarily unavailable. Retrying in ${Math.ceil(retryDelay / 1000)}s (attempt ${nextAttempt}/${MAX_WORKSPACE_SAVE_RETRIES}). Your edits remain in this browser.`
+                : message,
           });
+          if (mayRetry) {
+            cancelRetry();
+            retryTimerRef.current = window.setTimeout(() => {
+              retryTimerRef.current = null;
+              if (isCurrent() && window.navigator.onLine && !conflictedRef.current) {
+                setConnectivityVersion((version) => version + 1);
+              }
+            }, retryDelay);
+          }
           if (!saveErrorNotifiedRef.current) {
             saveErrorNotifiedRef.current = true;
             toast.error("Autosave failed", {
@@ -299,5 +379,13 @@ export function useWorkspacePersistence(enabled: boolean) {
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [activeProject, connectivityVersion, enabled, save, sources, workspaceSaveRetryVersion]);
+  }, [
+    activeProject,
+    connectivityVersion,
+    enabled,
+    save,
+    sources,
+    workspaceSaveRetryVersion,
+    cancelRetry,
+  ]);
 }

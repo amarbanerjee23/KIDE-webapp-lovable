@@ -30,6 +30,7 @@ export default defineConfig({
         "**/checkpoint-integrity.spec.ts",
         "**/initial-working-copy-race.spec.ts",
         "**/offline-model-recovery.spec.ts",
+        "**/project-switch-integrity.spec.ts",
         "**/team-and-billing.spec.ts",
         "**/organization-selection-integrity.spec.ts",
         "**/invitation-onboarding.spec.ts",

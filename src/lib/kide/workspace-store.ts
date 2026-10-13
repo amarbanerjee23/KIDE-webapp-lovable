@@ -100,8 +100,12 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
-function getSnapshot(): WorkspaceSources {
+export function getWorkspaceSources(): WorkspaceSources {
   return sources;
+}
+
+function getSnapshot(): WorkspaceSources {
+  return getWorkspaceSources();
 }
 
 export function useWorkspaceSources(): WorkspaceSources {

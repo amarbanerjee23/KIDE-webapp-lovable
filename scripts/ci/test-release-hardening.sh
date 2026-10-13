@@ -59,6 +59,21 @@ grep -q 'Export local backup' src/routes/models.tsx ||
 grep -q 'offline-model-recovery.spec.ts' playwright.config.ts ||
   fail "offline local export and reconnect must be in the configured browser matrix"
 
+grep -q 'registerProjectSwitchGuard' src/lib/kide/useWorkspacePersistence.ts ||
+  fail "project switch must fail closed while model changes are pending"
+grep -q 'blocksProjectSwitch' src/lib/kide/useWorkspacePersistence.ts ||
+  fail "project guard must compare live local models against committed sources"
+grep -q 'event.preventDefault()' src/routes/_authenticated/projects.tsx ||
+  fail "project links must cancel routing if active project selection was refused"
+grep -q 'isTransientWorkspaceSaveError' src/lib/kide/useWorkspacePersistence.ts ||
+  fail "transient autosave failures must have bounded retry"
+grep -q 'MAX_WORKSPACE_SAVE_RETRIES' src/lib/kide/workspace-retry-policy.ts ||
+  fail "autosave retry attempts must be bounded"
+grep -q 'project-switch-integrity.spec.ts' playwright.config.ts ||
+  fail "cross-tab save integrity must run in configured-auth browser E2E"
+grep -q 'Full-repository lint (PR and exact-main push)' .github/workflows/ci.yml ||
+  fail "release lint must inspect entire repo on push as well as PR"
+
 bash scripts/ci/test-role-gated-cx.sh
 
 bunx vitest run   src/lib/kide/release-hardening.test.ts   src/lib/kide/qualification.test.ts   src/lib/kide/assurance.test.ts   src/lib/kide/kide.test.ts

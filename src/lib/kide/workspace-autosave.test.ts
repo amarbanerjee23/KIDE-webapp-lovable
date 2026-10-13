@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { autosaveDecision, hasQueuedAutosave, isCurrentAutosaveTicket } from "./workspace-autosave";
+import {
+  autosaveDecision,
+  blocksProjectSwitch,
+  hasQueuedAutosave,
+  isCurrentAutosaveTicket,
+} from "./workspace-autosave";
 
 describe("project-scoped sequential autosave", () => {
   it("ignores responses from a previous project, a reload, or an anonymous session", () => {
@@ -34,5 +39,15 @@ describe("project-scoped sequential autosave", () => {
     expect(autosaveDecision(original, original, true)).toBe("wait");
     expect(hasQueuedAutosave(pending, original)).toBe(true);
     expect(autosaveDecision(original, pending, false)).toBe("send");
+  });
+
+  it("blocks selection during debounce, pending commit and failed offline edits", () => {
+    const old = JSON.stringify({ "model.dml": "old" });
+    const edited = JSON.stringify({ "model.dml": "edited" });
+    expect(blocksProjectSwitch(old, old, false)).toBe(false);
+    expect(blocksProjectSwitch(edited, old, false)).toBe(true);
+    expect(blocksProjectSwitch(edited, old, true)).toBe(true);
+    expect(blocksProjectSwitch(old, old, true)).toBe(true);
+    expect(blocksProjectSwitch(old, null, false)).toBe(false);
   });
 });

@@ -26,6 +26,24 @@ describe("active project browser state", () => {
     vi.stubGlobal("window", browserWindow());
   });
 
+  it("rejects pending-save switches but permits forced logout cleanup", async () => {
+    const state = await import("./active-project");
+    const first = { projectId: "first", organizationId: "org" };
+    const second = { projectId: "second", organizationId: "org" };
+    state.setActiveProject(first);
+    const unregister = state.registerProjectSwitchGuard(() => false);
+    try {
+      expect(state.setActiveProject(second)).toBe(false);
+      expect(state.getActiveProject()).toEqual(first);
+      expect(state.setActiveProject(first)).toBe(true);
+      state.clearActiveProject();
+      expect(state.getActiveProject()).toBeNull();
+    } finally {
+      unregister();
+    }
+    expect(state.setActiveProject(second)).toBe(true);
+  });
+
   it("persists the selected project in browser storage", async () => {
     const state = await import("./active-project");
 

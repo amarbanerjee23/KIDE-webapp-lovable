@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowRight, FolderKanban, Plus, Users } from "lucide-react";
@@ -109,6 +109,14 @@ function ProjectsHome() {
 
   const canCreateIn = (org: Org) => ["owner", "administrator", "engineer"].includes(org.role);
 
+  const selectProjectForLink = (
+    event: MouseEvent<HTMLAnchorElement>,
+    projectId: string,
+    organizationId: string,
+  ) => {
+    if (!setActiveProject({ projectId, organizationId })) event.preventDefault();
+  };
+
   const writableOrgs = (orgs ?? []).filter(canCreateIn);
   const exampleOrgId = writableOrgs.some((org) => org.id === selectedExampleOrgId)
     ? selectedExampleOrgId
@@ -131,7 +139,10 @@ function ProjectsHome() {
       const created = await addProject({
         data: { organizationId, name: cleanName, ...(templateId ? { templateId } : {}) },
       });
-      setActiveProject({ projectId: created.id, organizationId });
+      const selected = setActiveProject({ projectId: created.id, organizationId });
+      if (!selected) {
+        toast.info("Project created. Save your previous project's models before opening it.");
+      }
       setRecentCreated({ organizationId, projectId: created.id, name: created.name });
       setProjectName((current) => ({ ...current, [organizationId]: "" }));
       await refresh();
@@ -263,12 +274,7 @@ function ProjectsHome() {
             <Button asChild>
               <Link
                 to="/models"
-                onClick={() =>
-                  setActiveProject({
-                    projectId: starterProject.id,
-                    organizationId: starterOrg.id,
-                  })
-                }
+                onClick={(event) => selectProjectForLink(event, starterProject.id, starterOrg.id)}
               >
                 Start modelling
                 <ArrowRight />
@@ -413,11 +419,8 @@ function ProjectsHome() {
                   <Button asChild size="sm">
                     <Link
                       to="/models"
-                      onClick={() =>
-                        setActiveProject({
-                          projectId: recentCreated.projectId,
-                          organizationId: org.id,
-                        })
+                      onClick={(event) =>
+                        selectProjectForLink(event, recentCreated.projectId, org.id)
                       }
                     >
                       Open new project
@@ -457,12 +460,7 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="outline" className="shrink-0">
                           <Link
                             to="/overview"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => selectProjectForLink(event, project.id, org.id)}
                           >
                             Open overview
                           </Link>
@@ -472,12 +470,7 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="ghost" className="text-xs">
                           <Link
                             to="/models"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => selectProjectForLink(event, project.id, org.id)}
                           >
                             Open models
                           </Link>
@@ -485,12 +478,7 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="ghost" className="text-xs">
                           <Link
                             to="/designer"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => selectProjectForLink(event, project.id, org.id)}
                           >
                             Activity designer
                           </Link>
@@ -498,12 +486,7 @@ function ProjectsHome() {
                         <Button asChild size="sm" variant="ghost" className="text-xs">
                           <Link
                             to="/workbench"
-                            onClick={() =>
-                              setActiveProject({
-                                projectId: project.id,
-                                organizationId: org.id,
-                              })
-                            }
+                            onClick={(event) => selectProjectForLink(event, project.id, org.id)}
                           >
                             Workbench
                           </Link>

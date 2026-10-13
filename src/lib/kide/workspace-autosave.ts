@@ -32,3 +32,12 @@ export function hasQueuedAutosave(
 ): boolean {
   return justCommittedSerialized !== latestSerialized;
 }
+
+/** A project can only change when the committed source map is current. */
+export function blocksProjectSwitch(
+  serializedSources: string,
+  lastSavedSources: string | null,
+  inFlight: boolean,
+): boolean {
+  return lastSavedSources !== null && (inFlight || serializedSources !== lastSavedSources);
+}
