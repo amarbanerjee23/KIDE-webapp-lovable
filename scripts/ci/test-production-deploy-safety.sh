@@ -74,8 +74,8 @@ test_authorize() {
   env GITHUB_REF="${TEST_REF:-refs/heads/main}" \
     GITHUB_SHA="${TEST_HEAD_SHA:-$sha}" \
     CURRENT_MAIN_SHA="${TEST_MAIN_SHA:-$sha}" \
-    EXPECTED_COMMIT_SHA="${TEST_EXPECTED_SHA:-$sha}" \
-    DEPLOY_CONFIRMATION="${TEST_CONFIRMATION:-DEPLOY $sha}" \
+    EXPECTED_COMMIT_SHA="${TEST_EXPECTED_SHA-$sha}" \
+    DEPLOY_CONFIRMATION="${TEST_CONFIRMATION-DEPLOY $sha}" \
     node "$auth" "$1"
 }
 
@@ -88,6 +88,37 @@ fi
 if TEST_EXPECTED_SHA=0000000000000000000000000000000000000000 test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
   fail "stale expected commit was accepted"
 fi
+if TEST_EXPECTED_SHA="" test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
+  fail "missing expected SHA was accepted"
+fi
+grep -Fq 'expected_commit_sha must be exactly 40 lowercase hexadecimal characters (received 0)' "$tmp/out" ||
+  fail "missing SHA diagnostic must identify expected_commit_sha"
+grep -Fq "Enter current main SHA: $sha" "$tmp/out" ||
+  fail "diagnostic must contain the full current main SHA"
+
+if TEST_EXPECTED_SHA="${sha:0:7}" test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
+  fail "short expected SHA was accepted"
+fi
+grep -Fq '(received 7)' "$tmp/out" ||
+  fail "short SHA diagnostic must indicate received length"
+
+if TEST_EXPECTED_SHA="${sha^^}" test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
+  fail "uppercase expected SHA was accepted"
+fi
+grep -Fq 'expected_commit_sha must be exactly 40 lowercase hexadecimal characters' "$tmp/out" ||
+  fail "uppercase SHA diagnostic missing"
+
+if TEST_EXPECTED_SHA=" $sha " test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
+  fail "whitespace-padded expected SHA was accepted"
+fi
+grep -Fq '(received 42)' "$tmp/out" ||
+  fail "whitespace SHA diagnostic missing"
+
+if TEST_CONFIRMATION="DEPLOY ${sha:0:7}" test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
+  fail "short confirmation was accepted"
+fi
+grep -Fq "confirmation must be exactly: DEPLOY $sha" "$tmp/out" ||
+  fail "confirmation correction must provide the exact required value"
 if TEST_MAIN_SHA=0000000000000000000000000000000000000000 test_authorize "$tmp/good.json" >"$tmp/out" 2>&1; then
   fail "stale main commit was accepted"
 fi
