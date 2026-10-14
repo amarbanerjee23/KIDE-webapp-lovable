@@ -74,8 +74,8 @@ test_authorize() {
   env GITHUB_REF="${TEST_REF:-refs/heads/main}" \
     GITHUB_SHA="${TEST_HEAD_SHA:-$sha}" \
     CURRENT_MAIN_SHA="${TEST_MAIN_SHA:-$sha}" \
-    EXPECTED_COMMIT_SHA="${TEST_EXPECTED_SHA:-$sha}" \
-    DEPLOY_CONFIRMATION="${TEST_CONFIRMATION:-DEPLOY $sha}" \
+    EXPECTED_COMMIT_SHA="${TEST_EXPECTED_SHA-$sha}" \
+    DEPLOY_CONFIRMATION="${TEST_CONFIRMATION-DEPLOY $sha}" \
     node "$auth" "$1"
 }
 
