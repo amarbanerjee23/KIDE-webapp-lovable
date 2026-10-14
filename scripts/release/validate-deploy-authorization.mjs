@@ -14,14 +14,25 @@ export function validateDeploymentAuthorization(context, actions) {
   if (context.githubRef !== "refs/heads/main") {
     reject("workflow must be dispatched from main");
   }
-  if (![expected, dispatched, main].every((sha) => FULL_SHA.test(sha))) {
-    reject("all commit identifiers must be full lowercase Git SHAs");
+  // Fail with the exact invalid field, not an ambiguous shared SHA error.
+  // These are public commit IDs, so displaying the verified main SHA is safe.
+  if (!FULL_SHA.test(main)) {
+    reject("git fetch did not provide a valid 40-character lowercase current main SHA");
+  }
+  if (!FULL_SHA.test(dispatched)) {
+    reject("GitHub's dispatched commit is not a valid 40-character lowercase SHA");
+  }
+  if (!FULL_SHA.test(expected)) {
+    reject(
+      `expected_commit_sha must be exactly 40 lowercase hexadecimal characters ` +
+        `(received ${expected.length}). Enter current main SHA: ${main}`,
+    );
   }
   if (expected !== main || dispatched !== main) {
-    reject("submitted, dispatched and current main commits must agree");
+    reject(`the confirmed, dispatched and current main SHAs must agree; current main is ${main}`);
   }
   if (context.confirmation !== `DEPLOY ${main}`) {
-    reject("explicit deployment confirmation must contain the exact main SHA");
+    reject(`confirmation must be exactly: DEPLOY ${main}`);
   }
   const runs = actions?.workflow_runs;
   if (!Array.isArray(runs)) {
