@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Preserve existing release-gate guard formatting and focused security checks. */
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
