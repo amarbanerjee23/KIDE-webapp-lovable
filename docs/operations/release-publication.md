@@ -10,10 +10,14 @@ Before publication:
 1. Merge all intended release changes into `main`.
 2. Require successful post-merge `main` CI for that exact commit, including
    the production container and browser journey.
-3. Dispatch **Deploy production from approved main** on `main`, passing the full
-   SHA and `DEPLOY <same-40-character-SHA>` confirmation. The protected workflow
-   submits Cloud Build with the exact `COMMIT_SHA`, requires configured auth,
-   and fails unless the running revision and registry digest match that SHA.
+3. If the application is **already deployed**, dispatch **Attest existing production
+   without deployment** on `main` with the full SHA and `ATTEST <same SHA>`.
+   This protected, independently reviewed workflow reads existing Cloud Run,
+   auth, Cloud SQL and Artifact Registry metadata without changing production;
+   it fails unless the running revision matches that exact commit and image digest.
+   If an actual deployment is needed and separately authorized, use **Deploy
+   production from approved main** with `DEPLOY <same SHA>` instead.
+   Both modes fail unless the running revision matches the exact main SHA.
 4. Complete and document the Cloud SQL restore drill.
 5. Configure the GitHub `production` environment with GCP workload identity,
    the production project, and required reviewer approvals.
@@ -74,8 +78,13 @@ parameters in the evidence URLs.
 
 In GitHub Actions select **Publish official release**, choose `main` and enter:
 
-- `deployment_run_id`: the numeric ID of a **successful protected Deploy
-  production from approved main** run for the same exact main SHA;
+- Choose exactly **one** provenance input:
+  `deployment_run_id` for a successful protected **Deploy production from approved main**
+  run, **or** `existing_deployment_attestation_run_id` for a successful
+  **Attest existing production without deployment** run from the same exact current
+  main SHA. Leave the other input empty. The existing-production path requires a
+  **real non-self GitHub production environment approval** and a hash-matched,
+  read-only GCP snapshot that agrees with the separate live qualification;
 - `qualification_run_id`: the numeric ID of a **successful Production deployment
   qualification** run for the current `main` SHA;
 - `operations_approval_run_id`: successful, **independently reviewed**
@@ -90,6 +99,21 @@ missing successful main CI, missing protected deployment proof, missing or unrev
 operations sign-off, stale main, and an existing release or tag. On
 success it creates `v1.0.0` pointing to the accepted commit and records the SHA-256
 of its acceptance JSON in the release notes.
+
+## No-redeploy limitations
+
+The existing production attestation does **not** make an older running service
+equivalent to the current repository. If the running image lacks the full
+current-main SHA tag, immutable registry digest, trusted Cloud SQL/auth setup
+or matching 100% ready-revision traffic, the attestation fails. Do not forge
+provenance, rewrite registry tags, lower the SHA requirement or skip live E2E
+to force publication. Either qualify an already matching service or make a
+separately approved deployment plan.
+
+GitHub's production environment must have actual required reviewers and
+prevent self-review. The Google Cloud workload-identity provider must be
+valid even though only read operations occur. Configuring a GitHub environment
+variable alone does not authenticate the workflow.
 
 ## Retention and cleanup
 
