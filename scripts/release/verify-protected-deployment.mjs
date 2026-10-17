@@ -28,6 +28,8 @@ const isExisting = run.name === "Attest existing production without deployment";
 const expectedWorkflow = isExisting
   ? "/.github/workflows/attest-existing-production.yml"
   : "/.github/workflows/deploy-production.yml";
+const actualWorkflow = String(run.path ?? "").split("@")[0];
+const approvedPaths = [expectedWorkflow.slice(1), `${repository}${expectedWorkflow}`];
 if ((run.name !== "Deploy production from approved main" && !isExisting) ||
     run.event !== "workflow_dispatch" ||
     run.head_branch !== "main" ||
@@ -36,7 +38,7 @@ if ((run.name !== "Deploy production from approved main" && !isExisting) ||
     run.conclusion !== "success" ||
     run.run_attempt !== 1 ||
     String(run.id) !== expectedRunId ||
-    !String(run.path ?? "").split("@")[0].endsWith(expectedWorkflow) ||
+    !approvedPaths.includes(actualWorkflow) ||
     (run.repository?.full_name && run.repository.full_name !== repository)) {
   fail("the protected production deployment run is missing, failed or from a different source");
 }
