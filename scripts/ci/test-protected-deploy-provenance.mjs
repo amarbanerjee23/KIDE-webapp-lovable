@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Preserve existing release-gate guard formatting and focused security checks. */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
