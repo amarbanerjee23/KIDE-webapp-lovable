@@ -4,8 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       deployment_run_id:
-        description: Successful protected Deploy production from approved main workflow run ID
-        required: true
+        description: Existing protected Deploy production run ID (leave blank when using existing production attestation)
+        required: false
+        type: string
+      existing_deployment_attestation_run_id:
+        description: Protected independently reviewed existing Cloud Run attestation run ID (leave blank when using deploy)
+        required: false
         type: string
       qualification_run_id:
         description: Successful Production deployment qualification workflow run ID for current main
@@ -121,37 +125,71 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOYMENT_RUN_ID: ${{ inputs.deployment_run_id }}
+          ATTESTATION_RUN_ID: ${{ inputs.existing_deployment_attestation_run_id }}
         shell: bash
         run: |
           set -euo pipefail
           sha="$(git rev-parse HEAD)"
-          [[ "$DEPLOYMENT_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
-            echo "deployment_run_id must be a positive numeric GitHub Actions run ID." >&2
+          # Exactly one provenance mode; never allow missing or conflicting proof.
+          if [[ -n "$DEPLOYMENT_RUN_ID" && -z "$ATTESTATION_RUN_ID" ]]; then
+            provenance_id="$DEPLOYMENT_RUN_ID"
+            artifact="verified-production-deploy-$sha"
+            mode="protected-deploy"
+          elif [[ -n "$ATTESTATION_RUN_ID" && -z "$DEPLOYMENT_RUN_ID" ]]; then
+            provenance_id="$ATTESTATION_RUN_ID"
+            artifact="verified-existing-production-$sha"
+            mode="existing-production"
+          else
+            echo "Exactly one of deployment_run_id or existing_deployment_attestation_run_id is required." >&2
+            exit 1
+          fi
+          [[ "$provenance_id" =~ ^[1-9][0-9]*$ ]] || {
+            echo "Production provenance run ID must be a positive GitHub Actions run ID." >&2
             exit 1
           }
-          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${DEPLOYMENT_RUN_ID}" \
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${provenance_id}" \
             > /tmp/kide-protected-deploy-run.json
 
           rm -rf /tmp/kide-protected-deploy
           mkdir -p /tmp/kide-protected-deploy
-          gh run download "$DEPLOYMENT_RUN_ID" \
+          gh run download "$provenance_id" \
             --repo "$GITHUB_REPOSITORY" \
-            --name "verified-production-deploy-$sha" \
+            --name "$artifact" \
             --dir /tmp/kide-protected-deploy
 
           mapfile -t deployment_files < <(
             find /tmp/kide-protected-deploy -type f -name "deployment-$sha.json" -print
           )
           if (( ${#deployment_files[@]} != 1 )); then
-            echo "Expected exactly one original protected deployment qualification artifact." >&2
+            echo "Expected exactly one protected GCP deployment provenance artifact." >&2
             exit 1
           fi
-          node scripts/release/verify-protected-deployment.mjs \
-            "$KIDE_QUALIFICATION_ACCEPTANCE_PATH" \
-            "${deployment_files[0]}" /tmp/kide-protected-deploy-run.json \
-            "$sha" "$DEPLOYMENT_RUN_ID" "$GITHUB_REPOSITORY"
+
+          if [[ "$mode" == "existing-production" ]]; then
+            mapfile -t attestation_files < <(
+              find /tmp/kide-protected-deploy -type f -name "attestation-$sha.json" -print
+            )
+            if (( ${#attestation_files[@]} != 1 )); then
+              echo "Expected exactly one hashed existing-production attestation." >&2
+              exit 1
+            fi
+            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${provenance_id}/approvals" \
+              > /tmp/kide-existing-approval-reviews.json
+            node scripts/release/verify-protected-deployment.mjs \
+              "$KIDE_QUALIFICATION_ACCEPTANCE_PATH" \
+              "${deployment_files[0]}" /tmp/kide-protected-deploy-run.json \
+              "$sha" "$provenance_id" "$GITHUB_REPOSITORY" \
+              "${attestation_files[0]}" /tmp/kide-existing-approval-reviews.json
+            echo "KIDE_ATTESTATION_EVIDENCE_PATH=${attestation_files[0]}" >> "$GITHUB_ENV"
+          else
+            node scripts/release/verify-protected-deployment.mjs \
+              "$KIDE_QUALIFICATION_ACCEPTANCE_PATH" \
+              "${deployment_files[0]}" /tmp/kide-protected-deploy-run.json \
+              "$sha" "$provenance_id" "$GITHUB_REPOSITORY"
+          fi
           echo "KIDE_DEPLOYMENT_EVIDENCE_PATH=${deployment_files[0]}" >> "$GITHUB_ENV"
-          echo "KIDE_DEPLOYMENT_RUN_ID=$DEPLOYMENT_RUN_ID" >> "$GITHUB_ENV"
+          echo "KIDE_DEPLOYMENT_RUN_ID=$provenance_id" >> "$GITHUB_ENV"
+          echo "KIDE_DEPLOYMENT_PROVENANCE_MODE=$mode" >> "$GITHUB_ENV"
 
       - name: Require independent reviewed operations approval
         env:
@@ -263,7 +301,8 @@ jobs:
             echo
             printf 'Launch acceptance evidence SHA-256: `%s`\n' "$acceptance_sha"
             echo
-            printf 'Protected production deployment run: `%s`\n' "$KIDE_DEPLOYMENT_RUN_ID"
+            printf 'Protected production provenance mode: `%s`\n' "$KIDE_DEPLOYMENT_PROVENANCE_MODE"
+            printf 'Protected production provenance run: `%s`\n' "$KIDE_DEPLOYMENT_RUN_ID"
             printf 'Protected deployment artifact SHA-256: `%s`\n' "$deployment_sha"
             echo
             printf 'Independently reviewed operations approval run: `%s`\n' "$KIDE_OPERATIONS_APPROVAL_RUN_ID"
@@ -300,5 +339,5 @@ jobs:
             echo
             printf -- '- Tag: `%s`\n' "$RELEASE_TAG"
             printf -- '- Commit: `%s`\n' "$(git rev-parse HEAD)"
-            echo "- Protected deployment provenance, live production acceptance, independent operations approval, current main and successful main CI were verified for this exact SHA."
+            echo "- Independently reviewed existing-production attestation OR protected deployment, live production acceptance, operations approval, current main and successful main CI verified for exact SHA."
           } >> "$GITHUB_STEP_SUMMARY"

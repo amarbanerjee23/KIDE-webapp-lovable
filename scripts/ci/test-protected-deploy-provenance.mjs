@@ -1,5 +1,7 @@
+/* eslint-disable prettier/prettier -- Preserve existing release-gate guard formatting and focused security checks. */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +16,8 @@ const dir = mkdtempSync(join(tmpdir(), "kide-deploy-provenance-"));
 const acceptancePath = join(dir, "acceptance.json");
 const deployPath = join(dir, "deployment.json");
 const runPath = join(dir, "run.json");
+const attestationPath = join(dir, "attestation.json");
+const reviewsPath = join(dir, "approvals.json");
 const qualified = {
   schemaVersion: 1,
   commitSha: SHA,
@@ -42,6 +46,16 @@ const deploymentRun = {
   path: `${REPO}/.github/workflows/deploy-production.yml@refs/heads/main`,
   repository: { full_name: REPO },
 };
+const existingRun = {
+  ...deploymentRun,
+  name: "Attest existing production without deployment",
+  path: `${REPO}/.github/workflows/attest-existing-production.yml@refs/heads/main`,
+  actor: { login: "release-operator" },
+  triggering_actor: { login: "release-operator" },
+};
+const independentReviews = [
+  { state: "approved", user: { login: "independent-reviewer" } },
+];
 const clone = (x) => structuredClone(x);
 function check(a = acceptance, d = qualified, r = deploymentRun, sha = SHA, runId = RUN) {
   writeFileSync(acceptancePath, JSON.stringify(a));
@@ -62,6 +76,38 @@ function mutate(item, field, value) {
   const copy = clone(item);
   copy[field] = value;
   return copy;
+}
+function existingCheck(a = acceptance, d = qualified, r = existingRun,
+  reviews = independentReviews, override = {}) {
+  writeFileSync(acceptancePath, JSON.stringify(a));
+  writeFileSync(deployPath, JSON.stringify(d));
+  writeFileSync(runPath, JSON.stringify(r));
+  writeFileSync(reviewsPath, JSON.stringify(reviews));
+  const attestation = {
+    schemaVersion: 1,
+    method: "read-only-live-cloud-run",
+    commitSha: SHA,
+    workflowRunId: RUN,
+    actor: "release-operator",
+    projectId: qualified.projectId,
+    serviceName: qualified.serviceName,
+    imageDigest: qualified.imageDigest,
+    deploymentSha256: createHash("sha256").update(readFileSync(deployPath)).digest("hex"),
+    productionModified: false,
+    secretsCaptured: false,
+    ...override,
+  };
+  writeFileSync(attestationPath, JSON.stringify(attestation));
+  return spawnSync(process.execPath,
+    [validator, acceptancePath, deployPath, runPath, SHA, RUN, REPO,
+      attestationPath, reviewsPath], { encoding: "utf8" });
+}
+function rejectExisting(label, a, d, r, approvals, changes) {
+  const response = existingCheck(a, d, r, approvals, changes);
+  if (response.status === 0 ||
+      !response.stderr.includes("Protected deployment provenance rejected")) {
+    throw new Error(`${label} must reject: ${response.stderr}`);
+  }
 }
 function guard(head = SHA, dispatched = SHA, tip = SHA, ref = "refs/heads/main") {
   return spawnSync(process.execPath, [mainGuard, head, dispatched, tip, ref], { encoding: "utf8" });
@@ -91,6 +137,32 @@ try {
   reject("wrong requested run", acceptance, qualified, deploymentRun, SHA, "999");
   reject("wrong requested sha", acceptance, qualified, deploymentRun, "0".repeat(40));
 
+  if (existingCheck().status !== 0) throw new Error("valid reviewed existing-production attestation failed");
+  rejectExisting("unreviewed attestation", acceptance, qualified, existingRun, []);
+  rejectExisting("self-approved attestation", acceptance, qualified, existingRun,
+    [{ state: "approved", user: { login: "release-operator" } }]);
+  rejectExisting("attestation from stale SHA", acceptance, qualified,
+    mutate(existingRun, "head_sha", "0".repeat(40)));
+  rejectExisting("attestation from pull request", acceptance, qualified,
+    mutate(existingRun, "event", "pull_request"));
+  rejectExisting("fake attestation workflow", acceptance, qualified,
+    mutate(existingRun, "path", ".github/workflows/other.yml"));
+  rejectExisting("unapproved re-run", acceptance, qualified,
+    mutate(existingRun, "run_attempt", 2));
+  rejectExisting("attestation old image", acceptance,
+    mutate(qualified, "imageDigest", "sha256:" + "b".repeat(64)));
+  rejectExisting("tampered attestation digest", acceptance, qualified, existingRun,
+    independentReviews, { deploymentSha256: "0".repeat(64) });
+  rejectExisting("attestation falsely claims no modification", acceptance, qualified, existingRun,
+    independentReviews, { productionModified: true });
+  rejectExisting("wrong attestation actor", acceptance, qualified, existingRun,
+    independentReviews, { actor: "someone-else" });
+  rejectExisting("wrong attestation repository", acceptance, qualified,
+    mutate(existingRun, "repository", { full_name: "other/repo" }));
+  rejectExisting("missing attestation actor", acceptance, qualified,
+    mutate(existingRun, "actor", null));
+  rejectExisting("different deployed revision", acceptance,
+    mutate(qualified, "latestReadyRevision", "kide-webapp-old"));
   if (guard().status !== 0) throw new Error("current-main release tip guard should accept exact match");
   for (const [label, args] of [
     ["branch drift", [SHA, SHA, SHA, "refs/heads/feature"]],

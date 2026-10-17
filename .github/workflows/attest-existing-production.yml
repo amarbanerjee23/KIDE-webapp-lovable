@@ -1,0 +1,177 @@
+name: Attest existing production without deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit_sha:
+        description: Exact 40-character current main SHA to prove is already running
+        required: true
+        type: string
+      confirmation:
+        description: Type ATTEST followed by a space and the exact current main SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: kide-existing-production-attestation
+  cancel-in-progress: false
+
+jobs:
+  attest:
+    name: Verify current Cloud Run without changing production
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 25
+    steps:
+      - name: Check out dispatched commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact current main and successful post-merge CI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+          ATTEST_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" && "$GITHUB_RUN_ATTEMPT" == "1" ]] || {
+            echo "Attestation must be a new first-attempt main dispatch." >&2; exit 1;
+          }
+          git fetch --no-tags origin main
+          CURRENT_MAIN_SHA="$(git rev-parse origin/main)"
+          export CURRENT_MAIN_SHA
+          [[ "$(git rev-parse HEAD)" == "$CURRENT_MAIN_SHA" ]] || {
+            echo "Dispatched SHA is not current main." >&2; exit 1;
+          }
+          [[ "$ATTEST_CONFIRMATION" == "ATTEST $CURRENT_MAIN_SHA" ]] || {
+            echo "Expected ATTEST followed by the full main SHA." >&2; exit 1;
+          }
+          # Reuse the exact-main push-CI validator, with the separate ATTEST
+          # confirmation translated only after checking its original value.
+          DEPLOY_CONFIRMATION="DEPLOY $CURRENT_MAIN_SHA" \
+            gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&event=push&per_page=100" \
+              > /tmp/kide-main-ci-runs.json
+          DEPLOY_CONFIRMATION="DEPLOY $CURRENT_MAIN_SHA" \
+            node scripts/release/validate-deploy-authorization.mjs /tmp/kide-main-ci-runs.json
+
+      - name: Require independent production environment review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/approvals" \
+            > /tmp/kide-existing-approval.json
+          node - /tmp/kide-existing-approval.json "$GITHUB_ACTOR" <<'JS'
+          const fs = require("node:fs");
+          const [path, actor] = process.argv.slice(2);
+          const reviews = JSON.parse(fs.readFileSync(path, "utf8"));
+          if (!Array.isArray(reviews) || !reviews.some((r) =>
+            String(r.state ?? "").toLowerCase() === "approved" &&
+            typeof r.user?.login === "string" &&
+            r.user.login.toLowerCase() !== actor.toLowerCase()
+          )) throw new Error("Independent production environment approval is required.");
+          console.log("Non-self protected production environment approval verified.");
+          JS
+
+      - name: Require read-only GCP verification identity
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_PRODUCTION_SERVICE_ACCOUNT: ${{ secrets.GCP_PRODUCTION_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          [[ -n "$GCP_PROJECT_ID" && -n "$GCP_WORKLOAD_IDENTITY_PROVIDER" && -n "$GCP_PRODUCTION_SERVICE_ACCOUNT" ]] || {
+            echo "Missing production GCP project or Workload Identity settings." >&2; exit 1;
+          }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_PRODUCTION_SERVICE_ACCOUNT }}
+
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          version: ">= 390.0.0"
+
+      - name: Validate live image, auth config, database attachment and 100 percent traffic
+        shell: bash
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          REGION: ${{ vars.GCP_REGION }}
+          SERVICE_NAME: ${{ vars.GCP_SERVICE_NAME }}
+          CLOUD_SQL_INSTANCE: ${{ vars.GCP_CLOUD_SQL_INSTANCE }}
+          ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+          EXPECTED_COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p existing-production
+          REGION="${REGION:-us-central1}" \
+          SERVICE_NAME="${SERVICE_NAME:-kide-webapp}" \
+          CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-kide-web-app}" \
+          ARTIFACT_REPOSITORY="${ARTIFACT_REPOSITORY:-kide}" \
+          OUTPUT_FILE="existing-production/deployment-${GITHUB_SHA}.json" \
+            bash deploy/gcp/qualify-live-deployment.sh
+
+      - name: Capture hashed existing deployment provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - "existing-production/deployment-${GITHUB_SHA}.json" \
+            "existing-production/attestation-${GITHUB_SHA}.json" <<'JS'
+          const fs = require("node:fs");
+          const crypto = require("node:crypto");
+          const [source, destination] = process.argv.slice(2);
+          const bytes = fs.readFileSync(source);
+          const qualified = JSON.parse(bytes.toString("utf8"));
+          if (qualified.commitSha !== process.env.GITHUB_SHA ||
+              qualified.trafficPercent !== 100 || qualified.secretsCaptured !== false) {
+            throw new Error("Live deployment qualification is not safe to attest.");
+          }
+          const payload = {
+            schemaVersion: 1,
+            method: "read-only-live-cloud-run",
+            commitSha: process.env.GITHUB_SHA,
+            workflowRunId: process.env.GITHUB_RUN_ID,
+            actor: process.env.GITHUB_ACTOR,
+            projectId: qualified.projectId,
+            serviceName: qualified.serviceName,
+            imageDigest: qualified.imageDigest,
+            deploymentSha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+            productionModified: false,
+            secretsCaptured: false,
+          };
+          fs.writeFileSync(destination, JSON.stringify(payload, null, 2) + "\n");
+          JS
+
+      - name: Upload independent existing-production attestation
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-existing-production-${{ github.sha }}
+          path: existing-production
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Summarize attestation and remaining gates
+        shell: bash
+        run: |
+          {
+            echo "## Existing Cloud Run revision verified without deployment"
+            echo
+            echo "- Exact commit: \`$GITHUB_SHA\`"
+            echo "- Production was not modified"
+            echo "- Live image, digest, authentication configuration and Cloud SQL attachment verified"
+            echo "- Still required: protected PITR drill, production browser qualification and independent sign-off"
+          } >> "$GITHUB_STEP_SUMMARY"

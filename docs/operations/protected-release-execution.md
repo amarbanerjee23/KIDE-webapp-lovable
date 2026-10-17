@@ -10,17 +10,36 @@ Freeze `main` and verify its **own** successful push-event CI (all 18 jobs).
 Each subsequent action rechecks this same main SHA. If another PR is merged,
 restart the entire approval/restore/deployment process for the new SHA.
 
-## Gate 1 — deploy verified production
+## Gate 1 — verify the existing deployment OR deploy verified production
 
-Configure GitHub `production` environment required reviewers, prevent
-self-review and protected GCP Workload Identity Federation secrets/variables.
-Dispatch [Deploy production from approved main](../../.github/workflows/deploy-production.yml)
+**Preferred when KIDE already exists on Cloud Run: no redeploy.** Configure the GitHub
+`production` environment with **required independent reviewers** (prevent self-review),
+read-only GCP Workload Identity access to Cloud Run, Artifact Registry image metadata,
+Cloud SQL metadata, auth configuration and project metadata, then dispatch
+[Attest existing production without deployment](../../.github/workflows/attest-existing-production.yml)
+from current `main` with `expected_commit_sha=<full SHA>` and
+`confirmation=ATTEST <same SHA>`. This workflow never runs Cloud Build, changes
+Cloud Run traffic, modifies the database or publishes a release.
+
+The attestation **fails closed** unless the already deployed revision carries the
+commit-tagged image for the exact **current main SHA**, its immutable registry digest
+matches the running image, 100% traffic is on the ready revision, Better Auth
+and Cloud SQL attachment match the qualified configuration, GitHub `main` push
+CI succeeded, and a **different real GitHub environment reviewer** approved the
+first-attempt run. A running service with a different or unprovable commit is
+**not** release-qualified merely because it is live. Keep the successful run ID
+and its checksum-linked `verified-existing-production-<SHA>` artifact.
+
+**Alternative only if a new deployment is actually authorized:** dispatch
+[Deploy production from approved main](../../.github/workflows/deploy-production.yml)
 on `main` with `expected_commit_sha=<main SHA>` and
 `confirmation=DEPLOY <main SHA>`. Verify 100% latest Cloud Run traffic,
 Better Auth health, Cloud SQL attachment, image digest and retained
-`verified-production-deploy-<SHA>` artifact. Record its workflow run ID.
+`verified-production-deploy-<SHA>` artifact. Record the successful workflow run ID.
 
-**No feature-branch builds, production auth bypass, or stale-SHA deployments.**
+The final publisher accepts **exactly one** of these two run IDs and compares the
+immutable selected artifact with the independently gathered live qualification.
+Attestation cannot stand in for recovery, browser acceptance or sign-off.
 
 ## Gate 2 — perform real isolated Cloud SQL recovery
 
@@ -114,8 +133,10 @@ approvals. The existing publisher rechecks GitHub's independent protected
 review event and run provenance, not just text in an artifact.
 
 Finally dispatch [Publish official release](../../.github/workflows/publish-release.yml)
-with successful deployment run ID, qualification run ID, operations approval
-run ID and `confirmation=PUBLISH v1.0.0`. Verify the new `v1.0.0` tag
+with **exactly one** of `deployment_run_id` (newly deployed) or
+`existing_deployment_attestation_run_id` (already deployed), plus qualification
+run ID, operations approval run ID and `confirmation=PUBLISH v1.0.0`.
+Verify the new `v1.0.0` tag
 and post-publish smoke. Paid checkout remains disabled.
 
 ## Emergency stop / rollback

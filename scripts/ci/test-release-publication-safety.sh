@@ -16,6 +16,39 @@ node scripts/ci/test-operations-approval.mjs
 node scripts/ci/test-protected-deploy-provenance.mjs
 bash -n scripts/release/validate-publication.sh
 
+existing_workflow=".github/workflows/attest-existing-production.yml"
+test -s "$existing_workflow" || fail "read-only existing production attestation workflow is missing"
+grep -q '^name: Attest existing production without deployment$' "$existing_workflow" ||
+  fail "existing deployment attestation workflow identity drift"
+grep -q '^  workflow_dispatch:$' "$existing_workflow" ||
+  fail "existing deployment attestation must be manually dispatched"
+! grep -Eq '^  (push|pull_request|schedule):' "$existing_workflow" ||
+  fail "existing deployment attestation must never auto-run"
+grep -q 'environment: production' "$existing_workflow" ||
+  fail "existing deployment attestation must require protected production environment"
+grep -q 'GITHUB_RUN_ATTEMPT' "$existing_workflow" ||
+  fail "existing deployment attestation must reject reruns"
+grep -q '/approvals' "$existing_workflow" ||
+  fail "existing deployment attestation requires actual independent GitHub review"
+grep -q 'qualify-live-deployment.sh' "$existing_workflow" ||
+  fail "existing deployment must verify real GCP digest/commit/auth/SQL/traffic"
+grep -q 'validate-deploy-authorization.mjs' "$existing_workflow" ||
+  fail "existing deployment must require exact successful post-merge main CI"
+grep -q 'verified-existing-production-' "$existing_workflow" ||
+  fail "existing deployment requires a commit-scoped immutable artifact"
+grep -q 'deploymentSha256' "$existing_workflow" ||
+  fail "existing deployment attestation must retain hashed live metadata"
+! grep -Eq 'gcloud (builds submit|run deploy|run services update|sql instances (patch|clone|delete))' "$existing_workflow" ||
+  fail "existing deployment attestation must not mutate production"
+grep -q 'existing_deployment_attestation_run_id' "$workflow" ||
+  fail "publisher must provide a reviewed no-redeploy provenance route"
+grep -q 'Exactly one of deployment_run_id or existing_deployment_attestation_run_id' "$workflow" ||
+  fail "publisher must reject missing or conflicting provenance modes"
+grep -q 'verified-existing-production-' "$workflow" ||
+  fail "publisher must download the protected existing production artifact"
+grep -q 'kide-existing-approval-reviews.json' "$workflow" ||
+  fail "publisher must independently check original attestation review provenance"
+
 grep -q '^  workflow_dispatch:$' "$workflow" ||
   fail "official release workflow must be manual-only"
 ! grep -Eq '^  (push|pull_request|schedule):' "$workflow" ||
