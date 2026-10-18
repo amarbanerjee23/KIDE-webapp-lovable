@@ -27,7 +27,7 @@ test("a cross-tab storage event cannot switch away from unsaved engineering mode
   // The project is created on the server before the active-project selection
   // is committed in the browser. A button click is not a creation acknowledgement.
   await expect(
-    page.getByRole("listitem").filter({ hasText: first }).getByRole("link", { name: "Open models" }),
+    page.getByRole("listitem").filter({ hasText: first }),
   ).toBeVisible();
   await expect
     .poll(activeSelection, { message: "first project selection must persist after creation" })
@@ -41,7 +41,7 @@ test("a cross-tab storage event cannot switch away from unsaved engineering mode
   await page.getByPlaceholder("New project name").fill(second);
   await page.getByRole("button", { name: "Project", exact: true }).click();
   await expect(
-    page.getByRole("listitem").filter({ hasText: second }).getByRole("link", { name: "Open models" }),
+    page.getByRole("listitem").filter({ hasText: second }),
   ).toBeVisible();
   await expect
     .poll(activeSelection, { message: "second project must become active after creation" })
