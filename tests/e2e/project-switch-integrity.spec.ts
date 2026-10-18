@@ -18,19 +18,41 @@ test("a cross-tab storage event cannot switch away from unsaved engineering mode
   await page.getByPlaceholder("Acme Robotics").fill(org);
   await page.getByRole("button", { name: "Create", exact: true }).click();
 
+  const activeSelection = () =>
+    page.evaluate(() => window.localStorage.getItem("kide:active-project"));
+
   await page.getByPlaceholder("New project name").fill(first);
   await page.getByRole("button", { name: "Project", exact: true }).click();
-  const firstSelection = await page.evaluate(() =>
-    window.localStorage.getItem("kide:active-project"),
-  );
-  expect(firstSelection).not.toBeNull();
+
+  // The project is created on the server before the active-project selection
+  // is committed in the browser. A button click is not a creation acknowledgement.
+  await expect(
+    page.getByRole("listitem").filter({ hasText: first }).getByRole("link", { name: "Open models" }),
+  ).toBeVisible();
+  await expect
+    .poll(activeSelection, { message: "first project selection must persist after creation" })
+    .not.toBeNull();
+  const firstSelection = (await activeSelection())!;
+  const firstProject = JSON.parse(firstSelection) as {
+    projectId: string;
+    organizationId: string;
+  };
 
   await page.getByPlaceholder("New project name").fill(second);
   await page.getByRole("button", { name: "Project", exact: true }).click();
-  const secondSelection = await page.evaluate(() =>
-    window.localStorage.getItem("kide:active-project"),
-  );
-  expect(secondSelection).not.toBe(firstSelection);
+  await expect(
+    page.getByRole("listitem").filter({ hasText: second }).getByRole("link", { name: "Open models" }),
+  ).toBeVisible();
+  await expect
+    .poll(activeSelection, { message: "second project must become active after creation" })
+    .not.toBe(firstSelection);
+  const secondSelection = (await activeSelection())!;
+  const secondProject = JSON.parse(secondSelection) as {
+    projectId: string;
+    organizationId: string;
+  };
+  expect(secondProject.projectId).not.toBe(firstProject.projectId);
+  expect(secondProject.organizationId).toBe(firstProject.organizationId);
 
   await page
     .getByRole("listitem")
