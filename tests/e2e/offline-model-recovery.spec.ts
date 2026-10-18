@@ -21,9 +21,7 @@ test("offline edits remain visible, can be exported locally, and save on reconne
   // Do not navigate while the server-side create and active-selection write
   // are still pending: that would cancel the response and lose this test's
   // project context before the workspace persistence coordinator starts.
-  await expect(
-    page.getByRole("listitem").filter({ hasText: projectName }),
-  ).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: projectName })).toBeVisible();
   const activeSelection = () =>
     page.evaluate(() => window.localStorage.getItem("kide:active-project"));
   await expect.poll(activeSelection).not.toBeNull();
