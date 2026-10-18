@@ -26,9 +26,7 @@ test("offline edits remain visible, can be exported locally, and save on reconne
   ).toBeVisible();
   const activeSelection = () =>
     page.evaluate(() => window.localStorage.getItem("kide:active-project"));
-  await expect
-    .poll(activeSelection, { message: "new project must become active before model navigation" })
-    .not.toBeNull();
+  await expect.poll(activeSelection).not.toBeNull();
 
   await page.goto("/models");
   await expect(page.getByText("This project has no model files yet")).toBeVisible();
