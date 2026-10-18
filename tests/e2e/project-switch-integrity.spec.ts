@@ -29,9 +29,7 @@ test("a cross-tab storage event cannot switch away from unsaved engineering mode
   await expect(
     page.getByRole("listitem").filter({ hasText: first }),
   ).toBeVisible();
-  await expect
-    .poll(activeSelection, { message: "first project selection must persist after creation" })
-    .not.toBeNull();
+  await expect.poll(activeSelection).not.toBeNull();
   const firstSelection = (await activeSelection())!;
   const firstProject = JSON.parse(firstSelection) as {
     projectId: string;
@@ -43,9 +41,7 @@ test("a cross-tab storage event cannot switch away from unsaved engineering mode
   await expect(
     page.getByRole("listitem").filter({ hasText: second }),
   ).toBeVisible();
-  await expect
-    .poll(activeSelection, { message: "second project must become active after creation" })
-    .not.toBe(firstSelection);
+  await expect.poll(activeSelection).not.toBe(firstSelection);
   const secondSelection = (await activeSelection())!;
   const secondProject = JSON.parse(secondSelection) as {
     projectId: string;
