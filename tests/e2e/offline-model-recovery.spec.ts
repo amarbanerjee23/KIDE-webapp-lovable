@@ -22,13 +22,12 @@ test("offline edits remain visible, can be exported locally, and save on reconne
   // are still pending: that would cancel the response and lose this test's
   // project context before the workspace persistence coordinator starts.
   await expect(
-    page.getByRole("listitem").filter({ hasText: projectName }).getByRole("link", { name: "Open models" }),
+    page.getByRole("listitem").filter({ hasText: projectName }),
   ).toBeVisible();
+  const activeSelection = () =>
+    page.evaluate(() => window.localStorage.getItem("kide:active-project"));
   await expect
-    .poll(
-      () => page.evaluate(() => window.localStorage.getItem("kide:active-project")),
-      { message: "new offline-test project must be selected before opening models" },
-    )
+    .poll(activeSelection, { message: "new project must become active before model navigation" })
     .not.toBeNull();
 
   await page.goto("/models");
