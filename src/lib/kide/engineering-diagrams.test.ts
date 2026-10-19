@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- The ZIP-byte assertions and multi-domain matrices use deliberately explicit test formatting. */
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_WORKSPACES } from "@/lib/dsl";
 import { buildEngineeringDiagramBundle, renderEngineeringSvg } from "./engineering-diagrams";
