@@ -44,9 +44,7 @@ test("an engineer downloads all five control-system diagram types for the select
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download diagrams" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(
-    /^kide-engineering-diagrams-[a-z0-9-]+\.zip$/,
-  );
+  expect(download.suggestedFilename()).toMatch(/^kide-engineering-diagrams-[a-z0-9-]+\.zip$/);
   const bytes = await readFile((await download.path())!);
   expect(bytes.readUInt32LE(0)).toBe(0x04034b50);
   // ZIP store archives include six self-contained SVGs, the original model set,
