@@ -48,13 +48,8 @@ describe("engineering diagram ZIP export", () => {
       expect(zip.has("diagrams/00-system-architecture.svg")).toBe(true);
       expect(zip.has("modelset.json")).toBe(true);
       expect(zip.has("manifest.json")).toBe(true);
-      expect(bundle.manifest.sources.map((source) => source.kind).sort()).toEqual([
-        "activity",
-        "cap",
-        "dml",
-        "mncspec",
-        "op",
-      ]);
+      const exportedKinds = bundle.manifest.sources.map((source) => source.kind).sort();
+      expect(exportedKinds).toEqual(["activity", "cap", "dml", "mncspec", "op"]);
       const manifest = JSON.parse(zip.get("manifest.json")!);
       expect(manifest.projectId).toBe(context.projectId);
       expect(manifest.organizationId).toBe(context.organizationId);
