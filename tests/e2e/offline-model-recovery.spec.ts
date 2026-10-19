@@ -15,8 +15,16 @@ test("offline edits remain visible, can be exported locally, and save on reconne
 
   await page.getByPlaceholder("Acme Robotics").fill(`Offline Org ${id}`);
   await page.getByRole("button", { name: "Create" }).click();
-  await page.getByPlaceholder("New project name").fill(`Offline Project ${id}`);
-  await page.getByRole("button", { name: /project/i }).click();
+  const projectName = `Offline Project ${id}`;
+  await page.getByPlaceholder("New project name").fill(projectName);
+  await page.getByRole("button", { name: "Project", exact: true }).click();
+  // Do not navigate while the server-side create and active-selection write
+  // are still pending: that would cancel the response and lose this test's
+  // project context before the workspace persistence coordinator starts.
+  await expect(page.getByRole("listitem").filter({ hasText: projectName })).toBeVisible();
+  const activeSelection = () =>
+    page.evaluate(() => window.localStorage.getItem("kide:active-project"));
+  await expect.poll(activeSelection).not.toBeNull();
 
   await page.goto("/models");
   await expect(page.getByText("This project has no model files yet")).toBeVisible();
