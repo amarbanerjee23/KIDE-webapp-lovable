@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Check,
   CircleAlert,
+  Download,
   FileCode2,
   Play,
   RotateCcw,
@@ -41,6 +42,7 @@ import {
 } from "@/lib/kide/workspace-save-state";
 import { requestWorkspaceSaveRetry } from "@/lib/kide/workspace-save-retry";
 import { exportModelSet } from "@/lib/kide/model-exchange";
+import { buildEngineeringDiagramBundle } from "@/lib/kide/engineering-diagrams";
 import { requestWorkspaceReload } from "@/lib/kide/workspace-reload";
 import {
   linkFrom,
@@ -112,6 +114,35 @@ function ModelLanguages() {
       toast.success("Local model backup exported. Keep this file until your project is saved.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not export model backup.");
+    }
+  };
+
+  const downloadEngineeringDiagrams = () => {
+    if (!activeProject || !accessReady) {
+      toast.error("Select a fully loaded engineering project before downloading diagrams.");
+      return;
+    }
+    try {
+      const bundle = buildEngineeringDiagramBundle(workspace, {
+        projectId: activeProject.projectId,
+        organizationId: activeProject.organizationId,
+        saveStatus: activeSaveState?.status ?? "unknown",
+      });
+      const data = bundle.bytes.buffer.slice(
+        bundle.bytes.byteOffset,
+        bundle.bytes.byteOffset + bundle.bytes.byteLength,
+      ) as ArrayBuffer;
+      const url = URL.createObjectURL(new Blob([data], { type: "application/zip" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = bundle.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast.success(`Downloaded ${bundle.manifest.diagrams.length} engineering diagrams (SVG).`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not export engineering diagrams.");
     }
   };
 
@@ -238,6 +269,16 @@ function ModelLanguages() {
           <Button variant="outline" size="sm" onClick={requestExampleLoad} disabled={!canEdit}>
             <RotateCcw />
             Load selected
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!accessReady || workspace.files.length === 0}
+            onClick={downloadEngineeringDiagrams}
+            title="Download vector SVG diagrams, source model set and engineering manifest (ZIP)"
+          >
+            <Download />
+            Download diagrams
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/scenario">
