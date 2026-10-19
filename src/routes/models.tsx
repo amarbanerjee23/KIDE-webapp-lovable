@@ -142,7 +142,9 @@ function ModelLanguages() {
       window.setTimeout(() => URL.revokeObjectURL(url), 5000);
       toast.success(`Downloaded ${bundle.manifest.diagrams.length} engineering diagrams (SVG).`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not export engineering diagrams.");
+      toast.error(
+        error instanceof Error ? error.message : "Could not export engineering diagrams.",
+      );
     }
   };
 
