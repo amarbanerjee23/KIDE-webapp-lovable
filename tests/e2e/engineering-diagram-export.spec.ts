@@ -26,12 +26,16 @@ test("an engineer downloads all five control-system diagram types for the select
     .poll(() => page.evaluate(() => window.localStorage.getItem("kide:active-project")))
     .not.toBeNull();
 
-  await page.getByRole("listitem").filter({ hasText: project })
-    .getByRole("link", { name: "Open models" }).click();
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: project })
+    .getByRole("link", { name: "Open models" })
+    .click();
   await expect(page.getByText("This project has no model files yet")).toBeVisible();
   await expect(page.getByRole("button", { name: "Download diagrams" })).toBeDisabled();
 
-  await page.getByRole("combobox", { name: "Reference example workspace" })
+  await page
+    .getByRole("combobox", { name: "Reference example workspace" })
     .selectOption("precision-irrigation");
   await page.getByRole("button", { name: "Load selected" }).click();
   await expect(page.getByRole("button", { name: /^Agri\.dml/ })).toBeVisible();
@@ -40,7 +44,9 @@ test("an engineer downloads all five control-system diagram types for the select
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download diagrams" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^kide-engineering-diagrams-[a-z0-9-]+\.zip$/);
+  expect(download.suggestedFilename()).toMatch(
+    /^kide-engineering-diagrams-[a-z0-9-]+\.zip$/,
+  );
   const bytes = await readFile((await download.path())!);
   expect(bytes.readUInt32LE(0)).toBe(0x04034b50);
   // ZIP store archives include six self-contained SVGs, the original model set,
