@@ -12,7 +12,7 @@ import { sha256 } from "./sha256";
  * to KIDE's executable control, validation, timing or safety semantics.
  */
 const XMI_NS = "http://www.omg.org/spec/XMI/20131001";
-const UML_NS = "http://www.omg.org/spec/UML/20131001";
+const UML_NS = "http://www.omg.org/spec/UML/20161101";
 
 function xml(value: string): string {
   return value
