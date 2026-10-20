@@ -140,7 +140,9 @@ function ModelLanguages() {
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 5000);
-      toast.success(`Downloaded ${bundle.manifest.diagrams.length} engineering diagrams (SVG).`);
+      toast.success(
+        `Downloaded ${bundle.manifest.diagrams.length} SVG, UML and SysML model views.`,
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not export engineering diagrams.",
@@ -277,7 +279,7 @@ function ModelLanguages() {
             size="sm"
             disabled={!accessReady || workspace.files.length === 0}
             onClick={downloadEngineeringDiagrams}
-            title="Download vector SVG diagrams, source model set and engineering manifest (ZIP)"
+            title="Download SVG diagrams, UML 2.5.1 XMI, SysML v2 models, and source traceability (ZIP)"
           >
             <Download />
             Download diagrams
