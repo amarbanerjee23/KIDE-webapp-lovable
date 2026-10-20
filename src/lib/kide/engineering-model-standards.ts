@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Interchange XML and SysML snippets retain explicit mapping and source ordering. */
 import type { Graph } from "./engineering-diagrams";
 import { sha256 } from "./sha256";
 
