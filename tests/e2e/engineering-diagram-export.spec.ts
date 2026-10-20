@@ -56,5 +56,15 @@ test("an engineer downloads all five control-system diagram types for the select
   }
   expect(readable).toContain("modelset.json");
   expect(readable).toContain("manifest.json");
+  expect(readable).toContain("uml/00-system-architecture.uml.xmi");
+  expect(readable).toContain("sysml-v2/00-system-architecture.sysml");
+  expect(readable).toContain("interchange/00-system-architecture.trace.json");
+  for (const extension of ["dml", "op", "mncspec", "cap", "activity"]) {
+    expect(readable).toContain(`-${extension}.uml.xmi`);
+    expect(readable).toContain(`-${extension}.sysml`);
+    expect(readable).toContain(`-${extension}.trace.json`);
+  }
+  expect(readable).toContain("UML 2.5.1 XMI");
+  expect(readable).toContain("SysML 2.0 textual");
   expect(readable).toContain("snapshot-not-release-approved");
 });
