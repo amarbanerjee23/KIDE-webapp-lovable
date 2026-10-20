@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier -- Standards conformance fixtures retain explicit relation and identifier checks. */
 import { describe, expect, it } from "vitest";
 import { EXAMPLE_WORKSPACES } from "@/lib/dsl";
 import { graphForFile } from "./engineering-diagrams";
