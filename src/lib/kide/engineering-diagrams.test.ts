@@ -45,7 +45,7 @@ describe("engineering diagram ZIP export", () => {
       const zip = readZip(bundle.bytes);
       expect(bundle.filename).toBe("kide-engineering-diagrams-project-123.zip");
       expect(bundle.manifest.diagrams).toHaveLength(workspace.files.length + 1);
-      expect(zip.size).toBe(workspace.files.length + 3);
+      expect(zip.size).toBe((workspace.files.length + 1) * 4 + 2);
       expect(zip.has("diagrams/00-system-architecture.svg")).toBe(true);
       expect(zip.has("modelset.json")).toBe(true);
       expect(zip.has("manifest.json")).toBe(true);
@@ -55,6 +55,11 @@ describe("engineering diagram ZIP export", () => {
       expect(manifest.projectId).toBe(context.projectId);
       expect(manifest.organizationId).toBe(context.organizationId);
       expect(manifest.status).toBe("snapshot-not-release-approved");
+      expect(manifest.interchange).toEqual({
+        uml: "UML 2.5.1 XMI",
+        sysml: "SysML 2.0 textual",
+        fidelity: "structural-trace-projection",
+      });
       expect(
         manifest.diagrams.every((diagram: { nodeCount: number }) => diagram.nodeCount > 0),
       ).toBe(true);
@@ -64,6 +69,18 @@ describe("engineering diagram ZIP export", () => {
         expect(svg).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
         expect(svg).toContain("Source-derived architecture");
         expect(svg).not.toContain("<script");
+        const uml = zip.get(diagram.umlXmi)!;
+        const sysml = zip.get(diagram.sysmlV2)!;
+        const trace = JSON.parse(zip.get(diagram.trace)!);
+        expect(uml).toContain('xmlns:uml="http://www.omg.org/spec/UML/20161101"');
+        expect(uml).toContain('xmlns:xmi="http://www.omg.org/spec/XMI/20131001"');
+        expect(uml).toContain('xmi:type="uml:Dependency"');
+        expect(sysml).toContain("package KIDE_");
+        expect(sysml).toContain("dependency ");
+        expect(trace.format).toBe("kide.standard-model-trace/1");
+        expect(trace.sourceDiagram).toBe(diagram.title);
+        expect(trace.elements).toHaveLength(diagram.nodeCount);
+        expect(trace.relationships).toHaveLength(diagram.edgeCount);
       }
       const modelset = JSON.parse(zip.get("modelset.json")!);
       expect(modelset.format).toBe("kide.modelset/1");
