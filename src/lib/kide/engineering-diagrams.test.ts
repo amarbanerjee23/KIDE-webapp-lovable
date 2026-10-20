@@ -72,7 +72,7 @@ describe("engineering diagram ZIP export", () => {
         const uml = zip.get(diagram.umlXmi)!;
         const sysml = zip.get(diagram.sysmlV2)!;
         const trace = JSON.parse(zip.get(diagram.trace)!);
-        expect(uml).toContain('xmlns:uml="http://www.omg.org/spec/UML/20131001"');
+        expect(uml).toContain('xmlns:uml="http://www.omg.org/spec/UML/20161101"');
         expect(uml).toContain('xmlns:xmi="http://www.omg.org/spec/XMI/20131001"');
         expect(uml).toContain('xmi:type="uml:Dependency"');
         expect(sysml).toContain("package KIDE_");
