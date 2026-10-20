@@ -61,9 +61,9 @@ describe("UML XMI and SysML v2 model interoperability", () => {
     expect(result.umlXmi).not.toContain("<script>");
     expect(result.sysmlV2).not.toContain("<script>");
     expect(result.sysmlV2).not.toContain("Motor's command");
-    expect(result.trace.elements[0].label).toBe(graph.nodes[0].label);
-    expect(result.trace.elements[1].description).toBe(graph.nodes[1].description);
-    expect(result.trace.relationships[0].label).toBe(graph.edges[0].label);
+    expect(result.trace.elements[0]!.label).toBe(graph.nodes[0]!.label);
+    expect(result.trace.elements[1]!.description).toBe(graph.nodes[1]!.description);
+    expect(result.trace.relationships[0]!.label).toBe(graph.edges[0]!.label);
     expect(projectEngineeringGraphToStandards(graph)).toEqual(result);
   });
 
@@ -75,7 +75,7 @@ describe("UML XMI and SysML v2 model interoperability", () => {
       edges: [{ from: "n0", to: "missing", label: "uses" }],
     };
     expect(() => projectEngineeringGraphToStandards(empty)).toThrow("dangling relationships");
-    const repeated = { ...empty, nodes: [...empty.nodes, empty.nodes[0]], edges: [] };
+    const repeated = { ...empty, nodes: [...empty.nodes, empty.nodes[0]!], edges: [] };
     expect(() => projectEngineeringGraphToStandards(repeated)).toThrow("duplicate source");
   });
 });
