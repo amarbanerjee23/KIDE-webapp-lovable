@@ -2,11 +2,12 @@
 import type { LinkedFile, Workspace, ActivityNode, ActionNode, ParameterNode } from "@/lib/dsl";
 import { exportModelSet } from "@/lib/kide/model-exchange";
 import { sha256 } from "@/lib/kide/sha256";
+import { projectEngineeringGraphToStandards } from "./engineering-model-standards";
 
 type NodeKind = "root" | "data" | "operation" | "device" | "capability" | "activity" | "signal";
 type GraphNode = { id: string; label: string; description: string; lane: 0 | 1 | 2; kind: NodeKind };
 type GraphEdge = { from: string; to: string; label: string };
-type Graph = { title: string; subtitle: string; nodes: GraphNode[]; edges: GraphEdge[] };
+export type Graph = { title: string; subtitle: string; nodes: GraphNode[]; edges: GraphEdge[] };
 
 export type DiagramExportContext = {
   projectId: string;
@@ -29,7 +30,8 @@ export type DiagramManifest = {
   saveStatus: string;
   status: "snapshot-not-release-approved";
   note: string;
-  diagrams: Array<{ file: string; title: string; sourceModel: string | null; nodeCount: number; edgeCount: number }>;
+  diagrams: Array<{ file: string; title: string; sourceModel: string | null; nodeCount: number; edgeCount: number; umlXmi: string; sysmlV2: string; trace: string }>;
+  interchange: { uml: "UML 2.5.1 XMI"; sysml: "SysML 2.0 textual"; fidelity: "structural-trace-projection" };
   sources: Array<{ path: string; sha256: string; kind: string }>;
   modelSet: string;
 };
@@ -367,8 +369,25 @@ export function buildEngineeringDiagramBundle(workspace: Workspace, context: Dia
   const entries: Array<{ path: string; content: string }> = [];
   const diagrams: DiagramManifest["diagrams"] = [];
   const addDiagram = (file: string, sourceModel: string | null, g: Graph) => {
+    const id = file.replace(/^diagrams\//, "").replace(/\.svg$/, "");
+    const umlXmi = `uml/${id}.uml.xmi`;
+    const sysmlV2 = `sysml-v2/${id}.sysml`;
+    const trace = `interchange/${id}.trace.json`;
+    const projection = projectEngineeringGraphToStandards(g);
     entries.push({ path: file, content: renderEngineeringSvg(g) });
-    diagrams.push({ file, title: g.title, sourceModel, nodeCount: g.nodes.length, edgeCount: g.edges.length });
+    entries.push({ path: umlXmi, content: projection.umlXmi });
+    entries.push({ path: sysmlV2, content: projection.sysmlV2 });
+    entries.push({ path: trace, content: JSON.stringify(projection.trace, null, 2) + "\n" });
+    diagrams.push({
+      file,
+      title: g.title,
+      sourceModel,
+      nodeCount: g.nodes.length,
+      edgeCount: g.edges.length,
+      umlXmi,
+      sysmlV2,
+      trace,
+    });
   };
   addDiagram("diagrams/00-system-architecture.svg", null, overviewGraph(files));
   files.forEach((file, index) => {
@@ -386,6 +405,11 @@ export function buildEngineeringDiagramBundle(workspace: Workspace, context: Dia
     status: "snapshot-not-release-approved",
     note: "Derived from the current open browser workspace. Not a certified, reviewed, built or deployed control system. Unsaved edits may be present.",
     diagrams,
+    interchange: {
+      uml: "UML 2.5.1 XMI",
+      sysml: "SysML 2.0 textual",
+      fidelity: "structural-trace-projection",
+    },
     sources: files.map((file) => ({ path: file.path, sha256: sha256(file.source), kind: file.kind })),
     modelSet: "modelset.json",
   };
